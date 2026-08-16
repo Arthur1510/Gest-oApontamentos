@@ -1,14 +1,57 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Layers, LayoutDashboard, ListFilter, FolderKanban, FileText } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Layers, LayoutDashboard, ListFilter, FolderKanban, FileText, LogOut, User as UserIcon, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { Button } from '@/components/ui/button';
+import { createSupabaseBrowserClient } from '@/lib/supabase/browser';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const supabase = createSupabaseBrowserClient();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      if (isSupabaseConfigured()) {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUserEmail(session?.user?.email || null);
+
+        const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+          setUserEmail(session?.user?.email || null);
+        });
+
+        return () => {
+          authListener.subscription.unsubscribe();
+        };
+      }
+    };
+
+    checkUser();
+  }, [supabase.auth]);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      if (isSupabaseConfigured()) {
+        await supabase.auth.signOut();
+      }
+      setUserEmail(null);
+      router.push('/login');
+      router.refresh();
+    } catch (err) {
+      console.error('Erro ao efetuar logout:', err);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const navLinks = [
     { href: '/projetos', label: 'Projetos', icon: FolderKanban },
@@ -16,6 +59,9 @@ export function Navigation() {
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
   ];
+
+  // Esconder links de navegação na tela de login para manter a tela limpa e focada
+  const isLoginPage = pathname === '/login';
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80 transition-colors">
@@ -35,9 +81,9 @@ export function Navigation() {
           </div>
         </Link>
 
-        {/* Links de Navegação + Toggle de Tema */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          <nav className="flex items-center gap-1 sm:gap-1.5">
+        {/* Links de Navegação */}
+        {!isLoginPage && (
+          <nav className="hidden md:flex items-center gap-1 sm:gap-1.5">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -59,11 +105,44 @@ export function Navigation() {
               );
             })}
           </nav>
+        )}
+
+        {/* Ações do Usuário & Theme Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Toggle de Tema Claro/Escuro */}
+          <ThemeToggle />
 
           <div className="h-5 w-px bg-slate-200 dark:bg-slate-800 hidden sm:block" />
 
-          {/* Toggle de Tema Claro/Escuro */}
-          <ThemeToggle />
+          {/* Botão de Logout ("Sair") ou Login com E-mail Responsivo */}
+          {!isLoginPage ? (
+            <div className="flex items-center gap-2">
+              {userEmail && (
+                <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-700 dark:text-indigo-300 bg-slate-100 dark:bg-indigo-950/60 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-indigo-800/60 shadow-2xs font-semibold">
+                  <UserIcon className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                  <span className="truncate max-w-[160px]">{userEmail}</span>
+                </div>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                title="Encerrar sessão"
+                className="text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 dark:text-slate-400 dark:hover:text-red-400 dark:hover:bg-red-950/40 gap-1.5 h-9"
+              >
+                <LogOut className="h-4 w-4 text-slate-500 hover:text-red-600" />
+                <span className="hidden sm:inline">Sair</span>
+              </Button>
+            </div>
+          ) : (
+            <Link href="/login">
+              <Button variant="indigo" size="sm" className="text-xs gap-1.5 h-9 font-semibold">
+                <LogIn className="h-4 w-4" /> Entrar
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>
