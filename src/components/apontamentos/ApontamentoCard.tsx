@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images, Pencil } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/utils';
 interface ApontamentoCardProps {
   apontamento: Apontamento;
   onView: (apontamento: Apontamento) => void;
+  onEdit?: (apontamento: Apontamento) => void;
   onToggleStatus: (apontamento: Apontamento) => void;
   onDelete: (id: string) => void;
 }
@@ -18,6 +19,7 @@ interface ApontamentoCardProps {
 export function ApontamentoCard({
   apontamento,
   onView,
+  onEdit,
   onToggleStatus,
   onDelete,
 }: ApontamentoCardProps) {
@@ -184,6 +186,18 @@ export function ApontamentoCard({
               <AlertCircle className="h-4 w-4 text-amber-500" />
             )}
           </Button>
+
+          {onEdit && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(apontamento)}
+              title="Editar Apontamento"
+              className="h-8 w-8 text-slate-600 hover:text-amber-600 hover:bg-amber-50 dark:text-slate-400 dark:hover:text-amber-400 dark:hover:bg-amber-950/40"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
 
           <Button
             variant="ghost"

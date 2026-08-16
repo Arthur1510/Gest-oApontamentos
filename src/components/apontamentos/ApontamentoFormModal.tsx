@@ -1,20 +1,22 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check, Pencil, Save } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { SelectNative } from '@/components/ui/select-native';
-import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
+import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES, Apontamento } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
 
 interface ApontamentoFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (apontamento: NovoApontamento) => Promise<void>;
+  apontamentoToEdit?: Apontamento | null;
+  onUpdate?: (id: string, apontamento: NovoApontamento) => Promise<void>;
 }
 
 interface ImageItem {
@@ -31,7 +33,15 @@ const SAMPLE_IMAGES = [
   { label: 'Planta BIM / Projeto', url: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80' },
 ];
 
-export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoFormModalProps) {
+export function ApontamentoFormModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  apontamentoToEdit,
+  onUpdate,
+}: ApontamentoFormModalProps) {
+  const isEditing = Boolean(apontamentoToEdit);
+
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [solucao, setSolucao] = useState('');
@@ -70,6 +80,75 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
 
   const apontamentoFileInputRef = useRef<HTMLInputElement>(null);
   const solucaoFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Carregar dados no formulário (Edição ou Novo)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (apontamentoToEdit) {
+      setTitulo(apontamentoToEdit.titulo || '');
+      setDescricao(apontamentoToEdit.descricao || '');
+      setSolucao(apontamentoToEdit.solucao || '');
+      setDisciplinaOrigem(apontamentoToEdit.disciplina_origem || DISCIPLINAS_OPCOES[0]);
+      setDisciplinaDestino(apontamentoToEdit.disciplina_destino || DISCIPLINAS_OPCOES[1]);
+      setStatus(apontamentoToEdit.status || 'Aberto');
+      setPrioridade(apontamentoToEdit.prioridade || 'Média');
+      setTipoConflito(apontamentoToEdit.tipo_conflito || 'Conflito Físico');
+      setProjetoId(apontamentoToEdit.projeto_id || '');
+
+      const initialAptImages: ImageItem[] = [];
+      if (apontamentoToEdit.imagens_apontamento && apontamentoToEdit.imagens_apontamento.length > 0) {
+        apontamentoToEdit.imagens_apontamento.forEach((url, i) => {
+          initialAptImages.push({
+            id: `edit-apt-${i}-${Date.now()}`,
+            previewUrl: url,
+            isUrl: true,
+          });
+        });
+      } else if (apontamentoToEdit.url_imagem) {
+        initialAptImages.push({
+          id: `edit-apt-0-${Date.now()}`,
+          previewUrl: apontamentoToEdit.url_imagem,
+          isUrl: true,
+        });
+      }
+      setApontamentoImages(initialAptImages);
+
+      const initialSolImages: ImageItem[] = [];
+      if (apontamentoToEdit.imagens_solucao && apontamentoToEdit.imagens_solucao.length > 0) {
+        apontamentoToEdit.imagens_solucao.forEach((url, i) => {
+          initialSolImages.push({
+            id: `edit-sol-${i}-${Date.now()}`,
+            previewUrl: url,
+            isUrl: true,
+          });
+        });
+      } else if (apontamentoToEdit.url_imagem_solucao) {
+        initialSolImages.push({
+          id: `edit-sol-0-${Date.now()}`,
+          previewUrl: apontamentoToEdit.url_imagem_solucao,
+          isUrl: true,
+        });
+      }
+      setSolucaoImages(initialSolImages);
+      setErrorMsg('');
+      setPasteSuccessMsg('');
+    } else {
+      setTitulo('');
+      setDescricao('');
+      setSolucao('');
+      setDisciplinaOrigem(DISCIPLINAS_OPCOES[0]);
+      setDisciplinaDestino(DISCIPLINAS_OPCOES[1]);
+      setStatus('Aberto');
+      setPrioridade('Média');
+      setTipoConflito('Conflito Físico');
+      setProjetoId('');
+      setApontamentoImages([]);
+      setSolucaoImages([]);
+      setErrorMsg('');
+      setPasteSuccessMsg('');
+    }
+  }, [isOpen, apontamentoToEdit]);
 
   // Carregar lista de Projetos ao abrir o Modal
   useEffect(() => {
@@ -241,13 +320,20 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
       // 1. Upload de todas as imagens do Apontamento
       const finalApontamentoUrls: string[] = [];
       if (apontamentoImages.length > 0) {
-        setUploadStatusText(`Enviando ${apontamentoImages.length} foto(s) do apontamento para o Supabase...`);
+        const filesToUpload = apontamentoImages.filter((i) => !i.isUrl && i.file);
+        if (filesToUpload.length > 0) {
+          setUploadStatusText(`Enviando ${filesToUpload.length} foto(s) do apontamento para o Supabase...`);
+        }
         for (const item of apontamentoImages) {
           if (item.isUrl) {
             finalApontamentoUrls.push(item.previewUrl);
           } else if (item.file) {
-            const uploadedUrl = await uploadImageToClashesBucket(item.file);
-            if (uploadedUrl) finalApontamentoUrls.push(uploadedUrl);
+            if (isSupabaseConfigured() && supabase) {
+              const uploadedUrl = await uploadImageToClashesBucket(item.file);
+              if (uploadedUrl) finalApontamentoUrls.push(uploadedUrl);
+            } else {
+              finalApontamentoUrls.push(item.previewUrl);
+            }
           }
         }
       }
@@ -255,20 +341,27 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
       // 2. Upload de todas as imagens da Solução
       const finalSolucaoUrls: string[] = [];
       if (solucaoImages.length > 0) {
-        setUploadStatusText(`Enviando ${solucaoImages.length} foto(s) da solução para o Supabase...`);
+        const filesToUpload = solucaoImages.filter((i) => !i.isUrl && i.file);
+        if (filesToUpload.length > 0) {
+          setUploadStatusText(`Enviando ${filesToUpload.length} foto(s) da solução para o Supabase...`);
+        }
         for (const item of solucaoImages) {
           if (item.isUrl) {
             finalSolucaoUrls.push(item.previewUrl);
           } else if (item.file) {
-            const uploadedUrl = await uploadImageToClashesBucket(item.file);
-            if (uploadedUrl) finalSolucaoUrls.push(uploadedUrl);
+            if (isSupabaseConfigured() && supabase) {
+              const uploadedUrl = await uploadImageToClashesBucket(item.file);
+              if (uploadedUrl) finalSolucaoUrls.push(uploadedUrl);
+            } else {
+              finalSolucaoUrls.push(item.previewUrl);
+            }
           }
         }
       }
 
       // 3. Gravando apontamento com listas completas
-      setUploadStatusText('Gravando apontamento no banco de dados...');
-      await onSubmit({
+      setUploadStatusText(isEditing ? 'Atualizando apontamento...' : 'Gravando apontamento no banco de dados...');
+      const payload: NovoApontamento = {
         titulo: titulo.trim(),
         descricao: descricao.trim(),
         solucao: solucao.trim() || null,
@@ -282,7 +375,17 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
         imagens_apontamento: finalApontamentoUrls,
         imagens_solucao: finalSolucaoUrls,
         projeto_id: projetoId || null,
-      });
+      };
+
+      if (isEditing && apontamentoToEdit) {
+        if (onUpdate) {
+          await onUpdate(apontamentoToEdit.id, payload);
+        } else {
+          await onSubmit(payload);
+        }
+      } else {
+        await onSubmit(payload);
+      }
 
       // Reset total
       setTitulo('');
@@ -309,11 +412,23 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-            <Sparkles className="h-4 w-4" /> Suporte a Múltiplas Fotos & Guia Solução (Ctrl + V)
+            {isEditing ? (
+              <>
+                <Pencil className="h-4 w-4" /> Edição de Registro e Interferência
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" /> Suporte a Múltiplas Fotos & Guia Solução (Ctrl + V)
+              </>
+            )}
           </div>
-          <DialogTitle className="text-xl">Cadastrar Apontamento</DialogTitle>
+          <DialogTitle className="text-xl">
+            {isEditing ? 'Editar Apontamento' : 'Cadastrar Apontamento'}
+          </DialogTitle>
           <DialogDescription>
-            Registre uma interferência e anexe múltiplos prints do problema e da solução proposta.
+            {isEditing
+              ? 'Altere as informações técnicas, disciplinas, prioridade, status e fotos deste apontamento.'
+              : 'Registre uma interferência e anexe múltiplos prints do problema e da solução proposta.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -709,6 +824,10 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Salvando...
+                  </>
+                ) : isEditing ? (
+                  <>
+                    <Save className="h-4 w-4" /> Salvar Alterações
                   </>
                 ) : (
                   <>

@@ -17,6 +17,7 @@ export default function HomePage() {
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingApontamento, setEditingApontamento] = useState<Apontamento | null>(null);
   const [selectedApontamento, setSelectedApontamento] = useState<Apontamento | null>(null);
 
   // Mensagem Toast Interativa
@@ -80,6 +81,17 @@ export default function HomePage() {
     fetchApontamentos();
   }, [fetchApontamentos]);
 
+  // Handler: Abertura do Modal de Criação ou Edição
+  const handleOpenNewModal = () => {
+    setEditingApontamento(null);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenEditModal = (apontamento: Apontamento) => {
+    setEditingApontamento(apontamento);
+    setIsFormOpen(true);
+  };
+
   // Handler: Inserir novo Apontamento
   const handleCreateApontamento = async (novoData: NovoApontamento) => {
     if (isSupabaseConfigured() && supabase) {
@@ -106,6 +118,48 @@ export default function HomePage() {
       };
       setApontamentos((prev) => [novoItem, ...prev]);
       triggerToast('Apontamento registrado com sucesso! ✨');
+    }
+  };
+
+  // Handler: Atualizar Apontamento existente
+  const handleUpdateApontamento = async (id: string, updatedData: NovoApontamento) => {
+    if (isSupabaseConfigured() && supabase) {
+      const { data, error } = await supabase
+        .from('apontamentos')
+        .update(updatedData)
+        .eq('id', id)
+        .select('*, projetos(nome)');
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (data && data[0]) {
+        const updatedItem = data[0] as Apontamento;
+        setApontamentos((prev) =>
+          prev.map((item) => (item.id === id ? updatedItem : item))
+        );
+        if (selectedApontamento?.id === id) {
+          setSelectedApontamento(updatedItem);
+        }
+        triggerToast('Apontamento atualizado com sucesso no Supabase! ✏️');
+      }
+    } else {
+      const projEncontrado = projetosList.find((p) => p.id === updatedData.projeto_id);
+      const existing = apontamentos.find((a) => a.id === id);
+      const updatedItem: Apontamento = {
+        ...updatedData,
+        id,
+        created_at: existing ? existing.created_at : new Date().toISOString(),
+        projetos: projEncontrado ? { nome: projEncontrado.nome } : null,
+      };
+      setApontamentos((prev) =>
+        prev.map((item) => (item.id === id ? updatedItem : item))
+      );
+      if (selectedApontamento?.id === id) {
+        setSelectedApontamento(updatedItem);
+      }
+      triggerToast('Apontamento atualizado com sucesso! ✏️');
     }
   };
 
@@ -233,7 +287,7 @@ export default function HomePage() {
         {/* Cabeçalho da Aplicação e Métricas */}
         <ApontamentosHeader
           apontamentos={apontamentos}
-          onOpenNewModal={() => setIsFormOpen(true)}
+          onOpenNewModal={handleOpenNewModal}
           onFilterStatus={(status) => setSelectedStatus(status)}
           onFilterPrioridade={(prio) => setSelectedPrioridade(prio)}
         />
@@ -269,6 +323,7 @@ export default function HomePage() {
                 key={item.id}
                 apontamento={item}
                 onView={(apontamento) => setSelectedApontamento(apontamento)}
+                onEdit={handleOpenEditModal}
                 onToggleStatus={handleToggleStatus}
                 onDelete={handleDeleteApontamento}
               />
@@ -296,7 +351,7 @@ export default function HomePage() {
                   Limpar Filtros
                 </Button>
               )}
-              <Button variant="indigo" size="sm" onClick={() => setIsFormOpen(true)} className="text-xs gap-1.5">
+              <Button variant="indigo" size="sm" onClick={handleOpenNewModal} className="text-xs gap-1.5">
                 <Plus className="h-4 w-4" /> Cadastrar Apontamento
               </Button>
             </div>
@@ -304,11 +359,16 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Modal de Formulário de Cadastro */}
+      {/* Modal de Formulário de Cadastro e Edição */}
       <ApontamentoFormModal
         isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
+        onClose={() => {
+          setIsFormOpen(false);
+          setEditingApontamento(null);
+        }}
         onSubmit={handleCreateApontamento}
+        apontamentoToEdit={editingApontamento}
+        onUpdate={handleUpdateApontamento}
       />
 
       {/* Modal de Detalhes do Apontamento */}
@@ -316,6 +376,7 @@ export default function HomePage() {
         apontamento={selectedApontamento}
         isOpen={Boolean(selectedApontamento)}
         onClose={() => setSelectedApontamento(null)}
+        onEdit={handleOpenEditModal}
         onToggleStatus={handleToggleStatus}
         onDelete={handleDeleteApontamento}
         onUpdateSolucao={handleUpdateSolucao}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck } from 'lucide-react';
+import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ interface ApontamentoDetailModalProps {
   apontamento: Apontamento | null;
   isOpen: boolean;
   onClose: () => void;
+  onEdit?: (apontamento: Apontamento) => void;
   onToggleStatus: (apontamento: Apontamento) => void;
   onDelete: (id: string) => void;
   onUpdateSolucao?: (id: string, solucao: string, urlImagemSolucao?: string | null, imagensSolucao?: string[] | null) => void;
@@ -24,6 +25,7 @@ export function ApontamentoDetailModal({
   apontamento,
   isOpen,
   onClose,
+  onEdit,
   onToggleStatus,
   onDelete,
   onUpdateSolucao,
@@ -472,20 +474,37 @@ export function ApontamentoDetailModal({
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row justify-between sm:justify-between items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              if (confirm('Tem certeza de que deseja excluir este apontamento?')) {
-                onDelete(apontamento.id);
-                onClose();
-              }
-            }}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs gap-1.5 self-start sm:self-auto"
-          >
-            <Trash2 className="h-4 w-4" /> Excluir Apontamento
-          </Button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (confirm('Tem certeza de que deseja excluir este apontamento?')) {
+                  onDelete(apontamento.id);
+                  onClose();
+                }
+              }}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 text-xs gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" /> Excluir
+            </Button>
+
+            {onEdit && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onClose();
+                  onEdit(apontamento);
+                }}
+                className="text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-xs gap-1.5"
+              >
+                <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Editar Apontamento
+              </Button>
+            )}
+          </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <Button
