@@ -39,6 +39,9 @@ export interface Apontamento {
   tipo_conflito?: TipoConflito;
   solucao?: string | null;
   url_imagem?: string | null;
+  url_imagem_solucao?: string | null;
+  imagens_apontamento?: string[] | null;
+  imagens_solucao?: string[] | null;
   projeto_id?: string | null;
   projetos?: { nome: string } | null;
 }

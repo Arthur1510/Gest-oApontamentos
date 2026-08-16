@@ -134,14 +134,26 @@ export default function HomePage() {
     }
   };
 
-  // Handler: Atualizar Solução Proposta
-  const handleUpdateSolucao = (id: string, solucaoTexto: string) => {
+  // Handler: Atualizar Solução Proposta (Texto e Imagens)
+  const handleUpdateSolucao = (
+    id: string,
+    solucaoTexto: string,
+    urlImagemSolucao?: string | null,
+    imagensSolucao?: string[] | null
+  ) => {
     setApontamentos((prev) =>
       prev.map((item) =>
-        item.id === id ? { ...item, solucao: solucaoTexto } : item
+        item.id === id
+          ? {
+              ...item,
+              solucao: solucaoTexto,
+              url_imagem_solucao: urlImagemSolucao !== undefined ? urlImagemSolucao : item.url_imagem_solucao,
+              imagens_solucao: imagensSolucao !== undefined ? imagensSolucao : item.imagens_solucao,
+            }
+          : item
       )
     );
-    triggerToast('Solução proposta atualizada! 💡');
+    triggerToast('Solução proposta e galeria de fotos atualizadas! 💡');
   };
 
   // Handler: Excluir Apontamento

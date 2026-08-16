@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -23,18 +23,28 @@ export function ApontamentoCard({
 }: ApontamentoCardProps) {
   const nomeProjeto = apontamento.projetos?.nome;
 
+  const totalImagensApt = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
+    ? apontamento.imagens_apontamento.length
+    : apontamento.url_imagem
+    ? 1
+    : 0;
+
+  const mainImageUrl = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
+    ? apontamento.imagens_apontamento[0]
+    : apontamento.url_imagem;
+
   return (
     <Card className="group relative overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all duration-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs">
       <div>
         {/* Banner Superior da Thumbnail se houver Imagem */}
-        {apontamento.url_imagem && (
+        {mainImageUrl && (
           <div 
             onClick={() => onView(apontamento)}
             className="relative h-44 w-full overflow-hidden bg-slate-950 cursor-pointer"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={apontamento.url_imagem}
+              src={mainImageUrl}
               alt={apontamento.titulo}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
               onError={(e) => {
@@ -45,6 +55,12 @@ export function ApontamentoCard({
             
             {/* Badges Flutuantes no Banner */}
             <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
+              {totalImagensApt > 1 && (
+                <div title={`${totalImagensApt} fotos anexadas`} className="px-2 py-0.5 rounded-full bg-slate-950/80 text-white text-[10px] font-mono border border-slate-700 flex items-center gap-1 shadow-md">
+                  <Images className="h-3 w-3 text-indigo-400" />
+                  <span>{totalImagensApt}</span>
+                </div>
+              )}
               {apontamento.solucao && (
                 <div title="Solução Proposta cadastrada" className="p-1 rounded-full bg-emerald-500 text-slate-950 shadow-md">
                   <Lightbulb className="h-3.5 w-3.5" />
@@ -64,8 +80,8 @@ export function ApontamentoCard({
           </div>
         )}
 
-        <CardHeader className={apontamento.url_imagem ? "pt-4 pb-2" : "pb-2"}>
-          {!apontamento.url_imagem && (
+        <CardHeader className={mainImageUrl ? "pt-4 pb-2" : "pb-2"}>
+          {!mainImageUrl && (
             <div className="flex items-center justify-between gap-2 mb-2">
               <Badge variant={apontamento.status === 'Resolvido' ? 'resolvido' : 'aberto'}>
                 {apontamento.status}
@@ -84,14 +100,14 @@ export function ApontamentoCard({
             </div>
           )}
 
-          {!apontamento.url_imagem && nomeProjeto && (
+          {!mainImageUrl && nomeProjeto && (
             <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-1">
               <FolderKanban className="h-3.5 w-3.5" />
               <span className="truncate">{nomeProjeto}</span>
             </div>
           )}
 
-          {/* Tipo do Conflito Tag */}
+          {/* Tipo do Conflito / Apontamento Tag */}
           <div className="flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 mb-1">
             <ShieldAlert className="h-3 w-3" />
             <span>{apontamento.tipo_conflito || 'Conflito Físico'}</span>
@@ -104,7 +120,7 @@ export function ApontamentoCard({
             >
               {apontamento.titulo}
             </CardTitle>
-            {apontamento.url_imagem && (
+            {mainImageUrl && (
               <Badge
                 variant={
                   apontamento.prioridade === 'Alta'

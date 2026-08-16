@@ -26,7 +26,7 @@ CREATE POLICY "Permitir inserção pública em projetos" ON public.projetos FOR 
 CREATE POLICY "Permitir atualização pública em projetos" ON public.projetos FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública em projetos" ON public.projetos FOR DELETE USING (true);
 
--- 4. Criar Tabela 'apontamentos' com tipo_conflito e solucao
+-- 4. Criar Tabela 'apontamentos' com tipo_conflito, solucao, url_imagem_solucao e galerias de imagens
 CREATE TABLE IF NOT EXISTS public.apontamentos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -39,10 +39,13 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
     tipo_conflito VARCHAR(50) NOT NULL DEFAULT 'Conflito Físico' CHECK (tipo_conflito IN ('Conflito Físico', 'Concepção Técnica', 'Inconsistência Normativa', 'Definição de Produto', 'Informação Incompleta')),
     solucao TEXT,
     url_imagem TEXT,
+    url_imagem_solucao TEXT,
+    imagens_apontamento TEXT[] DEFAULT '{}',
+    imagens_solucao TEXT[] DEFAULT '{}',
     projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE
 );
 
--- Garantir adição das colunas projeto_id, tipo_conflito e solucao em tabelas já existentes
+-- Garantir adição das colunas em tabelas já existentes
 DO $$ 
 BEGIN 
     IF NOT EXISTS (
@@ -67,6 +70,30 @@ BEGIN
     ) THEN
         ALTER TABLE public.apontamentos 
         ADD COLUMN solucao TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'url_imagem_solucao'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN url_imagem_solucao TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'imagens_apontamento'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN imagens_apontamento TEXT[] DEFAULT '{}';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'imagens_solucao'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN imagens_solucao TEXT[] DEFAULT '{}';
     END IF;
 END $$;
 
