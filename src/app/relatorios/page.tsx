@@ -23,6 +23,7 @@ import { Apontamento, Projeto, DISCIPLINAS_OPCOES, TIPOS_CONFLITO_OPCOES } from 
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Button } from '@/components/ui/button';
+import { SelectNative } from '@/components/ui/select-native';
 import { formatDate } from '@/lib/utils';
 
 export default function RelatoriosPage() {
@@ -159,7 +160,7 @@ export default function RelatoriosPage() {
         </div>
 
         {/* Painel de Filtros (no-print) */}
-        <div className="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-2xs space-y-3">
+        <div className="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               <Filter className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Filtrar Conteúdo do Relatório
@@ -180,10 +181,10 @@ export default function RelatoriosPage() {
             {/* Filtro por Projeto */}
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1">Projeto:</label>
-              <select
+              <SelectNative
+                variant="indigo"
                 value={selectedProjeto}
                 onChange={(e) => setSelectedProjeto(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todos">Todos os Projetos</option>
                 {projetosList.map((p) => (
@@ -191,16 +192,16 @@ export default function RelatoriosPage() {
                     {p.nome}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
 
             {/* Filtro por Tipo de Apontamento */}
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipo de Apontamento:</label>
-              <select
+              <SelectNative
+                variant="amber"
                 value={selectedTipoConflito}
                 onChange={(e) => setSelectedTipoConflito(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-200 font-medium"
               >
                 <option value="Todos">Todos os Tipos</option>
                 {TIPOS_CONFLITO_OPCOES.map((tc) => (
@@ -208,30 +209,28 @@ export default function RelatoriosPage() {
                     {tc}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
 
             {/* Filtro por Status */}
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1">Status:</label>
-              <select
+              <SelectNative
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todos">Todos os Status</option>
                 <option value="Aberto">Aberto</option>
                 <option value="Resolvido">Resolvido</option>
-              </select>
+              </SelectNative>
             </div>
 
             {/* Filtro por Disciplina */}
             <div>
               <label className="block text-[11px] font-medium text-slate-500 mb-1">Disciplina:</label>
-              <select
+              <SelectNative
                 value={selectedDisciplina}
                 onChange={(e) => setSelectedDisciplina(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todas">Todas as Disciplinas</option>
                 {DISCIPLINAS_OPCOES.map((d) => (
@@ -239,7 +238,7 @@ export default function RelatoriosPage() {
                     {d}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
           </div>
         </div>

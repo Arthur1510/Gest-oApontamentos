@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { SelectNative } from '@/components/ui/select-native';
 import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
 
@@ -212,7 +213,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-            <Sparkles className="h-4 w-4" /> Novo Registro com Tipo de Conflito & Solução
+            <Sparkles className="h-4 w-4" /> Novo Registro com Tipo de Apontamento & Solução
           </div>
           <DialogTitle className="text-xl">Cadastrar Apontamento</DialogTitle>
           <DialogDescription>
@@ -240,9 +241,9 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
             <Label htmlFor="projeto_id" className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
               <FolderKanban className="h-4 w-4" /> Projeto Associado
             </Label>
-            <select
+            <SelectNative
               id="projeto_id"
-              className="flex h-10 w-full rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-indigo-800 dark:bg-slate-950 dark:text-slate-100 font-medium"
+              variant="indigo"
               value={projetoId}
               onChange={(e) => setProjetoId(e.target.value)}
             >
@@ -252,7 +253,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                   {p.nome} ({p.status})
                 </option>
               ))}
-            </select>
+            </SelectNative>
             {isLoadingProjetos && (
               <span className="text-[11px] text-slate-400">Carregando projetos do Supabase...</span>
             )}
@@ -267,18 +268,19 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               required
+              className="h-10 rounded-xl"
             />
           </div>
 
-          {/* Tipo do Conflito & Prioridade */}
+          {/* Tipo do Conflito / Apontamento & Prioridade */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="tipo_conflito" className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
-                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Tipo do Conflito *
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Tipo de Apontamento *
               </Label>
-              <select
+              <SelectNative
                 id="tipo_conflito"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 font-medium"
+                variant="amber"
                 value={tipoConflito}
                 onChange={(e) => setTipoConflito(e.target.value as TipoConflito)}
               >
@@ -287,21 +289,20 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                     {tc}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="prioridade">Prioridade *</Label>
-              <select
+              <SelectNative
                 id="prioridade"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 value={prioridade}
                 onChange={(e) => setPrioridade(e.target.value as PrioridadeApontamento)}
               >
                 <option value="Baixa">Baixa (Menor Urgência)</option>
                 <option value="Média">Média (Acompanhamento Regular)</option>
                 <option value="Alta">Alta (Crítico / Bloqueia Obra)</option>
-              </select>
+              </SelectNative>
             </div>
           </div>
 
@@ -309,9 +310,8 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="disciplina_origem">Disciplina Origem *</Label>
-              <select
+              <SelectNative
                 id="disciplina_origem"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 value={disciplinaOrigem}
                 onChange={(e) => setDisciplinaOrigem(e.target.value)}
               >
@@ -320,14 +320,13 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                     {d}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="disciplina_destino">Disciplina Destino *</Label>
-              <select
+              <SelectNative
                 id="disciplina_destino"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 value={disciplinaDestino}
                 onChange={(e) => setDisciplinaDestino(e.target.value)}
               >
@@ -336,22 +335,21 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                     {d}
                   </option>
                 ))}
-              </select>
+              </SelectNative>
             </div>
           </div>
 
           {/* Status Inicial */}
           <div className="space-y-1.5">
             <Label htmlFor="status">Status Inicial *</Label>
-            <select
+            <SelectNative
               id="status"
-              className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusApontamento)}
             >
               <option value="Aberto">Aberto</option>
               <option value="Resolvido">Resolvido</option>
-            </select>
+            </SelectNative>
           </div>
 
           {/* Descrição */}
@@ -364,6 +362,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
               onChange={(e) => setDescricao(e.target.value)}
               rows={3}
               required
+              className="rounded-xl"
             />
           </div>
 
@@ -378,7 +377,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
               value={solucao}
               onChange={(e) => setSolucao(e.target.value)}
               rows={2}
-              className="border-emerald-200 dark:border-emerald-800/60 bg-white dark:bg-slate-950"
+              className="border-emerald-200 dark:border-emerald-800/60 bg-white dark:bg-slate-950 rounded-xl"
             />
           </div>
 
@@ -484,6 +483,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                   placeholder="https://exemplo.com/foto-do-projeto.jpg"
                   value={urlImagem}
                   onChange={(e) => setUrlImagem(e.target.value)}
+                  className="h-10 rounded-xl"
                 />
                 <div className="space-y-1.5">
                   <span className="text-[11px] text-slate-500 font-medium">Ou selecione uma foto de demonstração:</span>

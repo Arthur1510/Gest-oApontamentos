@@ -19,6 +19,18 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Estilização Responsiva de Listas Suspensas (Select / Option) */
+select option {
+  background-color: #ffffff;
+  color: #0f172a;
+  padding: 8px;
+}
+
+.dark select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
 @media print {
   body {
     background-color: white !important;

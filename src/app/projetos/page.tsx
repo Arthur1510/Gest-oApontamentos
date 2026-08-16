@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { SelectNative } from '@/components/ui/select-native';
 import { formatDate } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
@@ -191,7 +192,7 @@ export default function ProjetosPage() {
               placeholder="Buscar por nome ou descrição do projeto..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 text-xs sm:text-sm"
+              className="pl-9 text-xs sm:text-sm h-10 rounded-xl"
             />
           </div>
           <span className="text-xs text-slate-500 hidden sm:inline font-medium">
@@ -310,20 +311,20 @@ export default function ProjetosPage() {
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
+                className="h-10 rounded-xl"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="status">Status do Projeto *</Label>
-              <select
+              <SelectNative
                 id="status"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 value={status}
                 onChange={(e) => setStatus(e.target.value as 'Ativo' | 'Inativo')}
               >
                 <option value="Ativo">Ativo</option>
                 <option value="Inativo">Inativo</option>
-              </select>
+              </SelectNative>
             </div>
 
             <div className="space-y-1.5">
@@ -334,6 +335,7 @@ export default function ProjetosPage() {
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
                 rows={3}
+                className="rounded-xl"
               />
             </div>
 
