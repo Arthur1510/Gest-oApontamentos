@@ -267,281 +267,283 @@ export default function RelatoriosPage() {
             </Button>
           </div>
         ) : (
-          /* AREA DE IMPRESSAO */
-          <div ref={contentRef} className="space-y-8 print:space-y-0">
-            {/* PAGINA 1: CAPA PROFISSIONAL DO RELATORIO (MODELO ARCIS/BIM) */}
-            <div
-              style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
-              className="w-[210mm] min-h-[297mm] h-auto p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page"
-            >
-              {/* Header Topo da Capa */}
-              <div className="flex items-center justify-between border-b border-slate-300 pb-2 text-[11px] text-slate-600 font-sans">
-                <span className="font-semibold">Relatório Serviços de Compatibilização</span>
-                <span className="font-bold text-indigo-900 uppercase">{projetoSelecionadoNome}</span>
-                <span>{dataAtualFormatada}</span>
-              </div>
-
-              {/* Centro da Capa: Logo & Titulos */}
-              <div className="my-auto text-center space-y-8 flex flex-col items-center justify-center py-12">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-900 text-white flex items-center justify-center shadow-lg">
-                    <Layers className="h-10 w-10 text-indigo-200" />
-                  </div>
-                  <h1 className="text-3xl font-extrabold tracking-widest text-indigo-950 uppercase font-sans">
-                    GESTÃO BIM
-                  </h1>
+          /* AREA DE IMPRESSAO COM SUPORTE A OVERFLOW MOBILE */
+          <div className="w-full overflow-x-auto pb-4">
+            <div ref={contentRef} className="space-y-8 print:space-y-0 min-w-[210mm]">
+              {/* PAGINA 1: CAPA PROFISSIONAL DO RELATORIO (MODELO ARCIS/BIM) */}
+              <div
+                style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
+                className="w-[210mm] min-h-[297mm] h-auto p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page"
+              >
+                {/* Header Topo da Capa */}
+                <div className="flex items-center justify-between border-b border-slate-300 pb-2 text-[11px] text-slate-600 font-sans">
+                  <span className="font-semibold">Relatório Serviços de Compatibilização</span>
+                  <span className="font-bold text-indigo-900 uppercase">{projetoSelecionadoNome}</span>
+                  <span>{dataAtualFormatada}</span>
                 </div>
 
-                <div className="space-y-2 py-4">
-                  <h2 className="text-4xl font-bold tracking-tight text-slate-900">
-                    RELATÓRIO TÉCNICO
-                  </h2>
-                  <p className="text-xl font-bold text-indigo-900 uppercase tracking-wide">
-                    {projetoSelecionadoNome}
-                  </p>
+                {/* Centro da Capa: Logo & Titulos */}
+                <div className="my-auto text-center space-y-8 flex flex-col items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-2xl bg-indigo-900 text-white flex items-center justify-center shadow-lg">
+                      <Layers className="h-10 w-10 text-indigo-200" />
+                    </div>
+                    <h1 className="text-3xl font-extrabold tracking-widest text-indigo-950 uppercase font-sans">
+                      GESTÃO BIM
+                    </h1>
+                  </div>
+
+                  <div className="space-y-2 py-4">
+                    <h2 className="text-4xl font-bold tracking-tight text-slate-900">
+                      RELATÓRIO TÉCNICO
+                    </h2>
+                    <p className="text-xl font-bold text-indigo-900 uppercase tracking-wide">
+                      {projetoSelecionadoNome}
+                    </p>
+                  </div>
+
+                  {/* Resumo e Filtros da Capa */}
+                  <div className="max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-200 text-xs space-y-3 font-sans">
+                    <div className="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">
+                      Total de Apontamento(s): <span className="text-indigo-700 font-extrabold">{filteredApontamentos.length}</span>
+                    </div>
+
+                    <div className="space-y-1 text-slate-600 text-left">
+                      <p className="font-semibold text-slate-800">Filtros Aplicados:</p>
+                      <p>• <strong>Tipo de Apontamento:</strong> {selectedTipoConflito}</p>
+                      <p>• <strong>Status:</strong> {selectedStatus}</p>
+                      <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
+                      <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Resumo e Filtros da Capa */}
-                <div className="max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-200 text-xs space-y-3 font-sans">
-                  <div className="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">
-                    Total de Apontamento(s): <span className="text-indigo-700 font-extrabold">{filteredApontamentos.length}</span>
-                  </div>
-
-                  <div className="space-y-1 text-slate-600 text-left">
-                    <p className="font-semibold text-slate-800">Filtros Aplicados:</p>
-                    <p>• <strong>Tipo de Apontamento:</strong> {selectedTipoConflito}</p>
-                    <p>• <strong>Status:</strong> {selectedStatus}</p>
-                    <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
-                    <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
-                  </div>
+                {/* Rodapé da Capa */}
+                <div className="flex items-center justify-between border-t border-slate-300 pt-2 text-[10px] text-slate-500 font-sans">
+                  <span>GestãoBIM - Serviços de Compatibilização Técnica</span>
+                  <span className="font-bold text-slate-700">Pag 1 de {totalPaginasPDF}</span>
                 </div>
               </div>
 
-              {/* Rodapé da Capa */}
-              <div className="flex items-center justify-between border-t border-slate-300 pt-2 text-[10px] text-slate-500 font-sans">
-                <span>GestãoBIM - Serviços de Compatibilização Técnica</span>
-                <span className="font-bold text-slate-700">Pag 1 de {totalPaginasPDF}</span>
-              </div>
-            </div>
+              {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 ADAPTÁVEL */}
+              {filteredApontamentos.map((apontamento, index) => {
+                const nomeProjetoItem = apontamento.projetos?.nome || projetoSelecionadoNome || 'Projeto Geral';
+                const numPaginaAtual = index + 2;
 
-            {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 ADAPTÁVEL */}
-            {filteredApontamentos.map((apontamento, index) => {
-              const nomeProjetoItem = apontamento.projetos?.nome || projetoSelecionadoNome || 'Projeto Geral';
-              const numPaginaAtual = index + 2;
+                const listImagensApt = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
+                  ? apontamento.imagens_apontamento
+                  : apontamento.url_imagem
+                  ? [apontamento.url_imagem]
+                  : [];
 
-              const listImagensApt = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
-                ? apontamento.imagens_apontamento
-                : apontamento.url_imagem
-                ? [apontamento.url_imagem]
-                : [];
+                const listImagensSol = apontamento.imagens_solucao && apontamento.imagens_solucao.length > 0
+                  ? apontamento.imagens_solucao
+                  : apontamento.url_imagem_solucao
+                  ? [apontamento.url_imagem_solucao]
+                  : [];
 
-              const listImagensSol = apontamento.imagens_solucao && apontamento.imagens_solucao.length > 0
-                ? apontamento.imagens_solucao
-                : apontamento.url_imagem_solucao
-                ? [apontamento.url_imagem_solucao]
-                : [];
+                const isLongText = (apontamento.descricao?.length || 0) + (apontamento.solucao?.length || 0) > 400;
 
-              const isLongText = (apontamento.descricao?.length || 0) + (apontamento.solucao?.length || 0) > 400;
-
-              return (
-                <div
-                  key={`rel-page-${apontamento.id}`}
-                  style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
-                  className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page font-sans"
-                >
-                  {/* Header Fixo do Topo da Prancha A4 */}
-                  <div className="border-b border-slate-400 pb-2 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
-                    <span className="font-semibold">Relatório Serviços de Compatibilização</span>
-                    <span className="font-bold text-slate-900 uppercase truncate max-w-[200px]">
-                      {nomeProjetoItem}
-                    </span>
-                    <span>{dataAtualFormatada}</span>
-                  </div>
-
-                  {/* Conteudo Principal do Apontamento com Flex-1 para Adaptação Dinâmica */}
-                  <div className="space-y-3 my-auto py-2 flex-1 flex flex-col justify-center">
-                    {/* Titulo do Apontamento */}
-                    <div className="flex items-center justify-between border-b border-slate-200 pb-2 shrink-0">
-                      <h2 className="text-base sm:text-lg font-bold text-indigo-950">
-                        Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-emerald-700' : 'text-amber-700'}>{apontamento.status}</span>
-                      </h2>
-                      <span className="text-xs font-mono font-semibold text-slate-500">
-                        ID: #{apontamento.id.slice(0, 8)}
+                return (
+                  <div
+                    key={`rel-page-${apontamento.id}`}
+                    style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
+                    className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page font-sans"
+                  >
+                    {/* Header Fixo do Topo da Prancha A4 */}
+                    <div className="border-b border-slate-400 pb-2 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
+                      <span className="font-semibold">Relatório Serviços de Compatibilização</span>
+                      <span className="font-bold text-slate-900 uppercase truncate max-w-[200px]">
+                        {nomeProjetoItem}
                       </span>
+                      <span>{dataAtualFormatada}</span>
                     </div>
 
-                    {/* Layout Dividido Lado a Lado: Imagem Principal (Esquerda) + Metadados (Direita) */}
-                    <div className="grid grid-cols-12 gap-4 items-start shrink-0">
-                      {/* LADO ESQUERDO: IMAGEM PRINCIPAL + MINI-GALERIA */}
-                      <div className="col-span-7 space-y-1.5">
-                        <div className={`border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center p-1 shadow-sm relative transition-all ${
-                          isLongText ? 'h-[62mm]' : 'h-[78mm]'
-                        }`}>
-                          {listImagensApt.length > 0 ? (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={listImagensApt[0]}
-                              alt={apontamento.titulo}
-                              crossOrigin="anonymous"
-                              className="w-full h-full object-contain mx-auto"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <div className="flex flex-col items-center gap-2 text-slate-400 text-center p-4">
-                              <ImageIcon className="h-10 w-10 text-slate-500 opacity-60" />
-                              <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                                Sem Imagem Anexada
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Grade de Fotos Adicionais do Apontamento no PDF */}
-                        {listImagensApt.length > 1 && (
-                          <div className="grid grid-cols-4 gap-1">
-                            {listImagensApt.slice(1, 5).map((secUrl, secIdx) => (
-                              <div key={`pdf-sec-apt-${secIdx}`} className="h-10 border border-slate-300 rounded overflow-hidden bg-slate-950">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={secUrl} alt={`Sec ${secIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* LADO DIREITO: METADADOS ORGANIZADOS */}
-                      <div className="col-span-5 space-y-1.5 text-xs">
-                        {/* Prioridade & Data */}
-                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200 grid grid-cols-2 gap-1">
-                          <div>
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Prioridade</span>
-                            <span
-                              className={`font-bold px-2 py-0.5 rounded text-[10px] inline-block mt-0.5 ${
-                                apontamento.prioridade === 'Alta'
-                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                  : apontamento.prioridade === 'Média'
-                                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                  : 'bg-sky-100 text-sky-800 border border-sky-300'
-                              }`}
-                            >
-                              {apontamento.prioridade}
-                            </span>
-                          </div>
-
-                          <div>
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Data Criação</span>
-                            <span className="font-semibold text-slate-800 text-[10px] block mt-0.5">{formatDate(apontamento.created_at)}</span>
-                          </div>
-                        </div>
-
-                        {/* Tipo de Apontamento */}
-                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo de Apontamento</span>
-                          <span className="font-bold text-amber-900 block mt-0.5 text-[11px] flex items-center gap-1">
-                            <ShieldAlert className="h-3 w-3 text-amber-600 shrink-0" />
-                            <span className="truncate">{apontamento.tipo_conflito || 'Conflito Físico'}</span>
-                          </span>
-                        </div>
-
-                        {/* Disciplina Principal (Origem) */}
-                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Origem</span>
-                          <span className="font-bold text-indigo-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_origem}</span>
-                        </div>
-
-                        {/* Disciplinas Envolvidas (Destino) */}
-                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Destino</span>
-                          <span className="font-bold text-rose-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_destino}</span>
-                        </div>
-
-                        {/* Edificacao / Pavimento */}
-                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Localização / Pavimento</span>
-                          <span className="font-semibold text-slate-800 block mt-0.5 text-[11px]">TÉRREO / PAVIMENTO TIPO</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Descricao Detalhada */}
-                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-300 space-y-1">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                        <span className="text-[10px] font-bold text-slate-900 uppercase truncate max-w-[400px]">
-                          Título: {apontamento.titulo}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 ${
-                            apontamento.status === 'Resolvido'
-                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : 'bg-amber-100 text-amber-800 border border-amber-300'
-                          }`}
-                        >
-                          {apontamento.status === 'Resolvido' ? (
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                          ) : (
-                            <AlertCircle className="h-3 w-3 text-amber-600" />
-                          )}
-                          {apontamento.status}
+                    {/* Conteudo Principal do Apontamento com Flex-1 para Adaptação Dinâmica */}
+                    <div className="space-y-3 my-auto py-2 flex-1 flex flex-col justify-center">
+                      {/* Titulo do Apontamento */}
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 shrink-0">
+                        <h2 className="text-base sm:text-lg font-bold text-indigo-950">
+                          Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-emerald-700' : 'text-amber-700'}>{apontamento.status}</span>
+                        </h2>
+                        <span className="text-xs font-mono font-semibold text-slate-500">
+                          ID: #{apontamento.id.slice(0, 8)}
                         </span>
                       </div>
 
-                      <span className="text-[9px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
-                      <p className="text-[11px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
-                        {apontamento.descricao}
-                      </p>
-                    </div>
-
-                    {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA */}
-                    <div className="bg-emerald-50/90 p-3 rounded-lg border border-emerald-300 space-y-2">
-                      <span className="text-[10px] font-bold text-emerald-900 uppercase flex items-center gap-1">
-                        <Lightbulb className="h-3.5 w-3.5 text-emerald-700 shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
-                      </span>
-
-                      <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-3 items-start" : ""}>
-                        <div className={listImagensSol.length > 0 ? "col-span-8" : ""}>
-                          <p className="text-[11px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
-                            {apontamento.solucao || 'Aguardando definição técnica de solução pelos projetistas envolvidos.'}
-                          </p>
-                        </div>
-
-                        {listImagensSol.length > 0 && (
-                          <div className="col-span-4 space-y-1">
-                            <div className="border border-emerald-300 rounded overflow-hidden bg-slate-950 h-24 relative flex items-center justify-center">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {/* Layout Dividido Lado a Lado: Imagem Principal (Esquerda) + Metadados (Direita) */}
+                      <div className="grid grid-cols-12 gap-4 items-start shrink-0">
+                        {/* LADO ESQUERDO: IMAGEM PRINCIPAL + MINI-GALERIA */}
+                        <div className="col-span-7 space-y-1.5">
+                          <div className={`border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center p-1 shadow-sm relative transition-all ${
+                            isLongText ? 'h-[62mm]' : 'h-[78mm]'
+                          }`}>
+                            {listImagensApt.length > 0 ? (
+                              /* eslint-disable-next-line @next/next/no-img-element */
                               <img
-                                src={listImagensSol[0]}
-                                alt="Foto da Solução"
+                                src={listImagensApt[0]}
+                                alt={apontamento.titulo}
                                 crossOrigin="anonymous"
                                 className="w-full h-full object-contain mx-auto"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
                               />
-                            </div>
-
-                            {listImagensSol.length > 1 && (
-                              <div className="grid grid-cols-3 gap-1">
-                                {listImagensSol.slice(1, 4).map((solSecUrl, solSecIdx) => (
-                                  <div key={`pdf-sec-sol-${solSecIdx}`} className="h-8 border border-emerald-300 rounded overflow-hidden bg-slate-950">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img src={solSecUrl} alt={`Sol ${solSecIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
+                            ) : (
+                              <div className="flex flex-col items-center gap-2 text-slate-400 text-center p-4">
+                                <ImageIcon className="h-10 w-10 text-slate-500 opacity-60" />
+                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                                  Sem Imagem Anexada
+                                </p>
                               </div>
                             )}
                           </div>
-                        )}
+
+                          {/* Grade de Fotos Adicionais do Apontamento no PDF */}
+                          {listImagensApt.length > 1 && (
+                            <div className="grid grid-cols-4 gap-1">
+                              {listImagensApt.slice(1, 5).map((secUrl, secIdx) => (
+                                <div key={`pdf-sec-apt-${secIdx}`} className="h-10 border border-slate-300 rounded overflow-hidden bg-slate-950">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img src={secUrl} alt={`Sec ${secIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* LADO DIREITO: METADADOS ORGANIZADOS */}
+                        <div className="col-span-5 space-y-1.5 text-xs">
+                          {/* Prioridade & Data */}
+                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200 grid grid-cols-2 gap-1">
+                            <div>
+                              <span className="text-[9px] text-slate-500 font-bold uppercase block">Prioridade</span>
+                              <span
+                                className={`font-bold px-2 py-0.5 rounded text-[10px] inline-block mt-0.5 ${
+                                  apontamento.prioridade === 'Alta'
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                    : apontamento.prioridade === 'Média'
+                                    ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                    : 'bg-sky-100 text-sky-800 border border-sky-300'
+                                }`}
+                              >
+                                {apontamento.prioridade}
+                              </span>
+                            </div>
+
+                            <div>
+                              <span className="text-[9px] text-slate-500 font-bold uppercase block">Data Criação</span>
+                              <span className="font-semibold text-slate-800 text-[10px] block mt-0.5">{formatDate(apontamento.created_at)}</span>
+                            </div>
+                          </div>
+
+                          {/* Tipo de Apontamento */}
+                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo de Apontamento</span>
+                            <span className="font-bold text-amber-900 block mt-0.5 text-[11px] flex items-center gap-1">
+                              <ShieldAlert className="h-3 w-3 text-amber-600 shrink-0" />
+                              <span className="truncate">{apontamento.tipo_conflito || 'Conflito Físico'}</span>
+                            </span>
+                          </div>
+
+                          {/* Disciplina Principal (Origem) */}
+                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Origem</span>
+                            <span className="font-bold text-indigo-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_origem}</span>
+                          </div>
+
+                          {/* Disciplinas Envolvidas (Destino) */}
+                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Destino</span>
+                            <span className="font-bold text-rose-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_destino}</span>
+                          </div>
+
+                          {/* Edificacao / Pavimento */}
+                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Localização / Pavimento</span>
+                            <span className="font-semibold text-slate-800 block mt-0.5 text-[11px]">TÉRREO / PAVIMENTO TIPO</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Descricao Detalhada */}
+                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-300 space-y-1">
+                        <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+                          <span className="text-[10px] font-bold text-slate-900 uppercase truncate max-w-[400px]">
+                            Título: {apontamento.titulo}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 ${
+                              apontamento.status === 'Resolvido'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                : 'bg-amber-100 text-amber-800 border border-amber-300'
+                            }`}
+                          >
+                            {apontamento.status === 'Resolvido' ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            ) : (
+                              <AlertCircle className="h-3 w-3 text-amber-600" />
+                            )}
+                            {apontamento.status}
+                          </span>
+                        </div>
+
+                        <span className="text-[9px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
+                        <p className="text-[11px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                          {apontamento.descricao}
+                        </p>
+                      </div>
+
+                      {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA */}
+                      <div className="bg-emerald-50/90 p-3 rounded-lg border border-emerald-300 space-y-2">
+                        <span className="text-[10px] font-bold text-emerald-900 uppercase flex items-center gap-1">
+                          <Lightbulb className="h-3.5 w-3.5 text-emerald-700 shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
+                        </span>
+
+                        <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-3 items-start" : ""}>
+                          <div className={listImagensSol.length > 0 ? "col-span-8" : ""}>
+                            <p className="text-[11px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                              {apontamento.solucao || 'Aguardando definição técnica de solução pelos projetistas envolvidos.'}
+                            </p>
+                          </div>
+
+                          {listImagensSol.length > 0 && (
+                            <div className="col-span-4 space-y-1">
+                              <div className="border border-emerald-300 rounded overflow-hidden bg-slate-950 h-24 relative flex items-center justify-center">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={listImagensSol[0]}
+                                  alt="Foto da Solução"
+                                  crossOrigin="anonymous"
+                                  className="w-full h-full object-contain mx-auto"
+                                />
+                              </div>
+
+                              {listImagensSol.length > 1 && (
+                                <div className="grid grid-cols-3 gap-1">
+                                  {listImagensSol.slice(1, 4).map((solSecUrl, solSecIdx) => (
+                                    <div key={`pdf-sec-sol-${solSecIdx}`} className="h-8 border border-emerald-300 rounded overflow-hidden bg-slate-950">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img src={solSecUrl} alt={`Sol ${solSecIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Rodape Fixo da Folha A4 */}
-                  <div className="border-t border-slate-400 pt-2 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
-                    <span>GestãoBIM - Relatórios Técnicos</span>
-                    <span className="font-bold text-slate-900">Pag {numPaginaAtual} de {totalPaginasPDF}</span>
+                    {/* Rodape Fixo da Folha A4 */}
+                    <div className="border-t border-slate-400 pt-2 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
+                      <span>GestãoBIM - Relatórios Técnicos</span>
+                      <span className="font-bold text-slate-900">Pag {numPaginaAtual} de {totalPaginasPDF}</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
