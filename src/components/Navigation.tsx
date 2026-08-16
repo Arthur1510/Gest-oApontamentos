@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ListFilter, FolderKanban, FileText, Presentation, LogOut, User as UserIcon, LogIn, Menu, X, ChevronRight, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { LayoutDashboard, ListFilter, FolderKanban, FileText, Presentation, LogOut, User as UserIcon, LogIn, Menu, X, ChevronRight, PanelLeftClose } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -187,9 +187,9 @@ export function Navigation() {
         {/* Rodapé do Menu Lateral (User & Theme & Logout) */}
         <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-3 w-full">
           {!isDesktopCollapsed && userEmail && (
-            <div className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold px-2 truncate bg-slate-50 dark:bg-slate-850 p-2 rounded-xl border border-slate-200/80 dark:border-slate-800">
+            <div className="flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl bg-slate-100 text-slate-800 dark:bg-slate-800/90 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 shadow-2xs truncate">
               <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <span className="truncate">{userEmail}</span>
+              <span className="truncate" title={userEmail}>{userEmail}</span>
             </div>
           )}
 
@@ -277,7 +277,7 @@ export function Navigation() {
 
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
               {userEmail && (
-                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 font-medium px-2 truncate">
+                <div className="flex items-center gap-2 text-xs font-semibold px-3 py-2.5 rounded-xl bg-slate-100 text-slate-800 dark:bg-slate-800/90 dark:text-slate-200 border border-slate-200 dark:border-slate-700/80 shadow-2xs truncate">
                   <UserIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                   <span className="truncate">{userEmail}</span>
                 </div>
