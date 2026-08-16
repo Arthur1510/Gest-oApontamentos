@@ -4,7 +4,7 @@ import React from 'react';
 import { Search, Filter, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { DISCIPLINAS_OPCOES, Projeto } from '@/types/apontamento';
+import { DISCIPLINAS_OPCOES, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 
 interface ApontamentosFiltersProps {
   searchTerm: string;
@@ -15,6 +15,8 @@ interface ApontamentosFiltersProps {
   onPrioridadeChange: (prioridade: string) => void;
   selectedDisciplina: string;
   onDisciplinaChange: (disciplina: string) => void;
+  selectedTipoConflito: string;
+  onTipoConflitoChange: (tipo: string) => void;
   selectedProjeto: string;
   onProjetoChange: (projetoId: string) => void;
   projetosList: Projeto[];
@@ -30,6 +32,8 @@ export function ApontamentosFilters({
   onPrioridadeChange,
   selectedDisciplina,
   onDisciplinaChange,
+  selectedTipoConflito,
+  onTipoConflitoChange,
   selectedProjeto,
   onProjetoChange,
   projetosList,
@@ -40,6 +44,7 @@ export function ApontamentosFilters({
     selectedStatus !== 'Todos' ||
     selectedPrioridade !== 'Todas' ||
     selectedDisciplina !== 'Todas' ||
+    selectedTipoConflito !== 'Todos' ||
     selectedProjeto !== 'Todos';
 
   return (
@@ -60,7 +65,7 @@ export function ApontamentosFilters({
         )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
         {/* Filtro por Projeto */}
         <div>
           <select
@@ -86,6 +91,22 @@ export function ApontamentosFilters({
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9 text-xs sm:text-sm"
           />
+        </div>
+
+        {/* Filtro de Tipo do Conflito */}
+        <div>
+          <select
+            value={selectedTipoConflito}
+            onChange={(e) => onTipoConflitoChange(e.target.value)}
+            className="flex h-10 w-full rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-200"
+          >
+            <option value="Todos">Tipo Conflito: Todos</option>
+            {TIPOS_CONFLITO_OPCOES.map((tc) => (
+              <option key={`filter-tc-${tc}`} value={tc}>
+                {tc}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Filtro de Status */}

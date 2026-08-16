@@ -2,6 +2,21 @@ export type StatusApontamento = 'Aberto' | 'Resolvido';
 export type PrioridadeApontamento = 'Baixa' | 'Média' | 'Alta';
 export type StatusProjeto = 'Ativo' | 'Inativo';
 
+export type TipoConflito =
+  | 'Conflito Físico'
+  | 'Concepção Técnica'
+  | 'Inconsistência Normativa'
+  | 'Definição de Produto'
+  | 'Informação Incompleta';
+
+export const TIPOS_CONFLITO_OPCOES: TipoConflito[] = [
+  'Conflito Físico',
+  'Concepção Técnica',
+  'Inconsistência Normativa',
+  'Definição de Produto',
+  'Informação Incompleta',
+];
+
 export interface Projeto {
   id: string;
   created_at: string;
@@ -21,6 +36,8 @@ export interface Apontamento {
   disciplina_destino: string;
   status: StatusApontamento;
   prioridade: PrioridadeApontamento;
+  tipo_conflito?: TipoConflito;
+  solucao?: string | null;
   url_imagem?: string | null;
   projeto_id?: string | null;
   projetos?: { nome: string } | null;

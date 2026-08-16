@@ -32,6 +32,7 @@ export default function HomePage() {
   const [selectedStatus, setSelectedStatus] = useState('Todos');
   const [selectedPrioridade, setSelectedPrioridade] = useState('Todas');
   const [selectedDisciplina, setSelectedDisciplina] = useState('Todas');
+  const [selectedTipoConflito, setSelectedTipoConflito] = useState('Todos');
   const [selectedProjeto, setSelectedProjeto] = useState('Todos');
 
   // Carregar Apontamentos e Projetos do Supabase ou Mock
@@ -133,6 +134,16 @@ export default function HomePage() {
     }
   };
 
+  // Handler: Atualizar Solução Proposta
+  const handleUpdateSolucao = (id: string, solucaoTexto: string) => {
+    setApontamentos((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, solucao: solucaoTexto } : item
+      )
+    );
+    triggerToast('Solução proposta atualizada! 💡');
+  };
+
   // Handler: Excluir Apontamento
   const handleDeleteApontamento = async (id: string) => {
     setApontamentos((prev) => prev.filter((item) => item.id !== id));
@@ -168,6 +179,9 @@ export default function HomePage() {
       item.disciplina_origem === selectedDisciplina ||
       item.disciplina_destino === selectedDisciplina;
 
+    const matchesTipoConflito =
+      selectedTipoConflito === 'Todos' || item.tipo_conflito === selectedTipoConflito;
+
     const matchesProjeto =
       selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
 
@@ -176,6 +190,7 @@ export default function HomePage() {
       matchesStatus &&
       matchesPrioridade &&
       matchesDisciplina &&
+      matchesTipoConflito &&
       matchesProjeto
     );
   });
@@ -185,6 +200,7 @@ export default function HomePage() {
     setSelectedStatus('Todos');
     setSelectedPrioridade('Todas');
     setSelectedDisciplina('Todas');
+    setSelectedTipoConflito('Todos');
     setSelectedProjeto('Todos');
   };
 
@@ -202,7 +218,7 @@ export default function HomePage() {
         {/* Banner de Conexão Supabase */}
         <SupabaseStatusBanner />
 
-        {/* Cabeçalho da Aplicação e Métricas Cliváveis */}
+        {/* Cabeçalho da Aplicação e Métricas */}
         <ApontamentosHeader
           apontamentos={apontamentos}
           onOpenNewModal={() => setIsFormOpen(true)}
@@ -220,13 +236,15 @@ export default function HomePage() {
           onPrioridadeChange={setSelectedPrioridade}
           selectedDisciplina={selectedDisciplina}
           onDisciplinaChange={setSelectedDisciplina}
+          selectedTipoConflito={selectedTipoConflito}
+          onTipoConflitoChange={setSelectedTipoConflito}
           selectedProjeto={selectedProjeto}
           onProjetoChange={setSelectedProjeto}
           projetosList={projetosList}
           onResetFilters={resetFilters}
         />
 
-        {/* Lista de Apontamentos com Transição Suave */}
+        {/* Lista de Apontamentos */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
@@ -288,6 +306,7 @@ export default function HomePage() {
         onClose={() => setSelectedApontamento(null)}
         onToggleStatus={handleToggleStatus}
         onDelete={handleDeleteApontamento}
+        onUpdateSolucao={handleUpdateSolucao}
       />
     </main>
   );

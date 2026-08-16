@@ -24,8 +24,9 @@ import {
   ArrowUpRight,
   RefreshCw,
   FolderKanban,
+  ShieldAlert,
 } from 'lucide-react';
-import { Apontamento, Projeto } from '@/types/apontamento';
+import { Apontamento, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -43,6 +44,14 @@ const PRIORIDADE_COLORS = {
   Baixa: '#0284c7',  // Sky / Azul
 };
 
+const TIPO_CONFLITO_COLORS = [
+  '#6366f1', // Indigo
+  '#f59e0b', // Amber
+  '#ec4899', // Pink
+  '#10b981', // Emerald
+  '#8b5cf6', // Purple
+];
+
 export default function DashboardPage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
@@ -54,7 +63,6 @@ export default function DashboardPage() {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        // Busca Lista de Projetos para o Filtro
         const { data: projData } = await supabase
           .from('projetos')
           .select('*')
@@ -66,7 +74,6 @@ export default function DashboardPage() {
           setProjetosList(MOCK_PROJETOS);
         }
 
-        // Busca Apontamentos
         const { data, error } = await supabase
           .from('apontamentos')
           .select('*, projetos(nome)')
@@ -136,7 +143,27 @@ export default function DashboardPage() {
     ];
   }, [filteredApontamentos]);
 
-  // 3. Distribuição por Prioridade
+  // 3. Distribuição por Tipo do Conflito
+  const dataPorTipoConflito = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    TIPOS_CONFLITO_OPCOES.forEach((tc) => {
+      counts[tc] = 0;
+    });
+
+    filteredApontamentos.forEach((item) => {
+      const tc = item.tipo_conflito || 'Conflito Físico';
+      counts[tc] = (counts[tc] || 0) + 1;
+    });
+
+    return Object.entries(counts).map(([name, value], idx) => ({
+      name,
+      value,
+      color: TIPO_CONFLITO_COLORS[idx % TIPO_CONFLITO_COLORS.length],
+    }));
+  }, [filteredApontamentos]);
+
+  // 4. Distribuição por Prioridade
   const dataPorPrioridade = useMemo(() => {
     const alta = filteredApontamentos.filter((a) => a.prioridade === 'Alta').length;
     const media = filteredApontamentos.filter((a) => a.prioridade === 'Média').length;
@@ -171,7 +198,7 @@ export default function DashboardPage() {
               Dashboard de Indicadores
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Análise gráfica dos apontamentos por disciplina de origem, status de resolução e prioridade.
+              Análise gráfica dos apontamentos por disciplina de origem, tipo de conflito, status de resolução e prioridade.
             </p>
           </div>
 
@@ -375,15 +402,62 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Gráfico 3: Distribuição por Nível de Prioridade */}
-            <Card className="lg:col-span-12">
+            {/* Gráfico 3: Categorização por Tipo do Conflito */}
+            <Card className="lg:col-span-6">
               <CardHeader>
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-semibold uppercase tracking-wider">
+                  <ShieldAlert className="h-4 w-4" /> Tipos de Conflitos BIM
+                </div>
+                <CardTitle className="text-lg">Classificação de Conflitos</CardTitle>
+                <CardDescription>
+                  Categorização em Conflito Físico, Concepção Técnica, Inconsistência Normativa, etc.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={dataPorTipoConflito}
+                      margin={{ top: 10, right: 20, left: -20, bottom: 40 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fontSize: 10, fill: '#64748b' }}
+                        interval={0}
+                        angle={-15}
+                        textAnchor="end"
+                      />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '8px',
+                          color: '#f8fafc',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                        {dataPorTipoConflito.map((entry, index) => (
+                          <Cell key={`cell-tc-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Gráfico 4: Distribuição por Nível de Prioridade */}
+            <Card className="lg:col-span-6">
+              <CardHeader>
+                <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400 text-xs font-semibold uppercase tracking-wider">
                   <Flame className="h-4 w-4" /> Distribuição de Níveis
                 </div>
                 <CardTitle className="text-lg">Apontamentos por Nível de Prioridade</CardTitle>
                 <CardDescription>
-                  Classificação da gravidade dos problemas registrados na obra/projeto.
+                  Classificação da gravidade dos problemas registrados no projeto.
                 </CardDescription>
               </CardHeader>
               <CardContent>

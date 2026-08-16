@@ -16,8 +16,10 @@ import {
   AlertCircle,
   Calendar,
   Layers,
+  ShieldAlert,
+  Lightbulb,
 } from 'lucide-react';
-import { Apontamento, Projeto, DISCIPLINAS_OPCOES } from '@/types/apontamento';
+import { Apontamento, Projeto, DISCIPLINAS_OPCOES, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Button } from '@/components/ui/button';
@@ -32,6 +34,7 @@ export default function RelatoriosPage() {
   const [selectedProjeto, setSelectedProjeto] = useState<string>('Todos');
   const [selectedStatus, setSelectedStatus] = useState<string>('Todos');
   const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
+  const [selectedTipoConflito, setSelectedTipoConflito] = useState<string>('Todos');
 
   // Referência para impressão react-to-print
   const contentRef = useRef<HTMLDivElement>(null);
@@ -99,13 +102,17 @@ export default function RelatoriosPage() {
       item.disciplina_origem === selectedDisciplina ||
       item.disciplina_destino === selectedDisciplina;
 
-    return matchesProjeto && matchesStatus && matchesDisciplina;
+    const matchesTipoConflito =
+      selectedTipoConflito === 'Todos' || item.tipo_conflito === selectedTipoConflito;
+
+    return matchesProjeto && matchesStatus && matchesDisciplina && matchesTipoConflito;
   });
 
   const resetFilters = () => {
     setSelectedProjeto('Todos');
     setSelectedStatus('Todos');
     setSelectedDisciplina('Todas');
+    setSelectedTipoConflito('Todos');
   };
 
   // Nome do projeto selecionado para a Capa
@@ -135,7 +142,7 @@ export default function RelatoriosPage() {
               Exportação de Relatório PDF (Modelo ARCIS / BIM)
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Gera a capa profissional e pranchas A4 individuais para cada apontamento/conflito com dados relacionais.
+              Gera a capa profissional e pranchas A4 individuais para cada apontamento/conflito com a Guia Solução e Tipo de Conflito.
             </p>
           </div>
 
@@ -157,7 +164,7 @@ export default function RelatoriosPage() {
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               <Filter className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Filtrar Conteúdo do Relatório
             </div>
-            {(selectedProjeto !== 'Todos' || selectedStatus !== 'Todos' || selectedDisciplina !== 'Todas') && (
+            {(selectedProjeto !== 'Todos' || selectedStatus !== 'Todos' || selectedDisciplina !== 'Todas' || selectedTipoConflito !== 'Todos') && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -169,14 +176,14 @@ export default function RelatoriosPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Filtro por Projeto */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Filtrar por Projeto:</label>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">Projeto:</label>
               <select
                 value={selectedProjeto}
                 onChange={(e) => setSelectedProjeto(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todos">Todos os Projetos</option>
                 {projetosList.map((p) => (
@@ -187,13 +194,30 @@ export default function RelatoriosPage() {
               </select>
             </div>
 
+            {/* Filtro por Tipo Conflito */}
+            <div>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipo de Conflito:</label>
+              <select
+                value={selectedTipoConflito}
+                onChange={(e) => setSelectedTipoConflito(e.target.value)}
+                className="flex h-10 w-full rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-200 font-medium"
+              >
+                <option value="Todos">Todos os Tipos</option>
+                {TIPOS_CONFLITO_OPCOES.map((tc) => (
+                  <option key={`rel-tc-${tc}`} value={tc}>
+                    {tc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtro por Status */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Filtrar por Status:</label>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">Status:</label>
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todos">Todos os Status</option>
                 <option value="Aberto">Aberto</option>
@@ -203,11 +227,11 @@ export default function RelatoriosPage() {
 
             {/* Filtro por Disciplina */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Filtrar por Disciplina:</label>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">Disciplina:</label>
               <select
                 value={selectedDisciplina}
                 onChange={(e) => setSelectedDisciplina(e.target.value)}
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs sm:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-medium"
               >
                 <option value="Todas">Todas as Disciplinas</option>
                 {DISCIPLINAS_OPCOES.map((d) => (
@@ -286,6 +310,7 @@ export default function RelatoriosPage() {
 
                   <div className="space-y-1 text-slate-600 text-left">
                     <p className="font-semibold text-slate-800">Filtros Aplicados:</p>
+                    <p>• <strong>Tipo Conflito:</strong> {selectedTipoConflito}</p>
                     <p>• <strong>Status:</strong> {selectedStatus}</p>
                     <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
                     <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
@@ -300,7 +325,7 @@ export default function RelatoriosPage() {
               </div>
             </div>
 
-            {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 INDIVIDUAL */}
+            {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 INDIVIDUAL (MODELO ARCIS COM GUIA SOLUÇÃO) */}
             {filteredApontamentos.map((apontamento, index) => {
               const nomeProjetoItem = apontamento.projetos?.nome || projetoSelecionadoNome || 'Projeto Geral';
               const numPaginaAtual = index + 2;
@@ -321,7 +346,7 @@ export default function RelatoriosPage() {
                   </div>
 
                   {/* Conteudo Principal do Apontamento */}
-                  <div className="space-y-4 my-auto py-2">
+                  <div className="space-y-3 my-auto py-1">
                     {/* Titulo do Conflito */}
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                       <h2 className="text-lg font-bold text-indigo-950 font-sans">
@@ -335,7 +360,7 @@ export default function RelatoriosPage() {
                     {/* Layout Dividido Lado a Lado: Imagem (Esquerda) + Metadados (Direita) */}
                     <div className="grid grid-cols-12 gap-4 items-start">
                       {/* LADO ESQUERDO: IMAGEM DO CONFLITO COM DESTAQUE MAXIMO */}
-                      <div className="col-span-7 border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center h-[95mm] p-1.5 shadow-sm relative">
+                      <div className="col-span-7 border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center h-[90mm] p-1.5 shadow-sm relative">
                         {apontamento.url_imagem ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
                           <img
@@ -361,59 +386,67 @@ export default function RelatoriosPage() {
                       </div>
 
                       {/* LADO DIREITO: METADADOS ORGANIZADOS (MODELO ARCIS) */}
-                      <div className="col-span-5 space-y-3 text-xs font-sans">
-                        {/* Prioridade */}
-                        <div className="bg-slate-50 p-2.5 rounded-md border border-slate-200">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase block">Prioridade</span>
-                          <span
-                            className={`font-bold px-2 py-0.5 rounded text-[11px] inline-block mt-0.5 ${
-                              apontamento.prioridade === 'Alta'
-                                ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                : apontamento.prioridade === 'Média'
-                                ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                : 'bg-sky-100 text-sky-800 border border-sky-300'
-                            }`}
-                          >
-                            {apontamento.prioridade}
-                          </span>
-                        </div>
-
-                        {/* Datas */}
-                        <div className="bg-slate-50 p-2.5 rounded-md border border-slate-200 grid grid-cols-1 gap-1">
+                      <div className="col-span-5 space-y-2 text-xs font-sans">
+                        {/* Prioridade & Tipo do Conflito */}
+                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200 grid grid-cols-2 gap-1">
                           <div>
-                            <span className="text-[10px] text-slate-500 font-bold uppercase block">Data de Criação</span>
-                            <span className="font-semibold text-slate-800">{formatDate(apontamento.created_at)}</span>
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Prioridade</span>
+                            <span
+                              className={`font-bold px-2 py-0.5 rounded text-[10px] inline-block mt-0.5 ${
+                                apontamento.prioridade === 'Alta'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  : apontamento.prioridade === 'Média'
+                                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                  : 'bg-sky-100 text-sky-800 border border-sky-300'
+                              }`}
+                            >
+                              {apontamento.prioridade}
+                            </span>
+                          </div>
+
+                          <div>
+                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Data Criação</span>
+                            <span className="font-semibold text-slate-800 text-[10px] block mt-0.5">{formatDate(apontamento.created_at)}</span>
                           </div>
                         </div>
 
+                        {/* Tipo de Conflito (MODELO ARCIS) */}
+                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo Conflito</span>
+                          <span className="font-bold text-amber-900 block mt-0.5 text-[11px] flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3 text-amber-600" />
+                            {apontamento.tipo_conflito || 'Conflito Físico'}
+                          </span>
+                        </div>
+
                         {/* Disciplina Principal (Origem) */}
-                        <div className="bg-slate-50 p-2.5 rounded-md border border-slate-200">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase block">Disciplina Principal (Origem)</span>
-                          <span className="font-bold text-indigo-900 block mt-0.5">{apontamento.disciplina_origem}</span>
+                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Principal (Origem)</span>
+                          <span className="font-bold text-indigo-900 block mt-0.5 text-[11px]">{apontamento.disciplina_origem}</span>
                         </div>
 
                         {/* Disciplinas Envolvidas (Destino) */}
-                        <div className="bg-slate-50 p-2.5 rounded-md border border-slate-200">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase block">Disciplinas Envolvidas (Destino)</span>
-                          <span className="font-bold text-rose-900 block mt-0.5">{apontamento.disciplina_destino}</span>
+                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplinas Envolvidas (Destino)</span>
+                          <span className="font-bold text-rose-900 block mt-0.5 text-[11px]">{apontamento.disciplina_destino}</span>
                         </div>
 
                         {/* Edificacao / Pavimento */}
-                        <div className="bg-slate-50 p-2.5 rounded-md border border-slate-200">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase block">Edificação / Localização</span>
-                          <span className="font-semibold text-slate-800 block mt-0.5">TÉRREO / PAVIMENTO TIPO</span>
+                        <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
+                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Edificação / Localização</span>
+                          <span className="font-semibold text-slate-800 block mt-0.5 text-[11px]">TÉRREO / PAVIMENTO TIPO</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Titulo Estendido & Descricao Detalhada na Parte Inferior */}
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-300 space-y-2 font-sans">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
-                        <span className="text-[11px] font-bold text-slate-900 uppercase">
+                    {/* Descricao Detalhada */}
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-300 space-y-1 font-sans">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-1">
+                        <span className="text-[10px] font-bold text-slate-900 uppercase">
                           Título: {apontamento.titulo}
                         </span>
                         <span
-                          className={`text-[11px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 ${
                             apontamento.status === 'Resolvido'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                               : 'bg-amber-100 text-amber-800 border border-amber-300'
@@ -428,12 +461,20 @@ export default function RelatoriosPage() {
                         </span>
                       </div>
 
-                      <div className="space-y-1">
-                        <span className="text-[10px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
-                        <p className="text-xs text-slate-800 leading-relaxed font-normal whitespace-pre-wrap">
-                          {apontamento.descricao}
-                        </p>
-                      </div>
+                      <span className="text-[9px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
+                      <p className="text-[11px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap">
+                        {apontamento.descricao}
+                      </p>
+                    </div>
+
+                    {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA (MODELO ARCIS) */}
+                    <div className="bg-emerald-50/80 p-3 rounded-lg border border-emerald-300 space-y-1 font-sans">
+                      <span className="text-[10px] font-bold text-emerald-900 uppercase flex items-center gap-1">
+                        <Lightbulb className="h-3.5 w-3.5 text-emerald-700" /> Guia / Solução Proposta & Diretriz Técnica:
+                      </span>
+                      <p className="text-[11px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap">
+                        {apontamento.solucao || 'Aguardando definição técnica de solução pelos projetistas envolvidos.'}
+                      </p>
                     </div>
                   </div>
 

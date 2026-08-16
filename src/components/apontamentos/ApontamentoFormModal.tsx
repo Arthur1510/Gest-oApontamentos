@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Check, Link as LinkIcon, ClipboardCheck, FolderKanban } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto } from '@/types/apontamento';
+import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
 
 interface ApontamentoFormModalProps {
@@ -26,10 +26,12 @@ const SAMPLE_IMAGES = [
 export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoFormModalProps) {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [solucao, setSolucao] = useState('');
   const [disciplinaOrigem, setDisciplinaOrigem] = useState<string>(DISCIPLINAS_OPCOES[0]);
   const [disciplinaDestino, setDisciplinaDestino] = useState<string>(DISCIPLINAS_OPCOES[1]);
   const [status, setStatus] = useState<StatusApontamento>('Aberto');
   const [prioridade, setPrioridade] = useState<PrioridadeApontamento>('Média');
+  const [tipoConflito, setTipoConflito] = useState<TipoConflito>('Conflito Físico');
   
   // Relacionamento com Projeto (Dropdown)
   const [projetoId, setProjetoId] = useState<string>('');
@@ -170,15 +172,17 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
         finalImageUrl = urlImagem.trim();
       }
 
-      // 2. Salva o apontamento no banco com projeto_id vinculado
+      // 2. Salva o apontamento no banco com tipo_conflito e solucao
       setUploadStatusText('Gravando apontamento no banco de dados...');
       await onSubmit({
         titulo: titulo.trim(),
         descricao: descricao.trim(),
+        solucao: solucao.trim() || null,
         disciplina_origem: disciplinaOrigem,
         disciplina_destino: disciplinaDestino,
         status,
         prioridade,
+        tipo_conflito: tipoConflito,
         url_imagem: finalImageUrl,
         projeto_id: projetoId || null,
       });
@@ -186,11 +190,13 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
       // Reset form
       setTitulo('');
       setDescricao('');
+      setSolucao('');
       setProjetoId('');
       handleRemoveFile();
       setUrlImagem('');
       setStatus('Aberto');
       setPrioridade('Média');
+      setTipoConflito('Conflito Físico');
       onClose();
     } catch (err: unknown) {
       const error = err as Error;
@@ -203,14 +209,14 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-            <Sparkles className="h-4 w-4" /> Novo Registro com Projeto
+            <Sparkles className="h-4 w-4" /> Novo Registro com Tipo de Conflito & Solução
           </div>
           <DialogTitle className="text-xl">Cadastrar Apontamento</DialogTitle>
           <DialogDescription>
-            Registre uma interferência e vincule a um projeto específico no Supabase.
+            Registre uma interferência e defina sua categoria e proposta de solução técnica.
           </DialogDescription>
         </DialogHeader>
 
@@ -229,7 +235,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 py-1">
-          {/* Seleção do Projeto (Pulo do Gato) */}
+          {/* Seleção do Projeto */}
           <div className="space-y-1.5">
             <Label htmlFor="projeto_id" className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
               <FolderKanban className="h-4 w-4" /> Projeto Associado
@@ -262,6 +268,41 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
               onChange={(e) => setTitulo(e.target.value)}
               required
             />
+          </div>
+
+          {/* Tipo do Conflito & Prioridade */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="tipo_conflito" className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300">
+                <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Tipo do Conflito *
+              </Label>
+              <select
+                id="tipo_conflito"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 font-medium"
+                value={tipoConflito}
+                onChange={(e) => setTipoConflito(e.target.value as TipoConflito)}
+              >
+                {TIPOS_CONFLITO_OPCOES.map((tc) => (
+                  <option key={`tc-${tc}`} value={tc}>
+                    {tc}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="prioridade">Prioridade *</Label>
+              <select
+                id="prioridade"
+                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                value={prioridade}
+                onChange={(e) => setPrioridade(e.target.value as PrioridadeApontamento)}
+              >
+                <option value="Baixa">Baixa (Menor Urgência)</option>
+                <option value="Média">Média (Acompanhamento Regular)</option>
+                <option value="Alta">Alta (Crítico / Bloqueia Obra)</option>
+              </select>
+            </div>
           </div>
 
           {/* Disciplina Origem e Destino */}
@@ -299,34 +340,18 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
             </div>
           </div>
 
-          {/* Prioridade e Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="prioridade">Prioridade *</Label>
-              <select
-                id="prioridade"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                value={prioridade}
-                onChange={(e) => setPrioridade(e.target.value as PrioridadeApontamento)}
-              >
-                <option value="Baixa">Baixa (Menor Urgência)</option>
-                <option value="Média">Média (Acompanhamento Regular)</option>
-                <option value="Alta">Alta (Crítico / Bloqueia Obra)</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="status">Status Inicial *</Label>
-              <select
-                id="status"
-                className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as StatusApontamento)}
-              >
-                <option value="Aberto">Aberto</option>
-                <option value="Resolvido">Resolvido</option>
-              </select>
-            </div>
+          {/* Status Inicial */}
+          <div className="space-y-1.5">
+            <Label htmlFor="status">Status Inicial *</Label>
+            <select
+              id="status"
+              className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as StatusApontamento)}
+            >
+              <option value="Aberto">Aberto</option>
+              <option value="Resolvido">Resolvido</option>
+            </select>
           </div>
 
           {/* Descrição */}
@@ -334,7 +359,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
             <Label htmlFor="descricao">Descrição Detalhada *</Label>
             <Textarea
               id="descricao"
-              placeholder="Descreva o problema, localização no projeto/obra e recomendações de resolução..."
+              placeholder="Descreva o problema, localização no projeto/obra e recomendações..."
               value={descricao}
               onChange={(e) => setDescricao(e.target.value)}
               rows={3}
@@ -342,7 +367,22 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
             />
           </div>
 
-          {/* Seção de Upload de Imagem no Bucket 'clashes' */}
+          {/* Solução Proposta (Guia Solução) */}
+          <div className="space-y-1.5 bg-emerald-50/50 dark:bg-emerald-950/20 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/40">
+            <Label htmlFor="solucao" className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+              <Lightbulb className="h-4 w-4 text-emerald-600 dark:text-emerald-400" /> Solução Proposta / Diretriz Técnica (Opcional)
+            </Label>
+            <Textarea
+              id="solucao"
+              placeholder="Descreva a solução técnica recomendada, alteração de traçado ou diretriz de engenharia..."
+              value={solucao}
+              onChange={(e) => setSolucao(e.target.value)}
+              rows={2}
+              className="border-emerald-200 dark:border-emerald-800/60 bg-white dark:bg-slate-950"
+            />
+          </div>
+
+          {/* Seção de Upload de Imagem */}
           <div className="space-y-2 pt-2 border-t border-slate-200 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <Label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
@@ -400,9 +440,6 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                         <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                           Clique para selecionar uma imagem ou pressione <kbd className="bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-[11px] text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700">Ctrl + V</kbd> para colar
                         </p>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                          Imagens de print ou arquivos serão enviados para o bucket <strong className="text-indigo-600 dark:text-indigo-400">clashes</strong> do Supabase
-                        </p>
                       </div>
                     </div>
                   </div>
@@ -422,7 +459,7 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                           {selectedFile.name}
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          {(selectedFile.size / 1024).toFixed(1)} KB • Upload no bucket <span className="font-mono text-indigo-600 dark:text-indigo-400">clashes</span>
+                          {(selectedFile.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
                     </div>
@@ -463,20 +500,6 @@ export function ApontamentoFormModal({ isOpen, onClose, onSubmit }: ApontamentoF
                     ))}
                   </div>
                 </div>
-
-                {urlImagem && (
-                  <div className="mt-2 relative rounded-lg border border-slate-200 overflow-hidden h-28 bg-slate-100 dark:bg-slate-850">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={urlImagem}
-                      alt="Pré-visualização"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
               </div>
             )}
           </div>
