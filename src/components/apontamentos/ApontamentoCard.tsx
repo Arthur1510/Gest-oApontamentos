@@ -24,32 +24,35 @@ export function ApontamentoCard({
   const nomeProjeto = apontamento.projetos?.nome;
 
   return (
-    <Card className="group relative overflow-hidden flex flex-col justify-between hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200">
+    <Card className="group relative overflow-hidden flex flex-col justify-between hover:shadow-xl hover:-translate-y-1 hover:border-indigo-300 dark:hover:border-indigo-800 transition-all duration-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xs">
       <div>
         {/* Banner Superior da Thumbnail se houver Imagem */}
         {apontamento.url_imagem && (
           <div 
             onClick={() => onView(apontamento)}
-            className="relative h-40 w-full overflow-hidden bg-slate-900 cursor-pointer"
+            className="relative h-44 w-full overflow-hidden bg-slate-950 cursor-pointer"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={apontamento.url_imagem}
               alt={apontamento.titulo}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 opacity-90 group-hover:opacity-100"
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 group-hover:opacity-40 transition-opacity" />
-            <div className="absolute top-2 right-2 flex gap-1.5">
-              <Badge variant={apontamento.status === 'Resolvido' ? 'resolvido' : 'aberto'} className="shadow-md">
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-70 group-hover:opacity-50 transition-opacity" />
+            
+            {/* Badges Flutuantes no Banner */}
+            <div className="absolute top-2.5 right-2.5 flex gap-1.5 z-10">
+              <Badge variant={apontamento.status === 'Resolvido' ? 'resolvido' : 'aberto'} className="shadow-md backdrop-blur-md">
                 {apontamento.status}
               </Badge>
             </div>
+
             {nomeProjeto && (
-              <div className="absolute bottom-2 left-2 flex items-center gap-1 bg-slate-950/80 backdrop-blur-xs text-indigo-300 text-[11px] px-2 py-0.5 rounded font-medium border border-indigo-500/30">
-                <FolderKanban className="h-3 w-3" />
+              <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 bg-slate-950/85 backdrop-blur-md text-indigo-300 text-[11px] px-2.5 py-1 rounded-lg font-semibold border border-indigo-500/30 shadow-md">
+                <FolderKanban className="h-3.5 w-3.5" />
                 <span className="truncate max-w-[160px]">{nomeProjeto}</span>
               </div>
             )}
@@ -77,7 +80,7 @@ export function ApontamentoCard({
           )}
 
           {!apontamento.url_imagem && nomeProjeto && (
-            <div className="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-1">
+            <div className="flex items-center gap-1.5 text-indigo-600 dark:text-indigo-400 text-xs font-semibold mb-1">
               <FolderKanban className="h-3.5 w-3.5" />
               <span className="truncate">{nomeProjeto}</span>
             </div>
@@ -86,7 +89,7 @@ export function ApontamentoCard({
           <div className="flex items-start justify-between gap-2">
             <CardTitle 
               onClick={() => onView(apontamento)}
-              className="text-base font-semibold leading-snug line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
+              className="text-base font-bold leading-snug line-clamp-2 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer transition-colors"
             >
               {apontamento.titulo}
             </CardTitle>
@@ -109,12 +112,12 @@ export function ApontamentoCard({
 
         <CardContent className="space-y-3 pb-3">
           {/* Rota Disciplina Origem -> Destino */}
-          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5 rounded-md border border-slate-100 dark:border-slate-800">
-            <span className="text-indigo-600 dark:text-indigo-400 font-semibold truncate max-w-[120px]">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 bg-slate-100/70 dark:bg-slate-800/70 px-3 py-1.5 rounded-lg border border-slate-200/60 dark:border-slate-800">
+            <span className="text-indigo-600 dark:text-indigo-400 font-bold truncate max-w-[120px]">
               {apontamento.disciplina_origem}
             </span>
             <ArrowRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-            <span className="text-rose-600 dark:text-rose-400 font-semibold truncate max-w-[120px]">
+            <span className="text-rose-600 dark:text-rose-400 font-bold truncate max-w-[120px]">
               {apontamento.disciplina_destino}
             </span>
           </div>

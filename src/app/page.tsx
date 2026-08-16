@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2, Plus, Sparkles } from 'lucide-react';
+import { Loader2, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Apontamento, NovoApontamento, Projeto } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
@@ -19,6 +19,14 @@ export default function HomePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedApontamento, setSelectedApontamento] = useState<Apontamento | null>(null);
 
+  // Mensagem Toast Interativa
+  const [toastMessage, setToastMessage] = useState<string>('');
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
   // Filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('Todos');
@@ -32,7 +40,6 @@ export default function HomePage() {
 
     if (isSupabaseConfigured() && supabase) {
       try {
-        // Busca projetos para os filtros
         const { data: projData } = await supabase
           .from('projetos')
           .select('*')
@@ -44,7 +51,6 @@ export default function HomePage() {
           setProjetosList(MOCK_PROJETOS);
         }
 
-        // Busca apontamentos com JOIN do projeto (projetos(nome))
         const { data, error } = await supabase
           .from('apontamentos')
           .select('*, projetos(nome)')
@@ -87,9 +93,9 @@ export default function HomePage() {
 
       if (data && data[0]) {
         setApontamentos((prev) => [data[0] as Apontamento, ...prev]);
+        triggerToast('Apontamento registrado com sucesso no Supabase! ✨');
       }
     } else {
-      // Atualizar no estado local
       const projEncontrado = projetosList.find((p) => p.id === novoData.projeto_id);
       const novoItem: Apontamento = {
         ...novoData,
@@ -98,6 +104,7 @@ export default function HomePage() {
         projetos: projEncontrado ? { nome: projEncontrado.nome } : null,
       };
       setApontamentos((prev) => [novoItem, ...prev]);
+      triggerToast('Apontamento registrado com sucesso! ✨');
     }
   };
 
@@ -110,6 +117,8 @@ export default function HomePage() {
         item.id === apontamento.id ? { ...item, status: novoStatus } : item
       )
     );
+
+    triggerToast(`Status alterado para "${novoStatus}"!`);
 
     if (isSupabaseConfigured() && supabase) {
       const { error } = await supabase
@@ -127,6 +136,7 @@ export default function HomePage() {
   // Handler: Excluir Apontamento
   const handleDeleteApontamento = async (id: string) => {
     setApontamentos((prev) => prev.filter((item) => item.id !== id));
+    triggerToast('Apontamento removido.');
 
     if (isSupabaseConfigured() && supabase) {
       const { error } = await supabase
@@ -179,18 +189,28 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+      {/* Notification Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in-0 slide-in-from-bottom-4 duration-300 border border-slate-700/50">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Banner de Conexão Supabase */}
         <SupabaseStatusBanner />
 
-        {/* Cabeçalho da Aplicação e Métricas */}
+        {/* Cabeçalho da Aplicação e Métricas Cliváveis */}
         <ApontamentosHeader
           apontamentos={apontamentos}
           onOpenNewModal={() => setIsFormOpen(true)}
+          onFilterStatus={(status) => setSelectedStatus(status)}
+          onFilterPrioridade={(prio) => setSelectedPrioridade(prio)}
         />
 
-        {/* Filtros e Barra de Pesquisa com Filtro por Projeto */}
+        {/* Filtros e Barra de Pesquisa */}
         <ApontamentosFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -206,7 +226,7 @@ export default function HomePage() {
           onResetFilters={resetFilters}
         />
 
-        {/* Lista de Apontamentos */}
+        {/* Lista de Apontamentos com Transição Suave */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
