@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Layers, LayoutDashboard, ListFilter, FolderKanban, FileText, LogOut, User as UserIcon, LogIn } from 'lucide-react';
+import { Layers, LayoutDashboard, ListFilter, FolderKanban, FileText, Presentation, LogOut, User as UserIcon, LogIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -58,10 +58,14 @@ export function Navigation() {
     { href: '/', label: 'Apontamentos', icon: ListFilter },
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
+    { href: '/apresentacao', label: 'Resumo', icon: Presentation },
   ];
 
   // Esconder links de navegação na tela de login para manter a tela limpa e focada
   const isLoginPage = pathname === '/login';
+  const isPresentationPage = pathname === '/apresentacao';
+
+  if (isPresentationPage) return null; // A página de resumo gerencia seu próprio topo interativo
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-slate-200/80 bg-white/80 backdrop-blur-md dark:border-slate-800/80 dark:bg-slate-950/80 transition-colors">
