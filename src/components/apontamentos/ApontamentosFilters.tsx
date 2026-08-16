@@ -93,14 +93,14 @@ export function ApontamentosFilters({
           />
         </div>
 
-        {/* Filtro de Tipo do Conflito */}
+        {/* Filtro de Tipo de Apontamento */}
         <div>
           <select
             value={selectedTipoConflito}
             onChange={(e) => onTipoConflitoChange(e.target.value)}
             className="flex h-10 w-full rounded-lg border border-amber-300 bg-amber-50/50 dark:bg-amber-950/30 dark:border-amber-800 px-3 py-2 text-xs sm:text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 text-amber-900 dark:text-amber-200"
           >
-            <option value="Todos">Tipo Conflito: Todos</option>
+            <option value="Todos">Tipo de Apontamento: Todos</option>
             {TIPOS_CONFLITO_OPCOES.map((tc) => (
               <option key={`filter-tc-${tc}`} value={tc}>
                 {tc}

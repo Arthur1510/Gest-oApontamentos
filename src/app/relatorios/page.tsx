@@ -41,7 +41,7 @@ export default function RelatoriosPage() {
 
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Relatorio_Compatibilizacao_BIM_${new Date().toISOString().slice(0, 10)}`,
+    documentTitle: `Relatorio_Apontamentos_BIM_${new Date().toISOString().slice(0, 10)}`,
   });
 
   // Carregar Apontamentos e Projetos
@@ -142,7 +142,7 @@ export default function RelatoriosPage() {
               Exportação de Relatório PDF (Modelo ARCIS / BIM)
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Gera a capa profissional e pranchas A4 individuais para cada apontamento/conflito com a Guia Solução e Tipo de Conflito.
+              Gera a capa profissional e pranchas A4 individuais para cada apontamento com a Guia Solução e Categoria.
             </p>
           </div>
 
@@ -194,9 +194,9 @@ export default function RelatoriosPage() {
               </select>
             </div>
 
-            {/* Filtro por Tipo Conflito */}
+            {/* Filtro por Tipo de Apontamento */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipo de Conflito:</label>
+              <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipo de Apontamento:</label>
               <select
                 value={selectedTipoConflito}
                 onChange={(e) => setSelectedTipoConflito(e.target.value)}
@@ -260,7 +260,7 @@ export default function RelatoriosPage() {
                 Nenhum apontamento encontrado para o relatório
               </h3>
               <p className="text-xs text-slate-500 max-w-md mt-1">
-                Ajuste os filtros acima para listar os conflitos que deseja exportar em PDF.
+                Ajuste os filtros acima para listar os apontamentos que deseja exportar em PDF.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs">
@@ -305,12 +305,12 @@ export default function RelatoriosPage() {
                 {/* Resumo e Filtros da Capa */}
                 <div className="max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-200 text-xs space-y-3 font-sans">
                   <div className="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">
-                    Total de Conflito(s): <span className="text-indigo-700 font-extrabold">{filteredApontamentos.length}</span>
+                    Total de Apontamento(s): <span className="text-indigo-700 font-extrabold">{filteredApontamentos.length}</span>
                   </div>
 
                   <div className="space-y-1 text-slate-600 text-left">
                     <p className="font-semibold text-slate-800">Filtros Aplicados:</p>
-                    <p>• <strong>Tipo Conflito:</strong> {selectedTipoConflito}</p>
+                    <p>• <strong>Tipo de Apontamento:</strong> {selectedTipoConflito}</p>
                     <p>• <strong>Status:</strong> {selectedStatus}</p>
                     <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
                     <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
@@ -325,7 +325,7 @@ export default function RelatoriosPage() {
               </div>
             </div>
 
-            {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 INDIVIDUAL (MODELO ARCIS COM GUIA SOLUÇÃO) */}
+            {/* PAGINAS 2 A N: CADA APONTAMENTO EM UMA FOLHA A4 INDIVIDUAL */}
             {filteredApontamentos.map((apontamento, index) => {
               const nomeProjetoItem = apontamento.projetos?.nome || projetoSelecionadoNome || 'Projeto Geral';
               const numPaginaAtual = index + 2;
@@ -347,10 +347,10 @@ export default function RelatoriosPage() {
 
                   {/* Conteudo Principal do Apontamento */}
                   <div className="space-y-3 my-auto py-1">
-                    {/* Titulo do Conflito */}
+                    {/* Titulo do Apontamento */}
                     <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                       <h2 className="text-lg font-bold text-indigo-950 font-sans">
-                        Conflito #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-emerald-700' : 'text-amber-700'}>{apontamento.status}</span>
+                        Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-emerald-700' : 'text-amber-700'}>{apontamento.status}</span>
                       </h2>
                       <span className="text-xs font-mono font-semibold text-slate-500">
                         ID: #{apontamento.id.slice(0, 8)}
@@ -359,7 +359,7 @@ export default function RelatoriosPage() {
 
                     {/* Layout Dividido Lado a Lado: Imagem (Esquerda) + Metadados (Direita) */}
                     <div className="grid grid-cols-12 gap-4 items-start">
-                      {/* LADO ESQUERDO: IMAGEM DO CONFLITO COM DESTAQUE MAXIMO */}
+                      {/* LADO ESQUERDO: IMAGEM DO APONTAMENTO */}
                       <div className="col-span-7 border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center h-[90mm] p-1.5 shadow-sm relative">
                         {apontamento.url_imagem ? (
                           /* eslint-disable-next-line @next/next/no-img-element */
@@ -385,9 +385,9 @@ export default function RelatoriosPage() {
                         </div>
                       </div>
 
-                      {/* LADO DIREITO: METADADOS ORGANIZADOS (MODELO ARCIS) */}
+                      {/* LADO DIREITO: METADADOS ORGANIZADOS */}
                       <div className="col-span-5 space-y-2 text-xs font-sans">
-                        {/* Prioridade & Tipo do Conflito */}
+                        {/* Prioridade & Data */}
                         <div className="bg-slate-50 p-2 rounded-md border border-slate-200 grid grid-cols-2 gap-1">
                           <div>
                             <span className="text-[9px] text-slate-500 font-bold uppercase block">Prioridade</span>
@@ -410,9 +410,9 @@ export default function RelatoriosPage() {
                           </div>
                         </div>
 
-                        {/* Tipo de Conflito (MODELO ARCIS) */}
+                        {/* Tipo de Apontamento */}
                         <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo Conflito</span>
+                          <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo de Apontamento</span>
                           <span className="font-bold text-amber-900 block mt-0.5 text-[11px] flex items-center gap-1">
                             <ShieldAlert className="h-3 w-3 text-amber-600" />
                             {apontamento.tipo_conflito || 'Conflito Físico'}
@@ -467,7 +467,7 @@ export default function RelatoriosPage() {
                       </p>
                     </div>
 
-                    {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA (MODELO ARCIS) */}
+                    {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA */}
                     <div className="bg-emerald-50/80 p-3 rounded-lg border border-emerald-300 space-y-1 font-sans">
                       <span className="text-[10px] font-bold text-emerald-900 uppercase flex items-center gap-1">
                         <Lightbulb className="h-3.5 w-3.5 text-emerald-700" /> Guia / Solução Proposta & Diretriz Técnica:
