@@ -7,6 +7,9 @@ import { Apontamento } from '@/types/apontamento';
 
 interface ApontamentosHeaderProps {
   apontamentos: Apontamento[];
+  totalRawCount?: number;
+  selectedStatus?: string;
+  selectedPrioridade?: string;
   onOpenNewModal: () => void;
   onFilterStatus?: (status: string) => void;
   onFilterPrioridade?: (prioridade: string) => void;
@@ -14,6 +17,9 @@ interface ApontamentosHeaderProps {
 
 export function ApontamentosHeader({
   apontamentos,
+  totalRawCount,
+  selectedStatus = 'Todos',
+  selectedPrioridade = 'Todas',
   onOpenNewModal,
   onFilterStatus,
   onFilterPrioridade,
@@ -21,7 +27,12 @@ export function ApontamentosHeader({
   const totalCount = apontamentos.length;
   const abertosCount = apontamentos.filter((a) => a.status === 'Aberto').length;
   const resolvidosCount = apontamentos.filter((a) => a.status === 'Resolvido').length;
-  const altaPrioridadeCount = apontamentos.filter((a) => a.prioridade === 'Alta' && a.status === 'Aberto').length;
+  const altaPrioridadeCount = apontamentos.filter((a) => a.prioridade === 'Alta').length;
+
+  const isTotalActive = selectedStatus === 'Todos' && selectedPrioridade === 'Todas';
+  const isAbertosActive = selectedStatus === 'Aberto';
+  const isResolvidosActive = selectedStatus === 'Resolvido';
+  const isAltaActive = selectedPrioridade === 'Alta';
 
   return (
     <div className="space-y-6">
@@ -49,12 +60,19 @@ export function ApontamentosHeader({
         </Button>
       </div>
 
-      {/* Metrics Cards Cliváveis (Filtro Rápido) */}
+      {/* Metrics Cards Clicáveis (Filtro Rápido Dinâmico) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total */}
         <div
-          onClick={() => onFilterStatus && onFilterStatus('Todos')}
-          className="group rounded-xl border border-slate-200/80 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/90 shadow-2xs hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer transition-all duration-200"
+          onClick={() => {
+            onFilterStatus?.('Todos');
+            onFilterPrioridade?.('Todas');
+          }}
+          className={`group rounded-xl border p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all duration-200 ${
+            isTotalActive
+              ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-2 ring-indigo-500/20'
+              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/90 hover:border-indigo-300 dark:hover:border-indigo-700'
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
@@ -66,14 +84,28 @@ export function ApontamentosHeader({
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">{totalCount}</span>
-            <span className="text-xs text-slate-500">registros</span>
+            <span className="text-xs text-slate-500">
+              {totalRawCount !== undefined && totalRawCount !== totalCount
+                ? `de ${totalRawCount} total`
+                : 'registros'}
+            </span>
           </div>
         </div>
 
         {/* Abertos */}
         <div
-          onClick={() => onFilterStatus && onFilterStatus('Aberto')}
-          className="group rounded-xl border border-amber-500/20 bg-amber-50/40 p-4 dark:border-amber-800/30 dark:bg-amber-950/20 shadow-2xs hover:shadow-md hover:border-amber-400 dark:hover:border-amber-700 cursor-pointer transition-all duration-200"
+          onClick={() => {
+            if (isAbertosActive) {
+              onFilterStatus?.('Todos');
+            } else {
+              onFilterStatus?.('Aberto');
+            }
+          }}
+          className={`group rounded-xl border p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all duration-200 ${
+            isAbertosActive
+              ? 'border-amber-500 bg-amber-50/80 dark:bg-amber-950/40 ring-2 ring-amber-500/40 shadow-sm scale-[1.01]'
+              : 'border-amber-500/20 bg-amber-50/40 dark:border-amber-800/30 dark:bg-amber-950/20 hover:border-amber-400 dark:hover:border-amber-700'
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
@@ -91,8 +123,18 @@ export function ApontamentosHeader({
 
         {/* Resolvidos */}
         <div
-          onClick={() => onFilterStatus && onFilterStatus('Resolvido')}
-          className="group rounded-xl border border-emerald-500/20 bg-emerald-50/40 p-4 dark:border-emerald-800/30 dark:bg-emerald-950/20 shadow-2xs hover:shadow-md hover:border-emerald-400 dark:hover:border-emerald-700 cursor-pointer transition-all duration-200"
+          onClick={() => {
+            if (isResolvidosActive) {
+              onFilterStatus?.('Todos');
+            } else {
+              onFilterStatus?.('Resolvido');
+            }
+          }}
+          className={`group rounded-xl border p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all duration-200 ${
+            isResolvidosActive
+              ? 'border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 ring-2 ring-emerald-500/40 shadow-sm scale-[1.01]'
+              : 'border-emerald-500/20 bg-emerald-50/40 dark:border-emerald-800/30 dark:bg-emerald-950/20 hover:border-emerald-400 dark:hover:border-emerald-700'
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
@@ -110,8 +152,18 @@ export function ApontamentosHeader({
 
         {/* Alta Prioridade */}
         <div
-          onClick={() => onFilterPrioridade && onFilterPrioridade('Alta')}
-          className="group rounded-xl border border-rose-500/20 bg-rose-50/40 p-4 dark:border-rose-800/30 dark:bg-rose-950/20 shadow-2xs hover:shadow-md hover:border-rose-400 dark:hover:border-rose-700 cursor-pointer transition-all duration-200"
+          onClick={() => {
+            if (isAltaActive) {
+              onFilterPrioridade?.('Todas');
+            } else {
+              onFilterPrioridade?.('Alta');
+            }
+          }}
+          className={`group rounded-xl border p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all duration-200 ${
+            isAltaActive
+              ? 'border-rose-500 bg-rose-50/80 dark:bg-rose-950/40 ring-2 ring-rose-500/40 shadow-sm scale-[1.01]'
+              : 'border-rose-500/20 bg-rose-50/40 dark:border-rose-800/30 dark:bg-rose-950/20 hover:border-rose-400 dark:hover:border-rose-700'
+          }`}
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
@@ -123,7 +175,7 @@ export function ApontamentosHeader({
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl sm:text-3xl font-bold text-rose-900 dark:text-rose-200">{altaPrioridadeCount}</span>
-            <span className="text-xs text-rose-700/70 dark:text-rose-400/70">críticos abertos</span>
+            <span className="text-xs text-rose-700/70 dark:text-rose-400/70">críticos</span>
           </div>
         </div>
       </div>

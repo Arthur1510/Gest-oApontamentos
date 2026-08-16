@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Loader2, Plus, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Apontamento, NovoApontamento, Projeto } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
@@ -228,38 +228,62 @@ export default function HomePage() {
     }
   };
 
-  // Filtragem dos itens exibidos
-  const filteredApontamentos = apontamentos.filter((item) => {
-    const matchesSearch =
-      item.titulo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+  // Filtragem dinâmica e reativa dos itens exibidos
+  const filteredApontamentos = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
 
-    const matchesStatus =
-      selectedStatus === 'Todos' || item.status === selectedStatus;
+    return apontamentos.filter((item) => {
+      // 1. Busca textual resiliente (título, descrição, projeto, disciplinas ou tipo de conflito)
+      const matchesSearch =
+        !term ||
+        (Boolean(item.titulo) && item.titulo.toLowerCase().includes(term)) ||
+        (Boolean(item.descricao) && item.descricao.toLowerCase().includes(term)) ||
+        (Boolean(item.projetos?.nome) && item.projetos!.nome.toLowerCase().includes(term)) ||
+        (Boolean(item.disciplina_origem) && item.disciplina_origem.toLowerCase().includes(term)) ||
+        (Boolean(item.disciplina_destino) && item.disciplina_destino.toLowerCase().includes(term)) ||
+        (Boolean(item.tipo_conflito) && item.tipo_conflito!.toLowerCase().includes(term));
 
-    const matchesPrioridade =
-      selectedPrioridade === 'Todas' || item.prioridade === selectedPrioridade;
+      // 2. Filtro de Status
+      const matchesStatus =
+        selectedStatus === 'Todos' || item.status === selectedStatus;
 
-    const matchesDisciplina =
-      selectedDisciplina === 'Todas' ||
-      item.disciplina_origem === selectedDisciplina ||
-      item.disciplina_destino === selectedDisciplina;
+      // 3. Filtro de Prioridade
+      const matchesPrioridade =
+        selectedPrioridade === 'Todas' || item.prioridade === selectedPrioridade;
 
-    const matchesTipoConflito =
-      selectedTipoConflito === 'Todos' || item.tipo_conflito === selectedTipoConflito;
+      // 4. Filtro de Disciplina (origem ou destino)
+      const matchesDisciplina =
+        selectedDisciplina === 'Todas' ||
+        item.disciplina_origem === selectedDisciplina ||
+        item.disciplina_destino === selectedDisciplina;
 
-    const matchesProjeto =
-      selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
+      // 5. Filtro de Tipo de Conflito
+      const itemTipo = item.tipo_conflito || 'Conflito Físico';
+      const matchesTipoConflito =
+        selectedTipoConflito === 'Todos' || itemTipo === selectedTipoConflito;
 
-    return (
-      matchesSearch &&
-      matchesStatus &&
-      matchesPrioridade &&
-      matchesDisciplina &&
-      matchesTipoConflito &&
-      matchesProjeto
-    );
-  });
+      // 6. Filtro de Projeto
+      const matchesProjeto =
+        selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
+
+      return (
+        matchesSearch &&
+        matchesStatus &&
+        matchesPrioridade &&
+        matchesDisciplina &&
+        matchesTipoConflito &&
+        matchesProjeto
+      );
+    });
+  }, [
+    apontamentos,
+    searchTerm,
+    selectedStatus,
+    selectedPrioridade,
+    selectedDisciplina,
+    selectedTipoConflito,
+    selectedProjeto,
+  ]);
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -284,9 +308,12 @@ export default function HomePage() {
         {/* Banner de Conexão Supabase */}
         <SupabaseStatusBanner />
 
-        {/* Cabeçalho da Aplicação e Métricas */}
+        {/* Cabeçalho da Aplicação e Métricas Dinâmicas */}
         <ApontamentosHeader
-          apontamentos={apontamentos}
+          apontamentos={filteredApontamentos}
+          totalRawCount={apontamentos.length}
+          selectedStatus={selectedStatus}
+          selectedPrioridade={selectedPrioridade}
           onOpenNewModal={handleOpenNewModal}
           onFilterStatus={(status) => setSelectedStatus(status)}
           onFilterPrioridade={(prio) => setSelectedPrioridade(prio)}
