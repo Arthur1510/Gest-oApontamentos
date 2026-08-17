@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { SelectNative } from '@/components/ui/select-native';
 import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES, Apontamento } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
+import { compressImage, formatFileSize } from '@/lib/image-compression';
 
 interface ApontamentoFormModalProps {
   isOpen: boolean;
@@ -197,32 +198,35 @@ export function ApontamentoFormModal({
             e.preventDefault();
             const ext = file.type.split('/')[1] || 'png';
             const pastedFile = new File([file], `print_colado_${Date.now()}.${ext}`, { type: file.type });
-            const previewUrl = URL.createObjectURL(pastedFile);
+            
+            // Otimiza imagem instantaneamente no navegador para formato WebP leve
+            compressImage(pastedFile).then((optimizedFile) => {
+              const previewUrl = URL.createObjectURL(optimizedFile);
+              const newItem: ImageItem = {
+                id: `paste-${Date.now()}-${Math.random()}`,
+                file: optimizedFile,
+                previewUrl,
+                isUrl: false,
+              };
 
-            const newItem: ImageItem = {
-              id: `paste-${Date.now()}-${Math.random()}`,
-              file: pastedFile,
-              previewUrl,
-              isUrl: false,
-            };
+              const target = activePasteTargetRef.current;
+              if (target === 'solucao') {
+                setSolucaoImages((prev) => {
+                  const updated = [...prev, newItem];
+                  setPasteSuccessMsg(`Foto #${updated.length} da Solução colada e otimizada (${formatFileSize(optimizedFile.size)}) via Ctrl + V! 💡`);
+                  return updated;
+                });
+              } else {
+                setApontamentoImages((prev) => {
+                  const updated = [...prev, newItem];
+                  setPasteSuccessMsg(`Foto #${updated.length} do Apontamento colada e otimizada (${formatFileSize(optimizedFile.size)}) via Ctrl + V! 📸`);
+                  return updated;
+                });
+              }
 
-            const target = activePasteTargetRef.current;
-            if (target === 'solucao') {
-              setSolucaoImages((prev) => {
-                const updated = [...prev, newItem];
-                setPasteSuccessMsg(`Foto #${updated.length} da Solução colada com sucesso via Ctrl + V! 💡`);
-                return updated;
-              });
-            } else {
-              setApontamentoImages((prev) => {
-                const updated = [...prev, newItem];
-                setPasteSuccessMsg(`Foto #${updated.length} do Apontamento colada com sucesso via Ctrl + V! 📸`);
-                return updated;
-              });
-            }
-
-            setErrorMsg('');
-            setTimeout(() => setPasteSuccessMsg(''), 4000);
+              setErrorMsg('');
+              setTimeout(() => setPasteSuccessMsg(''), 4000);
+            });
             break;
           }
         }
@@ -235,7 +239,7 @@ export function ApontamentoFormModal({
     };
   }, [isOpen]);
 
-  const handleFilesSelect = (e: React.ChangeEvent<HTMLInputElement>, target: 'apontamento' | 'solucao') => {
+  const handleFilesSelect = async (e: React.ChangeEvent<HTMLInputElement>, target: 'apontamento' | 'solucao') => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -246,15 +250,13 @@ export function ApontamentoFormModal({
         setErrorMsg('Apenas arquivos de imagem são permitidos (PNG, JPG, WEBP).');
         continue;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setErrorMsg('O tamanho máximo por arquivo de imagem é 10MB.');
-        continue;
-      }
-
+      
+      // Converte e comprime para WebP
+      const optimizedFile = await compressImage(file);
       newItems.push({
         id: `file-${Date.now()}-${i}`,
-        file,
-        previewUrl: URL.createObjectURL(file),
+        file: optimizedFile,
+        previewUrl: URL.createObjectURL(optimizedFile),
         isUrl: false,
       });
     }

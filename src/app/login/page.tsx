@@ -135,15 +135,12 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         {/* Logotipo WCC e Apresentação Institucional */}
         <div className="text-center space-y-3">
-          <div className="inline-flex flex-col items-center gap-1.5 mb-1">
+          <div className="inline-flex flex-col items-center gap-1 mb-1">
             <div className="px-5 py-2.5 rounded-2xl bg-[#072B3B] text-white shadow-xl border border-[#00A3C4]/30 shadow-[#00A3C4]/10">
               <span className="text-3xl font-black tracking-widest">WCC</span>
             </div>
             <span className="text-xs font-black tracking-[0.25em] text-[#072B3B] dark:text-white uppercase">
               PARTICIPAÇÕES
-            </span>
-            <span className="text-[10px] font-bold tracking-[0.3em] text-[#00A3C4] uppercase">
-              AURA | ELBRUS
             </span>
           </div>
 
@@ -153,7 +150,7 @@ export default function LoginPage() {
             Gestão de Apontamentos BIM
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto font-medium">
-            Há 14 anos transformando sonhos em projetos reais.
+            Plataforma corporativa de compatibilização técnica e engenharia.
           </p>
         </div>
 

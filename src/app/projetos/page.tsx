@@ -307,7 +307,7 @@ export default function ProjetosPage() {
               <Label htmlFor="nome">Nome do Projeto *</Label>
               <Input
                 id="nome"
-                placeholder="Ex: Empreendimento AURA - Torre 1"
+                placeholder="Ex: Empreendimento Residencial - Torre 1"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required

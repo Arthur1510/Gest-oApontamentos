@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Apontamento } from '@/types/apontamento';
 import { formatDate } from '@/lib/utils';
 import { supabase, isSupabaseConfigured, uploadImageToClashesBucket } from '@/lib/supabase/client';
+import { compressImage, formatFileSize } from '@/lib/image-compression';
 
 interface ApontamentoDetailModalProps {
   apontamento: Apontamento | null;
@@ -78,10 +79,13 @@ export function ApontamentoDetailModal({
             e.preventDefault();
             const ext = file.type.split('/')[1] || 'png';
             const pastedFile = new File([file], `solucao_colada_${Date.now()}.${ext}`, { type: file.type });
-            const previewUrl = URL.createObjectURL(pastedFile);
-            setNewSolucaoFiles((prev) => [...prev, { file: pastedFile, previewUrl }]);
-            setPasteNotice('Nova foto da solução colada via Ctrl + V! 💡');
-            setTimeout(() => setPasteNotice(''), 4000);
+            
+            compressImage(pastedFile).then((optimizedFile) => {
+              const previewUrl = URL.createObjectURL(optimizedFile);
+              setNewSolucaoFiles((prev) => [...prev, { file: optimizedFile, previewUrl }]);
+              setPasteNotice(`Nova foto da solução colada e otimizada (${formatFileSize(optimizedFile.size)}) via Ctrl + V! 💡`);
+              setTimeout(() => setPasteNotice(''), 4000);
+            });
             break;
           }
         }
@@ -301,12 +305,13 @@ export function ApontamentoDetailModal({
                 <input
                   type="file"
                   ref={solucaoFileInputRef}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const files = e.target.files;
                     if (files) {
                       const newArr: { file?: File; previewUrl: string }[] = [];
                       for (let i = 0; i < files.length; i++) {
-                        newArr.push({ file: files[i], previewUrl: URL.createObjectURL(files[i]) });
+                        const optimized = await compressImage(files[i]);
+                        newArr.push({ file: optimized, previewUrl: URL.createObjectURL(optimized) });
                       }
                       setNewSolucaoFiles((prev) => [...prev, ...newArr]);
                     }

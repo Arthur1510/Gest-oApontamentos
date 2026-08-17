@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Apontamento, Projeto } from '@/types/apontamento';
+import { compressImage } from '@/lib/image-compression';
 
 // Configuração do Supabase Client usando variáveis de ambiente do Next.js
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -24,22 +25,31 @@ export const supabase = isSupabaseConfigured()
   ? createClient(supabaseUrl!, supabaseAnonKey!)
   : null;
 
-// Função utilitária para fazer upload de imagens diretamente para o bucket 'clashes'
+// Função utilitária para fazer upload de imagens diretamente para o bucket 'clashes' com otimização WebP
 export const uploadImageToClashesBucket = async (file: File): Promise<string> => {
   if (!isSupabaseConfigured() || !supabase) {
     throw new Error('Supabase não está configurado. Configure as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no arquivo .env.local.');
   }
 
-  // Gera um nome único para o arquivo usando timestamp e caracteres aleatórios
-  const fileExt = file.name.split('.').pop() || 'png';
+  // 1. Otimiza e converte automaticamente a imagem para WebP no cliente antes do upload
+  const optimizedFile = await compressImage(file, {
+    maxWidth: 1920,
+    maxHeight: 1920,
+    quality: 0.82,
+    format: 'image/webp',
+  });
+
+  // 2. Gera um nome único para o arquivo usando timestamp e extensão WebP
+  const fileExt = optimizedFile.name.split('.').pop() || 'webp';
   const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
   const filePath = `uploads/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from('clashes')
-    .upload(filePath, file, {
-      cacheControl: '3600',
+    .upload(filePath, optimizedFile, {
+      cacheControl: '31536000', // 1 ano de cache para economia de banda
       upsert: false,
+      contentType: optimizedFile.type || 'image/webp',
     });
 
   if (uploadError) {

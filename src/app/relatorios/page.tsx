@@ -283,15 +283,12 @@ export default function RelatoriosPage() {
 
                 {/* Centro da Capa: Logo WCC & Titulos */}
                 <div className="my-auto text-center space-y-6 flex flex-col items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-2">
+                  <div className="flex flex-col items-center gap-1.5">
                     <div className="px-5 py-2 rounded-2xl bg-[#072B3B] text-white flex items-center justify-center shadow-xl border border-[#00A3C4]/30">
                       <span className="text-3xl font-black tracking-widest">WCC</span>
                     </div>
                     <div className="text-sm font-black tracking-[0.3em] text-[#072B3B] uppercase">
                       PARTICIPAÇÕES
-                    </div>
-                    <div className="text-[10px] font-bold tracking-[0.35em] text-[#00A3C4] uppercase">
-                      AURA | ELBRUS
                     </div>
                   </div>
 
@@ -304,7 +301,7 @@ export default function RelatoriosPage() {
                       {projetoSelecionadoNome}
                     </p>
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      HÁ 14 ANOS TRANSFORMANDO SONHOS EM PROJETOS REAIS.
+                      COMPATIBILIZAÇÃO TÉCNICA E GESTÃO DE PROJETOS BIM
                     </p>
                   </div>
 

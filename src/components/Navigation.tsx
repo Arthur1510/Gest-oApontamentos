@@ -100,7 +100,7 @@ export function Navigation() {
                 PARTICIPAÇÕES
               </span>
               <span className="text-[9px] font-bold text-[#00A3C4] tracking-widest leading-none mt-0.5">
-                AURA | ELBRUS
+                GESTÃO BIM 2026
               </span>
             </div>
           </Link>
@@ -214,7 +214,7 @@ export function Navigation() {
         <div className="pt-4 border-t border-slate-100 dark:border-[#0B384D] space-y-3 w-full">
           {!isDesktopCollapsed && (
             <div className="text-[10px] text-slate-400 dark:text-slate-400 font-medium px-1 flex items-center justify-between">
-              <span>WCC ➔ AURA | ELBRUS</span>
+              <span>WCC Participações 2026</span>
             </div>
           )}
 

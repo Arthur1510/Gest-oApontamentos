@@ -178,7 +178,7 @@ export default function ResumoExecutivoPage() {
                 APRESENTAÇÃO EXECUTIVA
               </span>
               <span className="text-[9px] font-bold text-[#00A3C4] tracking-widest leading-tight">
-                2026 • AURA | ELBRUS
+                WCC PARTICIPAÇÕES • 2026
               </span>
             </div>
           </div>
@@ -264,9 +264,6 @@ export default function ResumoExecutivoPage() {
                 <div className="text-xs sm:text-sm font-bold tracking-[0.25em] text-slate-500 dark:text-slate-300 uppercase mt-0.5">
                   PARTICIPAÇÕES
                 </div>
-                <div className="text-[10px] font-bold tracking-[0.3em] text-[#00A3C4] dark:text-[#00C4EB] uppercase">
-                  AURA | ELBRUS
-                </div>
               </div>
 
               <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#072B3B] dark:text-white uppercase leading-tight pt-2">
@@ -278,10 +275,7 @@ export default function ResumoExecutivoPage() {
               <div className="w-32 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
 
               <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider max-w-xl mx-auto pt-1">
-                HÁ 14 ANOS TRANSFORMANDO SONHOS EM PROJETOS REAIS.
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Relatório Executivo de Compatibilização & Apontamentos de Engenharia
+                Relatório Executivo de Compatibilização & Apontamentos BIM
               </p>
             </div>
 
