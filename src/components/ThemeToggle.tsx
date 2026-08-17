@@ -31,12 +31,12 @@ export function ThemeToggle() {
       size="icon"
       onClick={toggleTheme}
       title={`Alternar para tema ${isDark ? "Claro" : "Escuro"}`}
-      className="h-9 w-9 rounded-lg border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 transition-all duration-200 shadow-2xs"
+      className="h-9 w-9 rounded-lg border border-slate-200/80 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:bg-slate-100 dark:hover:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 transition-all duration-200 shadow-2xs"
     >
       {isDark ? (
         <Sun className="h-4 w-4 text-amber-400 transition-transform hover:rotate-45" />
       ) : (
-        <Moon className="h-4 w-4 text-indigo-600 transition-transform hover:-rotate-12" />
+        <Moon className="h-4 w-4 text-[#00A3C4] transition-transform hover:-rotate-12" />
       )}
       <span className="sr-only">Alternar tema</span>
     </Button>

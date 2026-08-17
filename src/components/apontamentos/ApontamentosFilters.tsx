@@ -49,17 +49,17 @@ export function ApontamentosFilters({
     selectedProjeto !== 'Todos';
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-4 shadow-2xs space-y-4">
+    <div className="bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-          <Filter className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Filtros e Busca
+        <div className="flex items-center gap-2 text-xs font-bold text-[#072B3B] dark:text-slate-200 uppercase tracking-wider">
+          <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> Filtros e Busca
         </div>
         {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onResetFilters}
-            className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 h-7 gap-1"
+            className="text-xs text-slate-500 hover:text-[#00A3C4] dark:text-slate-400 dark:hover:text-white h-7 gap-1"
           >
             <RefreshCw className="h-3 w-3" /> Limpar Filtros
           </Button>

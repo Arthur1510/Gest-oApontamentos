@@ -37,24 +37,24 @@ export function ApontamentosHeader({
   return (
     <div className="space-y-6">
       {/* Top Title Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
         <div>
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-xs uppercase tracking-wider">
-            <Layers className="h-4 w-4" /> Plataforma Integrada de Compatibilização
+          <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-bold text-xs uppercase tracking-wider">
+            <Layers className="h-4 w-4" /> WCC Participações • Compatibilização BIM 2026
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#072B3B] dark:text-white mt-1">
             Gestão de Apontamentos
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Controle interativo de interferências, revisões e compatibilização entre disciplinas técnicas.
+            Controle integrado de interferências multidisciplinares, revisões de projetos e diretrizes técnicas.
           </p>
         </div>
 
         <Button
           onClick={onOpenNewModal}
-          variant="indigo"
+          variant="wcc"
           size="lg"
-          className="shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all gap-2 self-start sm:self-auto shrink-0 font-semibold"
+          className="shadow-lg shadow-[#00A3C4]/25 hover:scale-[1.02] active:scale-[0.98] transition-all gap-2 self-start sm:self-auto shrink-0 font-bold"
         >
           <Plus className="h-5 w-5" /> Novo Apontamento
         </Button>
@@ -70,21 +70,21 @@ export function ApontamentosHeader({
           }}
           className={`group rounded-xl border p-4 shadow-2xs hover:shadow-md cursor-pointer transition-all duration-200 ${
             isTotalActive
-              ? 'border-indigo-500 bg-white dark:bg-slate-900 ring-2 ring-indigo-500/20'
-              : 'border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-900/90 hover:border-indigo-300 dark:hover:border-indigo-700'
+              ? 'border-[#00A3C4] bg-white dark:bg-[#072B3B] ring-2 ring-[#00A3C4]/20'
+              : 'border-slate-200/80 bg-white dark:border-[#0B384D] dark:bg-[#072B3B]/90 hover:border-[#00A3C4]/60 dark:hover:border-[#00A3C4]'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider group-hover:text-[#00A3C4] dark:group-hover:text-[#00C4EB] transition-colors">
               Total
             </span>
-            <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/60 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+            <div className="p-2 rounded-lg bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 group-hover:bg-[#00A3C4]/15 group-hover:text-[#00A3C4] dark:group-hover:bg-[#00A3C4]/20 dark:group-hover:text-[#00C4EB] transition-colors">
               <ClipboardList className="h-4 w-4" />
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-50">{totalCount}</span>
-            <span className="text-xs text-slate-500">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#072B3B] dark:text-white">{totalCount}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               {totalRawCount !== undefined && totalRawCount !== totalCount
                 ? `de ${totalRawCount} total`
                 : 'registros'}

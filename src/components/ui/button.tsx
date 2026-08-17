@@ -9,18 +9,20 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-slate-900 text-slate-50 hover:bg-slate-800 shadow-sm dark:bg-slate-50 dark:text-slate-900 dark:hover:bg-slate-200",
+          "bg-[#072B3B] text-white hover:bg-[#0B384D] shadow-sm dark:bg-white dark:text-[#072B3B] dark:hover:bg-slate-100",
         destructive:
-          "bg-red-500 text-slate-50 hover:bg-red-600 shadow-sm dark:bg-red-900 dark:text-slate-50 dark:hover:bg-red-800",
+          "bg-rose-600 text-white hover:bg-rose-700 shadow-sm dark:bg-rose-900 dark:text-white dark:hover:bg-rose-800",
         outline:
-          "border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 dark:hover:text-slate-50",
+          "border border-slate-200 bg-white hover:bg-slate-50 hover:text-[#072B3B] dark:border-slate-800 dark:bg-[#072B3B]/40 dark:hover:bg-[#072B3B] dark:hover:text-white",
         secondary:
-          "bg-slate-100 text-slate-900 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-50 dark:hover:bg-slate-700",
+          "bg-slate-100 text-[#072B3B] hover:bg-slate-200 dark:bg-[#0B384D] dark:text-slate-100 dark:hover:bg-[#0F4761]",
         ghost:
-          "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50",
-        link: "text-slate-900 underline-offset-4 hover:underline dark:text-slate-50",
-        indigo: "bg-indigo-600 text-white hover:bg-indigo-700 shadow-md shadow-indigo-500/20 dark:bg-indigo-500 dark:hover:bg-indigo-600",
-        emerald: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-500/20 dark:bg-emerald-500 dark:hover:bg-emerald-600",
+          "hover:bg-slate-100 hover:text-[#072B3B] dark:hover:bg-[#0B384D]/50 dark:hover:text-white",
+        link: "text-[#00A3C4] underline-offset-4 hover:underline dark:text-[#00A3C4]",
+        wcc: "bg-[#00A3C4] text-white hover:bg-[#008EA9] shadow-md shadow-[#00A3C4]/25 font-semibold",
+        "wcc-gradient": "bg-gradient-to-r from-[#00A3C4] to-[#10B981] text-white hover:opacity-95 shadow-md shadow-[#00A3C4]/20 font-bold",
+        indigo: "bg-[#00A3C4] text-white hover:bg-[#008EA9] shadow-md shadow-[#00A3C4]/25 dark:bg-[#00A3C4] dark:hover:bg-[#008EA9]",
+        emerald: "bg-[#10B981] text-white hover:bg-[#059669] shadow-md shadow-[#10B981]/25 dark:bg-[#10B981] dark:hover:bg-[#059669]",
       },
       size: {
         default: "h-10 px-4 py-2",

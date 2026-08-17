@@ -131,28 +131,39 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50/50 dark:bg-slate-950 transition-colors">
+    <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-[#041A24] transition-colors">
       <div className="w-full max-w-md space-y-6">
-        {/* Logotipo e Apresentação Minimalista */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-indigo-600 text-white shadow-xl shadow-indigo-600/20 mb-2">
-            <Layers className="h-8 w-8" />
+        {/* Logotipo WCC e Apresentação Institucional */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex flex-col items-center gap-1.5 mb-1">
+            <div className="px-5 py-2.5 rounded-2xl bg-[#072B3B] text-white shadow-xl border border-[#00A3C4]/30 shadow-[#00A3C4]/10">
+              <span className="text-3xl font-black tracking-widest">WCC</span>
+            </div>
+            <span className="text-xs font-black tracking-[0.25em] text-[#072B3B] dark:text-white uppercase">
+              PARTICIPAÇÕES
+            </span>
+            <span className="text-[10px] font-bold tracking-[0.3em] text-[#00A3C4] uppercase">
+              AURA | ELBRUS
+            </span>
           </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-            Acessar GestãoBIM
+
+          <div className="w-20 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
+
+          <h1 className="text-2xl font-black tracking-tight text-[#072B3B] dark:text-white">
+            Gestão de Apontamentos BIM
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-            Plataforma de compatibilização técnica, engenharia e controle de apontamentos.
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto font-medium">
+            Há 14 anos transformando sonhos em projetos reais.
           </p>
         </div>
 
         {/* Card do Formulário */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl space-y-5">
-          {/* Alerta Vermelho de Erro (Conforme Solicitado) */}
+        <div className="bg-white dark:bg-[#072B3B] border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-6 sm:p-8 shadow-xl space-y-5">
+          {/* Alerta Vermelho de Erro */}
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-red-50 text-red-800 dark:bg-red-950/60 dark:text-red-300 text-xs flex items-start gap-2.5 border border-red-200 dark:border-red-800 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
-              <span className="leading-relaxed font-medium">{errorMessage}</span>
+            <div className="p-3.5 rounded-xl bg-rose-50 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 text-xs flex items-start gap-2.5 border border-rose-200 dark:border-rose-800 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+              <span className="leading-relaxed font-semibold">{errorMessage}</span>
             </div>
           )}
 
@@ -160,25 +171,25 @@ export default function LoginPage() {
           {successMessage && (
             <div className="p-3.5 rounded-xl bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 text-xs flex items-start gap-2.5 border border-emerald-200 dark:border-emerald-800 animate-in fade-in-0 slide-in-from-top-2 duration-200">
               <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="leading-relaxed font-medium">{successMessage}</span>
+              <span className="leading-relaxed font-semibold">{successMessage}</span>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Campo E-mail */}
             <div className="space-y-1.5">
-              <Label htmlFor="email" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                E-mail de Acesso *
+              <Label htmlFor="email" className="text-xs font-bold text-[#072B3B] dark:text-slate-300">
+                E-mail Corporativo *
               </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
                   id="email"
                   type="email"
-                  placeholder="engenheiro@construtora.com"
+                  placeholder="engenharia@wccparticipacoes.com.br"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-9 text-xs sm:text-sm h-11"
+                  className="pl-9 text-xs sm:text-sm h-11 rounded-xl"
                   required
                 />
               </div>
@@ -186,8 +197,8 @@ export default function LoginPage() {
 
             {/* Campo Senha */}
             <div className="space-y-1.5">
-              <Label htmlFor="password" className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Senha *
+              <Label htmlFor="password" className="text-xs font-bold text-[#072B3B] dark:text-slate-300">
+                Senha de Acesso *
               </Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -197,13 +208,13 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-9 pr-9 text-xs sm:text-sm h-11"
+                  className="pl-9 pr-9 text-xs sm:text-sm h-11 rounded-xl"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[#00A3C4]"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -214,8 +225,8 @@ export default function LoginPage() {
             <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 type="submit"
-                variant="indigo"
-                className="h-11 font-semibold text-xs sm:text-sm gap-2"
+                variant="wcc-gradient"
+                className="h-11 font-bold text-xs sm:text-sm gap-2 cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading && actionType === 'login' ? (
@@ -233,7 +244,7 @@ export default function LoginPage() {
                 type="button"
                 variant="outline"
                 onClick={handleSignUp}
-                className="h-11 font-semibold text-xs sm:text-sm gap-2 border-slate-300 dark:border-slate-700"
+                className="h-11 font-bold text-xs sm:text-sm gap-2 border-slate-300 dark:border-[#0B384D] cursor-pointer"
                 disabled={isLoading}
               >
                 {isLoading && actionType === 'signup' ? (
@@ -242,7 +253,7 @@ export default function LoginPage() {
                   </>
                 ) : (
                   <>
-                    <UserPlus className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Criar Conta
+                    <UserPlus className="h-4 w-4 text-[#00A3C4]" /> Criar Conta
                   </>
                 )}
               </Button>
@@ -251,9 +262,9 @@ export default function LoginPage() {
         </div>
 
         {/* Rodapé Informativo */}
-        <div className="text-center text-xs text-slate-400 flex items-center justify-center gap-1">
-          <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-          <span>Autenticação segura conectada ao Supabase Auth</span>
+        <div className="text-center text-xs text-slate-400 flex items-center justify-center gap-1 font-mono">
+          <Sparkles className="h-3.5 w-3.5 text-[#00A3C4]" />
+          <span>WCC Participações 2026 • www.wccparticipacoes.com.br</span>
         </div>
       </div>
     </main>

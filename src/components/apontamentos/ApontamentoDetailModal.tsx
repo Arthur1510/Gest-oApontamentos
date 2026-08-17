@@ -184,14 +184,14 @@ export function ApontamentoDetailModal({
         </DialogHeader>
 
         {/* Informações da Rota de Disciplina */}
-        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-850 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-          <span className="text-slate-500 uppercase text-[11px] font-semibold tracking-wider">Origem:</span>
-          <span className="px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs font-semibold text-indigo-600 dark:text-indigo-400">
+        <div className="flex items-center gap-3 bg-slate-50 dark:bg-[#041A24] p-3 rounded-xl border border-slate-200/80 dark:border-[#0B384D] text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
+          <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Origem:</span>
+          <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-[#00A3C4] dark:text-[#00C4EB]">
             {apontamento.disciplina_origem}
           </span>
           <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-slate-500 uppercase text-[11px] font-semibold tracking-wider">Destino:</span>
-          <span className="px-2.5 py-1 rounded bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-2xs font-semibold text-rose-600 dark:text-rose-400">
+          <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Destino:</span>
+          <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-rose-600 dark:text-rose-400">
             {apontamento.disciplina_destino}
           </span>
         </div>
@@ -201,28 +201,28 @@ export function ApontamentoDetailModal({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Images className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
                 Galeria de Fotos do Apontamento ({allApontamentoImages.length})
               </span>
               <a
                 href={allApontamentoImages[selectedApontamentoImageIdx]}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
               >
                 <ExternalLink className="h-3 w-3" /> Abrir imagem original
               </a>
             </div>
 
             {/* Imagem Principal Ativa */}
-            <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-950 group">
+            <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={allApontamentoImages[selectedApontamentoImageIdx]}
                 alt={apontamento.titulo}
                 className="w-full h-72 object-contain object-center max-h-96"
               />
-              <div className="absolute top-2 left-2 bg-slate-950/80 text-white text-[10px] font-mono px-2 py-0.5 rounded border border-slate-700">
+              <div className="absolute top-2 left-2 bg-[#072B3B]/90 text-white text-[10px] font-mono px-2 py-0.5 rounded border border-[#0B384D]">
                 Foto #{selectedApontamentoImageIdx + 1} de {allApontamentoImages.length}
               </div>
             </div>
@@ -237,8 +237,8 @@ export function ApontamentoDetailModal({
                     onClick={() => setSelectedApontamentoImageIdx(idx)}
                     className={`relative rounded-lg overflow-hidden border-2 shrink-0 w-16 h-16 transition-all ${
                       selectedApontamentoImageIdx === idx
-                        ? 'border-indigo-600 ring-2 ring-indigo-500/30 scale-105'
-                        : 'border-slate-300 dark:border-slate-800 opacity-60 hover:opacity-100'
+                        ? 'border-[#00A3C4] ring-2 ring-[#00A3C4]/30 scale-105'
+                        : 'border-slate-300 dark:border-[#0B384D] opacity-60 hover:opacity-100'
                     }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}

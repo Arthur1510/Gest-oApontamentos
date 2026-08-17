@@ -155,37 +155,37 @@ export default function ProjetosPage() {
   );
 
   return (
-    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#041A24] text-[#072B3B] dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Banner de status Supabase */}
         <SupabaseStatusBanner />
 
         {/* Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
           <div>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-xs uppercase tracking-wider">
-              <FolderKanban className="h-4 w-4" /> Gestão de Empreendimentos
+            <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-bold text-xs uppercase tracking-wider">
+              <FolderKanban className="h-4 w-4" /> WCC Participações • Gestão de Empreendimentos
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 mt-1">
-              Projetos Cadastrados
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] dark:text-white mt-1">
+              Projetos & Empreendimentos
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Cadastre e organize os projetos para vincular aos apontamentos e relatórios de interferências.
+              Cadastre e gerencie os empreendimentos vinculados aos apontamentos e relatórios BIM.
             </p>
           </div>
 
           <Button
             onClick={() => setIsFormOpen(true)}
-            variant="indigo"
+            variant="wcc"
             size="lg"
-            className="shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform gap-2 self-start sm:self-auto shrink-0"
+            className="shadow-lg shadow-[#00A3C4]/20 hover:scale-[1.02] transition-transform gap-2 self-start sm:self-auto shrink-0 font-bold cursor-pointer"
           >
             <Plus className="h-5 w-5" /> Cadastrar Projeto
           </Button>
         </div>
 
         {/* Busca por Projeto */}
-        <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 rounded-xl shadow-2xs">
+        <div className="flex items-center justify-between bg-white dark:bg-[#072B3B] border border-slate-200/80 dark:border-[#0B384D] p-4 rounded-xl shadow-2xs">
           <div className="relative w-full max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
@@ -195,7 +195,7 @@ export default function ProjetosPage() {
               className="pl-9 text-xs sm:text-sm h-10 rounded-xl"
             />
           </div>
-          <span className="text-xs text-slate-500 hidden sm:inline font-medium">
+          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline font-bold">
             Total: {filteredProjetos.length} projeto(s)
           </span>
         </div>
@@ -203,13 +203,13 @@ export default function ProjetosPage() {
         {/* Lista de Projetos */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
             <p className="text-xs text-slate-500 font-medium">Carregando projetos do Supabase...</p>
           </div>
         ) : filteredProjetos.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProjetos.map((projeto) => (
-              <Card key={projeto.id} className="flex flex-col justify-between hover:shadow-md transition-shadow">
+              <Card key={projeto.id} className="flex flex-col justify-between hover:shadow-md hover:border-[#00A3C4] dark:hover:border-[#00A3C4] transition-all dark:bg-[#072B3B] dark:border-[#0B384D]">
                 <div>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -224,21 +224,21 @@ export default function ProjetosPage() {
                         {formatDate(projeto.created_at)}
                       </div>
                     </div>
-                    <CardTitle className="text-lg font-semibold leading-snug">{projeto.nome}</CardTitle>
+                    <CardTitle className="text-lg font-bold leading-snug text-[#072B3B] dark:text-white">{projeto.nome}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
                       {projeto.descricao || 'Sem descrição cadastrada.'}
                     </p>
                   </CardContent>
                 </div>
 
-                <div className="px-6 pb-4 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                <div className="px-6 pb-4 pt-2 border-t border-slate-100 dark:border-[#0B384D] flex items-center justify-between text-xs">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleToggleStatus(projeto)}
-                    className="text-xs gap-1.5 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    className="text-xs gap-1.5 hover:bg-slate-100 dark:hover:bg-[#0B384D]"
                   >
                     {projeto.status === 'Ativo' ? (
                       <>
@@ -256,7 +256,7 @@ export default function ProjetosPage() {
                     size="icon"
                     onClick={() => handleDeleteProjeto(projeto.id, projeto.nome)}
                     title="Excluir Projeto"
-                    className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
+                    className="h-8 w-8 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -265,17 +265,17 @@ export default function ProjetosPage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-12 text-center flex flex-col items-center justify-center gap-4">
-            <div className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-[#0B384D] bg-white/50 dark:bg-[#072B3B]/50 p-12 text-center flex flex-col items-center justify-center gap-4">
+            <div className="p-4 rounded-full bg-cyan-50 dark:bg-[#00A3C4]/20 text-[#00A3C4]">
               <Sparkles className="h-8 w-8" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Nenhum projeto encontrado</h3>
-              <p className="text-xs text-slate-500 max-w-sm mt-1">
-                Cadastre o primeiro projeto para vincular aos apontamentos técnicos.
+              <h3 className="text-lg font-bold text-[#072B3B] dark:text-white">Nenhum projeto cadastrado</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-1">
+                Cadastre o primeiro empreendimento da WCC para associar aos apontamentos.
               </p>
             </div>
-            <Button variant="indigo" size="sm" onClick={() => setIsFormOpen(true)} className="text-xs gap-1.5">
+            <Button variant="wcc" size="sm" onClick={() => setIsFormOpen(true)} className="text-xs gap-1.5 font-bold">
               <Plus className="h-4 w-4" /> Cadastrar Primeiro Projeto
             </Button>
           </div>
@@ -284,13 +284,13 @@ export default function ProjetosPage() {
 
       {/* Modal de Cadastro de Projeto */}
       <Dialog open={isFormOpen} onOpenChange={(open) => !open && setIsFormOpen(false)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md dark:bg-[#072B3B] dark:border-[#0B384D]">
           <DialogHeader>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
-              <Sparkles className="h-4 w-4" /> Novo Empreendimento
+            <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
+              <Sparkles className="h-4 w-4" /> WCC • Novo Empreendimento
             </div>
-            <DialogTitle className="text-xl">Cadastrar Projeto</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white">Cadastrar Projeto</DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">
               Adicione um novo projeto à base de dados para associar apontamentos.
             </DialogDescription>
           </DialogHeader>
@@ -307,7 +307,7 @@ export default function ProjetosPage() {
               <Label htmlFor="nome">Nome do Projeto *</Label>
               <Input
                 id="nome"
-                placeholder="Ex: Hospital Central - Bloco A"
+                placeholder="Ex: Empreendimento AURA - Torre 1"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -343,7 +343,7 @@ export default function ProjetosPage() {
               <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" variant="indigo" disabled={isSubmitting}>
+              <Button type="submit" variant="wcc" disabled={isSubmitting} className="font-bold cursor-pointer">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Salvando...

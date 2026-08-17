@@ -47,15 +47,15 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
   return (
     <div className="w-full mb-6">
       {forceMock ? (
-        <div className="rounded-xl border border-indigo-500/30 bg-indigo-50/70 p-4 dark:bg-indigo-950/30 dark:border-indigo-800/40 flex items-center justify-between text-xs sm:text-sm text-indigo-900 dark:text-indigo-200 shadow-sm">
+        <div className="rounded-xl border border-[#00A3C4]/30 bg-cyan-50/70 p-4 dark:bg-[#072B3B] dark:border-[#0B384D] flex items-center justify-between text-xs sm:text-sm text-[#072B3B] dark:text-slate-100 shadow-sm">
           <div className="flex items-center gap-2.5">
-            <TestTube2 className="h-5 w-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+            <TestTube2 className="h-5 w-5 text-[#00A3C4] dark:text-[#00C4EB] shrink-0" />
             <div>
-              <span className="font-semibold">Modo de Testes com Dados Fictícios Ativo</span>
-              <span className="hidden sm:inline text-indigo-700/80 dark:text-indigo-300/80"> | Iniciado via <code className="bg-indigo-200/60 dark:bg-indigo-900/60 px-1.5 py-0.5 rounded font-mono text-[11px]">npm run dev:mock</code></span>
+              <span className="font-bold">WCC • Modo de Demonstração com Dados Fictícios Ativo</span>
+              <span className="hidden sm:inline text-slate-600 dark:text-slate-400"> | Dados carregados do modelo 2026</span>
             </div>
           </div>
-          <span className="text-[11px] font-mono bg-indigo-200/60 dark:bg-indigo-900/60 px-2 py-1 rounded text-indigo-800 dark:text-indigo-200 shrink-0">
+          <span className="text-[11px] font-mono bg-[#00A3C4]/15 dark:bg-[#00A3C4]/25 px-2 py-1 rounded text-[#008EA9] dark:text-[#00C4EB] font-bold shrink-0">
             Mock Mode
           </span>
         </div>
@@ -85,10 +85,10 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
                 {showInstructions ? 'Ocultar Instruções' : 'Como Configurar'}
               </Button>
               <Button
-                variant="indigo"
+                variant="wcc"
                 size="sm"
                 onClick={copySqlInstruction}
-                className="text-xs gap-1.5"
+                className="text-xs gap-1.5 font-bold cursor-pointer"
               >
                 {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copied ? 'SQL Copiado!' : 'Copiar SQL (Tabela + Storage)'}

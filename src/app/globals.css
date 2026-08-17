@@ -2,14 +2,33 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+@theme {
+  --color-wcc-navy: #072B3B;
+  --color-wcc-navy-dark: #041A24;
+  --color-wcc-surface: #0B384D;
+  --color-wcc-cyan: #00A3C4;
+  --color-wcc-cyan-hover: #008EA9;
+  --color-wcc-emerald: #10B981;
+  --color-wcc-emerald-hover: #059669;
+}
+
 :root {
   --background: #f8fafc;
-  --foreground: #0f172a;
+  --foreground: #072b3b;
+  --wcc-brand: #072b3b;
+  --wcc-brand-surface: #0b384d;
+  --wcc-cyan: #00a3c4;
+  --wcc-emerald: #10b981;
+  --wcc-gradient: linear-gradient(90deg, #00a3c4 0%, #10b981 100%);
 }
 
 .dark {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #041a24;
+  --foreground: #f1f5f9;
+  --wcc-brand: #072b3b;
+  --wcc-brand-surface: #0b384d;
+  --wcc-cyan: #00a3c4;
+  --wcc-emerald: #10b981;
 }
 
 body {
@@ -19,16 +38,29 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Linha Assinatura WCC Gradiente (Ciano ➔ Verde Esmeralda) */
+.wcc-gradient-bar {
+  height: 3px;
+  background: linear-gradient(90deg, #00a3c4 0%, #10b981 100%);
+  border-radius: 9999px;
+}
+
+.wcc-gradient-text {
+  background: linear-gradient(90deg, #00a3c4 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
 /* Estilização Responsiva de Listas Suspensas (Select / Option) */
 select option {
   background-color: #ffffff;
-  color: #0f172a;
+  color: #072b3b;
   padding: 8px;
 }
 
 .dark select option {
-  background-color: #0f172a;
-  color: #f8fafc;
+  background-color: #072b3b;
+  color: #f1f5f9;
 }
 
 @media print {

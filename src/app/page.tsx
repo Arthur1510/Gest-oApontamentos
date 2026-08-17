@@ -295,11 +295,11 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#041A24] text-[#072B3B] dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8 transition-colors duration-300">
       {/* Notification Toast */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-semibold animate-in fade-in-0 slide-in-from-bottom-4 duration-300 border border-slate-700/50">
-          <CheckCircle2 className="h-4 w-4 text-emerald-400 dark:text-emerald-600 shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#072B3B] text-white dark:bg-white dark:text-[#072B3B] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-xs font-bold animate-in fade-in-0 slide-in-from-bottom-4 duration-300 border border-[#00A3C4]/30 shadow-[#00A3C4]/20">
+          <CheckCircle2 className="h-4 w-4 text-[#10B981] shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -340,7 +340,7 @@ export default function HomePage() {
         {/* Lista de Apontamentos */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
             <p className="text-xs text-slate-500 font-medium">Carregando apontamentos...</p>
           </div>
         ) : filteredApontamentos.length > 0 ? (
@@ -358,15 +358,15 @@ export default function HomePage() {
           </div>
         ) : (
           /* Estado Vazio */
-          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-12 text-center flex flex-col items-center justify-center gap-4">
-            <div className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
+          <div className="rounded-2xl border border-dashed border-slate-300 dark:border-[#0B384D] bg-white/50 dark:bg-[#072B3B]/40 p-12 text-center flex flex-col items-center justify-center gap-4">
+            <div className="p-4 rounded-full bg-cyan-50 dark:bg-[#00A3C4]/20 text-[#00A3C4]">
               <Sparkles className="h-8 w-8" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h3 className="text-lg font-bold text-[#072B3B] dark:text-white">
                 Nenhum apontamento encontrado
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-md mt-1">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-md mt-1">
                 {apontamentos.length === 0
                   ? 'Nenhum registro cadastrado ainda. Clique no botão abaixo para adicionar o primeiro apontamento.'
                   : 'Nenhum resultado corresponde aos filtros selecionados. Tente ajustar a busca ou limpar os filtros.'}
@@ -374,11 +374,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-3 pt-2">
               {apontamentos.length > 0 && (
-                <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs">
+                <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs font-semibold">
                   Limpar Filtros
                 </Button>
               )}
-              <Button variant="indigo" size="sm" onClick={handleOpenNewModal} className="text-xs gap-1.5">
+              <Button variant="wcc" size="sm" onClick={handleOpenNewModal} className="text-xs gap-1.5 font-bold cursor-pointer">
                 <Plus className="h-4 w-4" /> Cadastrar Apontamento
               </Button>
             </div>

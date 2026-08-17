@@ -32,24 +32,25 @@ import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBa
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-// Cores personalizadas para os gráficos
+// Cores personalizadas para os gráficos da WCC Participações 2026
 const STATUS_COLORS = {
   Aberto: '#f59e0b',    // Amber / Amarelo
-  Resolvido: '#10b981', // Emerald / Verde
+  Resolvido: '#10b981', // Emerald / Verde Oficial WCC
 };
 
 const PRIORIDADE_COLORS = {
   Alta: '#f43f5e',   // Rose / Vermelho
   Média: '#f97316',  // Orange / Laranja
-  Baixa: '#0284c7',  // Sky / Azul
+  Baixa: '#00a3c4',  // Cyan Oficial WCC
 };
 
 const TIPO_CONFLITO_COLORS = [
-  '#6366f1', // Indigo
+  '#00a3c4', // Cyan Oficial WCC
+  '#10b981', // Emerald Oficial WCC
+  '#072b3b', // Deep Petrol WCC
   '#f59e0b', // Amber
-  '#ec4899', // Pink
-  '#10b981', // Emerald
-  '#8b5cf6', // Purple
+  '#f43f5e', // Rose
+  '#0284c7', // Sky Blue
 ];
 
 export default function DashboardPage() {
@@ -102,48 +103,50 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Apontamentos Filtrados pelo Projeto Selecionado
+  // Lista Filtrada por Projeto
   const filteredApontamentos = useMemo(() => {
     if (selectedProjeto === 'Todos') return apontamentos;
-    return apontamentos.filter((a) => a.projeto_id === selectedProjeto);
+    return apontamentos.filter((item) => item.projeto_id === selectedProjeto);
   }, [apontamentos, selectedProjeto]);
 
-  // 1. Agrupamento por Disciplina de Origem (Gráfico de Barras)
+  // 1. Apontamentos por Disciplina de Origem (Abertos vs Resolvidos)
   const dataPorDisciplinaOrigem = useMemo(() => {
-    const counts: Record<string, { total: number; abertos: number; resolvidos: number }> = {};
+    const mapa: Record<string, { abertos: number; resolvidos: number }> = {};
 
     filteredApontamentos.forEach((item) => {
-      const disc = item.disciplina_origem || 'Outros';
-      if (!counts[disc]) {
-        counts[disc] = { total: 0, abertos: 0, resolvidos: 0 };
+      const disc = item.disciplina_origem || 'Geral';
+      if (!mapa[disc]) {
+        mapa[disc] = { abertos: 0, resolvidos: 0 };
       }
-      counts[disc].total += 1;
-      if (item.status === 'Aberto') counts[disc].abertos += 1;
-      if (item.status === 'Resolvido') counts[disc].resolvidos += 1;
+      if (item.status === 'Resolvido') {
+        mapa[disc].resolvidos += 1;
+      } else {
+        mapa[disc].abertos += 1;
+      }
     });
 
-    return Object.entries(counts)
-      .map(([disciplina, obj]) => ({
+    return Object.entries(mapa)
+      .map(([disciplina, valores]) => ({
         disciplina,
-        total: obj.total,
-        Abertos: obj.abertos,
-        Resolvidos: obj.resolvidos,
+        Abertos: valores.abertos,
+        Resolvidos: valores.resolvidos,
+        Total: valores.abertos + valores.resolvidos,
       }))
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => b.Total - a.Total);
   }, [filteredApontamentos]);
 
-  // 2. Proporção de Status: Aberto vs Resolvido (Gráfico de Pizza)
+  // 2. Proporção Geral de Status (Aberto vs Resolvido)
   const dataProporcaoStatus = useMemo(() => {
-    const abertos = filteredApontamentos.filter((a) => a.status === 'Aberto').length;
     const resolvidos = filteredApontamentos.filter((a) => a.status === 'Resolvido').length;
+    const abertos = filteredApontamentos.length - resolvidos;
 
     return [
-      { name: 'Aberto', value: abertos, color: STATUS_COLORS.Aberto },
-      { name: 'Resolvido', value: resolvidos, color: STATUS_COLORS.Resolvido },
+      { name: 'Resolvidos', value: resolvidos, color: STATUS_COLORS.Resolvido },
+      { name: 'Abertos', value: abertos, color: STATUS_COLORS.Aberto },
     ];
   }, [filteredApontamentos]);
 
-  // 3. Distribuição por Tipo do Conflito
+  // 3. Distribuição por Tipo de Conflito
   const dataPorTipoConflito = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -183,33 +186,33 @@ export default function DashboardPage() {
   const disciplinaComMaisConflitos = dataPorDisciplinaOrigem[0]?.disciplina || 'Nenhum';
 
   return (
-    <main className="min-h-screen bg-slate-50/50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-50 dark:bg-[#041A24] text-[#072B3B] dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Banner de status Supabase */}
         <SupabaseStatusBanner />
 
         {/* Cabeçalho do Dashboard */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
           <div>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-xs uppercase tracking-wider">
-              <LayoutDashboard className="h-4 w-4" /> Analytics & Relatórios
+            <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-bold text-xs uppercase tracking-wider">
+              <LayoutDashboard className="h-4 w-4" /> WCC Participações • Analytics & Indicadores
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 mt-1">
-              Dashboard de Indicadores
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] dark:text-white mt-1">
+              Dashboard de Indicadores BIM
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Análise gráfica dos apontamentos por disciplina de origem, tipo de conflito, status de resolução e prioridade.
+              Análise gráfica de interferências técnicas por disciplina, tipo de conflito, resolução e prioridade.
             </p>
           </div>
 
           <div className="flex items-center gap-3 self-start sm:self-auto">
             {/* Filtro por Projeto no Dashboard */}
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1.5 rounded-xl shadow-2xs">
-              <FolderKanban className="h-4 w-4 text-indigo-600 dark:text-indigo-400 ml-2" />
+            <div className="flex items-center gap-2 bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] p-1.5 rounded-xl shadow-2xs">
+              <FolderKanban className="h-4 w-4 text-[#00A3C4] ml-2" />
               <select
                 value={selectedProjeto}
                 onChange={(e) => setSelectedProjeto(e.target.value)}
-                className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none pr-2 cursor-pointer"
+                className="bg-transparent text-xs font-bold text-[#072B3B] dark:text-slate-200 focus:outline-none pr-2 cursor-pointer"
               >
                 <option value="Todos">Todos os Projetos</option>
                 {projetosList.map((p) => (
@@ -225,7 +228,7 @@ export default function DashboardPage() {
               size="sm"
               onClick={fetchDashboardData}
               disabled={isLoading}
-              className="gap-2 text-xs"
+              className="gap-2 text-xs font-semibold"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} /> Atualizar
             </Button>
@@ -235,16 +238,16 @@ export default function DashboardPage() {
         {/* Cards de KPIs em Destaque */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total */}
-          <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 shadow-2xs">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-5 dark:border-[#0B384D] dark:bg-[#072B3B] shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total de Apontamentos</span>
-              <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total Apontamentos</span>
+              <div className="p-2 rounded-lg bg-slate-100 dark:bg-[#0B384D] text-[#00A3C4]">
                 <BarChart3 className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-slate-900 dark:text-slate-50">{totalApontamentos}</span>
-              <span className="text-xs text-slate-500">registrados</span>
+              <span className="text-3xl font-black text-[#072B3B] dark:text-white">{totalApontamentos}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">registrados</span>
             </div>
           </div>
 
@@ -263,31 +266,31 @@ export default function DashboardPage() {
           </div>
 
           {/* Disciplina de Maior Origem */}
-          <div className="rounded-xl border border-indigo-500/20 bg-indigo-50/30 p-5 dark:border-indigo-800/30 dark:bg-indigo-950/20 shadow-2xs">
+          <div className="rounded-xl border border-[#00A3C4]/20 bg-[#00A3C4]/5 p-5 dark:border-[#00A3C4]/30 dark:bg-[#00A3C4]/15 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">Maior Origem</span>
-              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+              <span className="text-xs font-bold text-[#008EA9] dark:text-[#00C4EB] uppercase tracking-wider">Maior Origem</span>
+              <div className="p-2 rounded-lg bg-[#00A3C4]/15 text-[#00A3C4] dark:text-[#00C4EB]">
                 <ArrowUpRight className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-lg font-bold text-indigo-950 dark:text-indigo-200 truncate" title={disciplinaComMaisConflitos}>
+              <div className="text-lg font-black text-[#072B3B] dark:text-white truncate" title={disciplinaComMaisConflitos}>
                 {disciplinaComMaisConflitos}
               </div>
-              <span className="text-xs text-indigo-700/70 dark:text-indigo-400/70">mais apontamentos</span>
+              <span className="text-xs text-[#008EA9] dark:text-[#00C4EB]/80">mais apontamentos</span>
             </div>
           </div>
 
           {/* Alta Prioridade */}
           <div className="rounded-xl border border-rose-500/20 bg-rose-50/30 p-5 dark:border-rose-800/30 dark:bg-rose-950/20 shadow-2xs">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Prioridade Alta</span>
+              <span className="text-xs font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Prioridade Alta</span>
               <div className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
                 <Flame className="h-4 w-4" />
               </div>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-bold text-rose-900 dark:text-rose-200">
+              <span className="text-3xl font-black text-rose-900 dark:text-rose-200">
                 {filteredApontamentos.filter((a) => a.prioridade === 'Alta').length}
               </span>
               <span className="text-xs text-rose-700/70 dark:text-rose-400/70">críticos</span>
@@ -298,15 +301,15 @@ export default function DashboardPage() {
         {/* Seção Principal de Gráficos Recharts */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
             <p className="text-xs text-slate-500 font-medium">Carregando relatórios visuais...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Gráfico 1: Barras - Apontamentos por Disciplina de Origem */}
-            <Card className="lg:col-span-7">
+            <Card className="lg:col-span-7 dark:bg-[#072B3B] dark:border-[#0B384D]">
               <CardHeader>
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
                   <BarChart3 className="h-4 w-4" /> Gráfico de Barras
                 </div>
                 <CardTitle className="text-lg">Apontamentos por Disciplina de Origem</CardTitle>
@@ -332,10 +335,10 @@ export default function DashboardPage() {
                       <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#0f172a',
-                          borderColor: '#334155',
+                          backgroundColor: '#072B3B',
+                          borderColor: '#0B384D',
                           borderRadius: '8px',
-                          color: '#f8fafc',
+                          color: '#ffffff',
                           fontSize: '12px',
                         }}
                       />
@@ -349,9 +352,9 @@ export default function DashboardPage() {
             </Card>
 
             {/* Gráfico 2: Pizza - Proporção de Status (Aberto vs Resolvido) */}
-            <Card className="lg:col-span-5">
+            <Card className="lg:col-span-5 dark:bg-[#072B3B] dark:border-[#0B384D]">
               <CardHeader>
-                <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+                <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
                   <PieIcon className="h-4 w-4" /> Gráfico de Pizza
                 </div>
                 <CardTitle className="text-lg">Proporção de Status</CardTitle>
@@ -380,10 +383,10 @@ export default function DashboardPage() {
                       </Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: '#0f172a',
-                          borderColor: '#334155',
+                          backgroundColor: '#072B3B',
+                          borderColor: '#0B384D',
                           borderRadius: '8px',
-                          color: '#f8fafc',
+                          color: '#ffffff',
                           fontSize: '12px',
                         }}
                       />
@@ -393,7 +396,7 @@ export default function DashboardPage() {
 
                   {/* Número Central no Donut */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-                    <span className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                    <span className="text-2xl font-black text-[#072B3B] dark:text-white">
                       {totalApontamentos}
                     </span>
                     <span className="text-[10px] text-slate-500 font-medium uppercase">Total</span>

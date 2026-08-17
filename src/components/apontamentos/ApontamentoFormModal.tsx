@@ -409,23 +409,23 @@ export function ApontamentoFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-[#072B3B] dark:border-[#0B384D]">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider">
+          <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
             {isEditing ? (
               <>
-                <Pencil className="h-4 w-4" /> Edição de Registro e Interferência
+                <Pencil className="h-4 w-4" /> WCC • Edição de Apontamento BIM
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Suporte a Múltiplas Fotos & Guia Solução (Ctrl + V)
+                <Sparkles className="h-4 w-4" /> WCC • Múltiplas Fotos & Solução Técnica (Ctrl + V)
               </>
             )}
           </div>
-          <DialogTitle className="text-xl">
-            {isEditing ? 'Editar Apontamento' : 'Cadastrar Apontamento'}
+          <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white">
+            {isEditing ? 'Editar Apontamento' : 'Cadastrar Novo Apontamento'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-slate-500 dark:text-slate-400">
             {isEditing
               ? 'Altere as informações técnicas, disciplinas, prioridade, status e fotos deste apontamento.'
               : 'Registre uma interferência e anexe múltiplos prints do problema e da solução proposta.'}
@@ -433,9 +433,9 @@ export function ApontamentoFormModal({
         </DialogHeader>
 
         {errorMsg && (
-          <div className="rounded-lg bg-red-50 p-3 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300 flex items-start gap-2 border border-red-200 dark:border-red-800">
+          <div className="rounded-lg bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 flex items-start gap-2 border border-rose-200 dark:border-rose-800">
             <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-            <span className="leading-relaxed">{errorMsg}</span>
+            <span className="leading-relaxed font-semibold">{errorMsg}</span>
           </div>
         )}
 
@@ -449,12 +449,12 @@ export function ApontamentoFormModal({
         <form onSubmit={handleSubmit} className="space-y-4 py-1">
           {/* Seleção do Projeto */}
           <div className="space-y-1.5">
-            <Label htmlFor="projeto_id" className="flex items-center gap-1.5 font-semibold text-indigo-600 dark:text-indigo-400">
-              <FolderKanban className="h-4 w-4" /> Projeto Associado
+            <Label htmlFor="projeto_id" className="flex items-center gap-1.5 font-bold text-[#008EA9] dark:text-[#00C4EB]">
+              <FolderKanban className="h-4 w-4 text-[#00A3C4]" /> Projeto Associado
             </Label>
             <SelectNative
               id="projeto_id"
-              variant="indigo"
+              variant="wcc"
               value={projetoId}
               onChange={(e) => setProjetoId(e.target.value)}
             >
@@ -582,22 +582,22 @@ export function ApontamentoFormModal({
             onClick={() => setPasteTarget('apontamento')}
             className={`space-y-3 pt-2 border rounded-2xl p-4 transition-all cursor-pointer ${
               activePasteTarget === 'apontamento'
-                ? 'border-indigo-500 dark:border-indigo-600 bg-indigo-50/30 dark:bg-indigo-950/30 ring-2 ring-indigo-500/20'
-                : 'border-slate-200 dark:border-slate-800 hover:border-indigo-300'
+                ? 'border-[#00A3C4] dark:border-[#00A3C4] bg-cyan-50/20 dark:bg-[#00A3C4]/10 ring-2 ring-[#00A3C4]/20'
+                : 'border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4]/50'
             }`}
           >
             <div className="flex items-center justify-between">
-              <Label className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                <Images className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+              <Label className="flex items-center gap-2 text-xs font-bold text-[#072B3B] dark:text-slate-200 uppercase tracking-wider">
+                <Images className="h-4 w-4 text-[#00A3C4] dark:text-[#00C4EB]" />
                 1. Fotos do Apontamento ({apontamentoImages.length})
               </Label>
               <button
                 type="button"
                 onClick={() => setPasteTarget('apontamento')}
-                className={`text-[11px] px-2 py-0.5 rounded-full font-semibold transition-colors flex items-center gap-1 ${
+                className={`text-[11px] px-2 py-0.5 rounded-full font-bold transition-colors flex items-center gap-1 ${
                   activePasteTarget === 'apontamento'
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                    ? 'bg-[#00A3C4] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 dark:bg-[#0B384D] dark:text-slate-300'
                 }`}
               >
                 {activePasteTarget === 'apontamento' && <Check className="h-3 w-3" />} Alvo ativo do Ctrl + V
@@ -623,9 +623,9 @@ export function ApontamentoFormModal({
                   setPasteTarget('apontamento');
                   apontamentoFileInputRef.current?.click();
                 }}
-                className="text-xs h-9 gap-1.5 border-dashed border-indigo-300 dark:border-indigo-800 hover:border-indigo-500"
+                className="text-xs h-9 gap-1.5 border-dashed border-[#00A3C4]/40 dark:border-[#00A3C4]/40 hover:border-[#00A3C4]"
               >
-                <Upload className="h-3.5 w-3.5 text-indigo-600" /> Anexar Fotos
+                <Upload className="h-3.5 w-3.5 text-[#00A3C4]" /> Anexar Fotos
               </Button>
 
               <div className="flex items-center gap-1.5 flex-1" onClick={(e) => e.stopPropagation()}>
@@ -647,7 +647,7 @@ export function ApontamentoFormModal({
                   variant="secondary"
                   size="sm"
                   onClick={() => handleAddUrlImage('apontamento', urlInputApontamento)}
-                  className="h-9 text-xs"
+                  className="h-9 text-xs font-semibold"
                 >
                   + Add URL
                 </Button>
@@ -658,10 +658,10 @@ export function ApontamentoFormModal({
             {apontamentoImages.length > 0 ? (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 pt-2">
                 {apontamentoImages.map((img, idx) => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden border border-indigo-200 dark:border-indigo-800 bg-slate-950 aspect-square">
+                  <div key={img.id} className="relative group rounded-lg overflow-hidden border border-[#00A3C4]/30 bg-[#041A24] aspect-square">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img.previewUrl} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                    <span className="absolute top-1 left-1 bg-slate-950/80 text-white text-[9px] font-mono px-1 rounded">
+                    <span className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[9px] font-mono px-1 rounded border border-[#0B384D]">
                       #{idx + 1}
                     </span>
                     <button
@@ -679,8 +679,8 @@ export function ApontamentoFormModal({
                 ))}
               </div>
             ) : (
-              <p className="text-[11px] text-slate-500 italic">
-                Clique neste bloco e pressione <kbd className="font-mono bg-slate-200 dark:bg-slate-800 px-1 rounded">Ctrl + V</kbd> para colar prints do problema.
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 italic">
+                Clique neste bloco e pressione <kbd className="font-mono bg-slate-200 dark:bg-[#0B384D] px-1 rounded">Ctrl + V</kbd> para colar prints do problema.
               </p>
             )}
           </div>
@@ -701,7 +701,7 @@ export function ApontamentoFormModal({
               <button
                 type="button"
                 onClick={() => setPasteTarget('solucao')}
-                className={`text-[11px] px-2 py-0.5 rounded-full font-semibold transition-colors flex items-center gap-1 ${
+                className={`text-[11px] px-2 py-0.5 rounded-full font-bold transition-colors flex items-center gap-1 ${
                   activePasteTarget === 'solucao'
                     ? 'bg-emerald-600 text-white shadow-2xs'
                     : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
@@ -765,7 +765,7 @@ export function ApontamentoFormModal({
                     variant="emerald"
                     size="sm"
                     onClick={() => handleAddUrlImage('solucao', urlInputSolucao)}
-                    className="h-8 text-xs"
+                    className="h-8 text-xs font-semibold"
                   >
                     + Add
                   </Button>
@@ -776,10 +776,10 @@ export function ApontamentoFormModal({
               {solucaoImages.length > 0 ? (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 pt-1">
                   {solucaoImages.map((img, idx) => (
-                    <div key={img.id} className="relative group rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-slate-950 aspect-square">
+                    <div key={img.id} className="relative group rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-[#041A24] aspect-square">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={img.previewUrl} alt={`Foto Solução ${idx + 1}`} className="w-full h-full object-cover" />
-                      <span className="absolute top-1 left-1 bg-emerald-950/80 text-white text-[9px] font-mono px-1 rounded">
+                      <span className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[9px] font-mono px-1 rounded border border-[#0B384D]">
                         Solução #{idx + 1}
                       </span>
                       <button
@@ -806,12 +806,12 @@ export function ApontamentoFormModal({
 
           <DialogFooter className="mt-6 flex flex-col sm:flex-row gap-2 justify-between items-center">
             {uploadStatusText ? (
-              <div className="flex items-center gap-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+              <div className="flex items-center gap-2 text-xs text-[#00A3C4] dark:text-[#00C4EB] font-bold">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 <span>{uploadStatusText}</span>
               </div>
             ) : (
-              <span className="text-[11px] text-slate-400 hidden sm:inline">
+              <span className="text-[11px] text-slate-400 hidden sm:inline font-medium">
                 * Campos obrigatórios
               </span>
             )}
@@ -820,7 +820,7 @@ export function ApontamentoFormModal({
               <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" variant="indigo" disabled={isSubmitting}>
+              <Button type="submit" variant="wcc" disabled={isSubmitting} className="font-bold cursor-pointer">
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Salvando...

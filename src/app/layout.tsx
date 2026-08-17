@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "GestãoBIM | Plataforma Integrada de Compatibilização & Apontamentos",
-  description: "Plataforma avançada para gestão de apontamentos, compatibilização entre disciplinas de engenharia e relatórios técnicos conectada ao Supabase.",
+  title: "WCC Participações | Gestão Integrada de Apontamentos BIM 2026",
+  description: "Plataforma oficial da WCC Participações para gestão de apontamentos, compatibilização multidisciplinar de projetos e relatórios executivos.",
 };
 
 export default function RootLayout({
@@ -30,7 +30,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col md:flex-row font-sans bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+      <body className="min-h-full flex flex-col md:flex-row font-sans bg-slate-50 dark:bg-[#041A24] text-[#072B3B] dark:text-slate-100 transition-colors duration-300">
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <Navigation />
           <div className="flex-1 w-full min-w-0">{children}</div>

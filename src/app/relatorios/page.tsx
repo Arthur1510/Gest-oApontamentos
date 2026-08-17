@@ -133,29 +133,28 @@ export default function RelatoriosPage() {
           <SupabaseStatusBanner />
         </div>
 
-        {/* Top Header & Botão de Exportação PDF (no-print) */}
-        <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
+        {/* Cabeçalho do Relatório */}
+        <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
           <div>
-            <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold text-xs uppercase tracking-wider">
-              <FileText className="h-4 w-4" /> Módulo de Impressão de Relatórios
+            <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-bold text-xs uppercase tracking-wider">
+              <FileText className="h-4 w-4" /> WCC Participações • Relatórios & Exportação PDF
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-50 mt-1">
-              Exportação de Relatório PDF (Modelo ARCIS / BIM)
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] dark:text-white mt-1">
+              Relatórios de Compatibilização Técnica
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Gera a capa profissional e pranchas A4 individuais para cada apontamento com leiaute responsivo.
+              Geração de relatórios executivos no padrão A4 oficial para reuniões de projeto e diretoria.
             </p>
           </div>
 
-          {/* Botão de Exportação PDF */}
           <Button
             onClick={() => handlePrint()}
-            variant="indigo"
-            size="lg"
             disabled={filteredApontamentos.length === 0 || isLoading}
-            className="shadow-lg shadow-indigo-600/20 hover:scale-[1.02] transition-transform gap-2.5 self-start sm:self-auto shrink-0 font-semibold"
+            variant="wcc-gradient"
+            size="lg"
+            className="shadow-lg shadow-[#00A3C4]/25 hover:scale-[1.02] active:scale-[0.98] transition-all gap-2 self-start sm:self-auto shrink-0 font-bold cursor-pointer"
           >
-            <Printer className="h-5 w-5" /> Exportar Relatório PDF ({totalPaginasPDF} págs)
+            <Printer className="h-4 w-4" /> Imprimir / Salvar PDF
           </Button>
         </div>
 
@@ -270,46 +269,54 @@ export default function RelatoriosPage() {
           /* AREA DE IMPRESSAO COM SUPORTE A OVERFLOW MOBILE */
           <div className="w-full overflow-x-auto pb-4">
             <div ref={contentRef} className="space-y-8 print:space-y-0 min-w-[210mm]">
-              {/* PAGINA 1: CAPA PROFISSIONAL DO RELATORIO (MODELO ARCIS/BIM) */}
+              {/* PAGINA 1: CAPA PROFISSIONAL DO RELATORIO (PADRÃO WCC 2026) */}
               <div
-                style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
-                className="w-[210mm] min-h-[297mm] h-auto p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page"
+                style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
+                className="w-[210mm] min-h-[297mm] h-auto p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page"
               >
                 {/* Header Topo da Capa */}
                 <div className="flex items-center justify-between border-b border-slate-300 pb-2 text-[11px] text-slate-600 font-sans">
-                  <span className="font-semibold">Relatório Serviços de Compatibilização</span>
-                  <span className="font-bold text-indigo-900 uppercase">{projetoSelecionadoNome}</span>
+                  <span className="font-bold text-[#072B3B]">WCC PARTICIPAÇÕES • COMPATIBILIZAÇÃO BIM</span>
+                  <span className="font-extrabold text-[#00A3C4] uppercase">{projetoSelecionadoNome}</span>
                   <span>{dataAtualFormatada}</span>
                 </div>
 
-                {/* Centro da Capa: Logo & Titulos */}
-                <div className="my-auto text-center space-y-8 flex flex-col items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-16 h-16 rounded-2xl bg-indigo-900 text-white flex items-center justify-center shadow-lg">
-                      <Layers className="h-10 w-10 text-indigo-200" />
+                {/* Centro da Capa: Logo WCC & Titulos */}
+                <div className="my-auto text-center space-y-6 flex flex-col items-center justify-center py-12">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="px-5 py-2 rounded-2xl bg-[#072B3B] text-white flex items-center justify-center shadow-xl border border-[#00A3C4]/30">
+                      <span className="text-3xl font-black tracking-widest">WCC</span>
                     </div>
-                    <h1 className="text-3xl font-extrabold tracking-widest text-indigo-950 uppercase font-sans">
-                      GESTÃO BIM
-                    </h1>
+                    <div className="text-sm font-black tracking-[0.3em] text-[#072B3B] uppercase">
+                      PARTICIPAÇÕES
+                    </div>
+                    <div className="text-[10px] font-bold tracking-[0.35em] text-[#00A3C4] uppercase">
+                      AURA | ELBRUS
+                    </div>
                   </div>
 
-                  <div className="space-y-2 py-4">
-                    <h2 className="text-4xl font-bold tracking-tight text-slate-900">
+                  <div className="space-y-2 py-2">
+                    <h2 className="text-4xl font-black tracking-tight text-[#072B3B] uppercase">
                       RELATÓRIO TÉCNICO
                     </h2>
-                    <p className="text-xl font-bold text-indigo-900 uppercase tracking-wide">
+                    <div className="w-28 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
+                    <p className="text-xl font-extrabold text-[#008EA9] uppercase tracking-wide pt-1">
                       {projetoSelecionadoNome}
+                    </p>
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                      HÁ 14 ANOS TRANSFORMANDO SONHOS EM PROJETOS REAIS.
                     </p>
                   </div>
 
                   {/* Resumo e Filtros da Capa */}
                   <div className="max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-200 text-xs space-y-3 font-sans">
-                    <div className="font-bold text-sm text-slate-900 border-b border-slate-200 pb-2">
-                      Total de Apontamento(s): <span className="text-indigo-700 font-extrabold">{filteredApontamentos.length}</span>
+                    <div className="font-black text-sm text-[#072B3B] border-b border-slate-200 pb-2 flex items-center justify-between">
+                      <span>Total de Apontamentos:</span>
+                      <span className="text-[#00A3C4] font-black text-base">{filteredApontamentos.length}</span>
                     </div>
 
                     <div className="space-y-1 text-slate-600 text-left">
-                      <p className="font-semibold text-slate-800">Filtros Aplicados:</p>
+                      <p className="font-bold text-[#072B3B]">Filtros Aplicados no Relatório:</p>
                       <p>• <strong>Tipo de Apontamento:</strong> {selectedTipoConflito}</p>
                       <p>• <strong>Status:</strong> {selectedStatus}</p>
                       <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
@@ -320,8 +327,8 @@ export default function RelatoriosPage() {
 
                 {/* Rodapé da Capa */}
                 <div className="flex items-center justify-between border-t border-slate-300 pt-2 text-[10px] text-slate-500 font-sans">
-                  <span>GestãoBIM - Serviços de Compatibilização Técnica</span>
-                  <span className="font-bold text-slate-700">Pag 1 de {totalPaginasPDF}</span>
+                  <span className="font-mono">www.wccparticipacoes.com.br</span>
+                  <span className="font-bold text-[#072B3B]">Pág 1 de {totalPaginasPDF}</span>
                 </div>
               </div>
 
@@ -347,13 +354,13 @@ export default function RelatoriosPage() {
                 return (
                   <div
                     key={`rel-page-${apontamento.id}`}
-                    style={{ pageBreakAfter: 'always', color: '#0f172a', backgroundColor: '#ffffff' }}
-                    className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-slate-900 mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-slate-900 break-after-page font-sans"
+                    style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
+                    className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans"
                   >
                     {/* Header Fixo do Topo da Prancha A4 */}
                     <div className="border-b border-slate-400 pb-2 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
-                      <span className="font-semibold">Relatório Serviços de Compatibilização</span>
-                      <span className="font-bold text-slate-900 uppercase truncate max-w-[200px]">
+                      <span className="font-bold text-[#072B3B]">WCC PARTICIPAÇÕES • COMPATIBILIZAÇÃO TÉCNICA</span>
+                      <span className="font-black text-[#00A3C4] uppercase truncate max-w-[200px]">
                         {nomeProjetoItem}
                       </span>
                       <span>{dataAtualFormatada}</span>
@@ -363,8 +370,8 @@ export default function RelatoriosPage() {
                     <div className="space-y-3 my-auto py-2 flex-1 flex flex-col justify-center">
                       {/* Titulo do Apontamento */}
                       <div className="flex items-center justify-between border-b border-slate-200 pb-2 shrink-0">
-                        <h2 className="text-base sm:text-lg font-bold text-indigo-950">
-                          Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-emerald-700' : 'text-amber-700'}>{apontamento.status}</span>
+                        <h2 className="text-base sm:text-lg font-black text-[#072B3B]">
+                          Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-[#047857]' : 'text-amber-700'}>{apontamento.status}</span>
                         </h2>
                         <span className="text-xs font-mono font-semibold text-slate-500">
                           ID: #{apontamento.id.slice(0, 8)}
@@ -375,7 +382,7 @@ export default function RelatoriosPage() {
                       <div className="grid grid-cols-12 gap-4 items-start shrink-0">
                         {/* LADO ESQUERDO: IMAGEM PRINCIPAL + MINI-GALERIA */}
                         <div className="col-span-7 space-y-1.5">
-                          <div className={`border-2 border-slate-300 rounded-lg overflow-hidden bg-slate-950 flex items-center justify-center p-1 shadow-sm relative transition-all ${
+                          <div className={`border-2 border-slate-300 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative transition-all ${
                             isLongText ? 'h-[62mm]' : 'h-[78mm]'
                           }`}>
                             {listImagensApt.length > 0 ? (
@@ -391,7 +398,7 @@ export default function RelatoriosPage() {
                               />
                             ) : (
                               <div className="flex flex-col items-center gap-2 text-slate-400 text-center p-4">
-                                <ImageIcon className="h-10 w-10 text-slate-500 opacity-60" />
+                                <ImageIcon className="h-10 w-10 text-[#00A3C4] opacity-60" />
                                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
                                   Sem Imagem Anexada
                                 </p>
@@ -403,7 +410,7 @@ export default function RelatoriosPage() {
                           {listImagensApt.length > 1 && (
                             <div className="grid grid-cols-4 gap-1">
                               {listImagensApt.slice(1, 5).map((secUrl, secIdx) => (
-                                <div key={`pdf-sec-apt-${secIdx}`} className="h-10 border border-slate-300 rounded overflow-hidden bg-slate-950">
+                                <div key={`pdf-sec-apt-${secIdx}`} className="h-10 border border-slate-300 rounded overflow-hidden bg-[#041A24]">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img src={secUrl} alt={`Sec ${secIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
                                 </div>
@@ -424,7 +431,7 @@ export default function RelatoriosPage() {
                                     ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                     : apontamento.prioridade === 'Média'
                                     ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                    : 'bg-sky-100 text-sky-800 border border-sky-300'
+                                    : 'bg-[#00A3C4]/15 text-[#008EA9] border border-[#00A3C4]/30'
                                 }`}
                               >
                                 {apontamento.prioridade}
@@ -449,13 +456,13 @@ export default function RelatoriosPage() {
                           {/* Disciplina Principal (Origem) */}
                           <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
                             <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Origem</span>
-                            <span className="font-bold text-indigo-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_origem}</span>
+                            <span className="font-extrabold text-[#008EA9] block mt-0.5 text-[11px] truncate">{apontamento.disciplina_origem}</span>
                           </div>
 
                           {/* Disciplinas Envolvidas (Destino) */}
                           <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
                             <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Destino</span>
-                            <span className="font-bold text-rose-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_destino}</span>
+                            <span className="font-extrabold text-rose-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_destino}</span>
                           </div>
 
                           {/* Edificacao / Pavimento */}
@@ -496,8 +503,8 @@ export default function RelatoriosPage() {
 
                       {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA */}
                       <div className="bg-emerald-50/90 p-3 rounded-lg border border-emerald-300 space-y-2">
-                        <span className="text-[10px] font-bold text-emerald-900 uppercase flex items-center gap-1">
-                          <Lightbulb className="h-3.5 w-3.5 text-emerald-700 shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
+                        <span className="text-[10px] font-bold text-[#047857] uppercase flex items-center gap-1">
+                          <Lightbulb className="h-3.5 w-3.5 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
                         </span>
 
                         <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-3 items-start" : ""}>
@@ -509,7 +516,7 @@ export default function RelatoriosPage() {
 
                           {listImagensSol.length > 0 && (
                             <div className="col-span-4 space-y-1">
-                              <div className="border border-emerald-300 rounded overflow-hidden bg-slate-950 h-24 relative flex items-center justify-center">
+                              <div className="border border-emerald-300 rounded overflow-hidden bg-[#041A24] h-24 relative flex items-center justify-center">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={listImagensSol[0]}
@@ -522,7 +529,7 @@ export default function RelatoriosPage() {
                               {listImagensSol.length > 1 && (
                                 <div className="grid grid-cols-3 gap-1">
                                   {listImagensSol.slice(1, 4).map((solSecUrl, solSecIdx) => (
-                                    <div key={`pdf-sec-sol-${solSecIdx}`} className="h-8 border border-emerald-300 rounded overflow-hidden bg-slate-950">
+                                    <div key={`pdf-sec-sol-${solSecIdx}`} className="h-8 border border-emerald-300 rounded overflow-hidden bg-[#041A24]">
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img src={solSecUrl} alt={`Sol ${solSecIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
                                     </div>
@@ -537,8 +544,8 @@ export default function RelatoriosPage() {
 
                     {/* Rodape Fixo da Folha A4 */}
                     <div className="border-t border-slate-400 pt-2 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
-                      <span>GestãoBIM - Relatórios Técnicos</span>
-                      <span className="font-bold text-slate-900">Pag {numPaginaAtual} de {totalPaginasPDF}</span>
+                      <span className="font-mono">WCC PARTICIPAÇÕES • www.wccparticipacoes.com.br</span>
+                      <span className="font-bold text-[#072B3B]">Pág {numPaginaAtual} de {totalPaginasPDF}</span>
                     </div>
                   </div>
                 );
