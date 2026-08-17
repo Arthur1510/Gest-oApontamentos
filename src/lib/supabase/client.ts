@@ -68,7 +68,7 @@ export const uploadImageToClashesBucket = async (file: File): Promise<string> =>
   return publicUrlData.publicUrl;
 };
 
-// Mock data de Projetos
+// Mock data de Projetos com lista de pavimentos/níveis cadastrados
 export const MOCK_PROJETOS: Projeto[] = [
   {
     id: 'proj-1',
@@ -76,6 +76,15 @@ export const MOCK_PROJETOS: Projeto[] = [
     nome: 'Hospital Central - Bloco A',
     descricao: 'Compatibilização de sistemas críticos hospitalares, estrutura e HVAC.',
     status: 'Ativo',
+    pavimentos: [
+      'Subsolo 2 (Garagem / Utilidades)',
+      'Subsolo 1 (Gases Medicinais / Almoxarifado)',
+      'Térreo (Recepção / Emergência)',
+      '1º Pavimento (UTI Geral)',
+      '2º Pavimento (Internação Cirúrgica)',
+      '3º Pavimento (Centro Cirúrgico)',
+      'Cobertura Técnica (Chillers / HVAC)',
+    ],
   },
   {
     id: 'proj-2',
@@ -83,6 +92,16 @@ export const MOCK_PROJETOS: Projeto[] = [
     nome: 'Edifício Residencial Horizonte',
     descricao: 'Empreendimento residencial com 25 pavimentos e 2 subsolos de garagem.',
     status: 'Ativo',
+    pavimentos: [
+      'Subsolo 2',
+      'Subsolo 1',
+      'Térreo (Hall Social)',
+      '1º Pavimento (Lazer / Piscina)',
+      '2º ao 20º Pavimento Tipo',
+      '21º Pavimento (Penthouse)',
+      'Cobertura / Ático',
+      'Reservatórios Superiores',
+    ],
   },
   {
     id: 'proj-3',
@@ -90,10 +109,17 @@ export const MOCK_PROJETOS: Projeto[] = [
     nome: 'Centro Logístico Eixo Sul',
     descricao: 'Galpão industrial e pátio de manobras com cobertura metálica.',
     status: 'Inativo',
+    pavimentos: [
+      'Pátio de Manobras / Doca',
+      'Galpão Principal - Ala Norte',
+      'Galpão Principal - Ala Sul',
+      'Bloco Administrativo (Mezanino)',
+      'Subestação / Casa de Bombas',
+    ],
   },
 ];
 
-// Mock data de Apontamentos com Múltiplas Imagens e Textos Longos para testes
+// Mock data de Apontamentos com Múltiplas Imagens, Localização e Pavimento
 export const MOCK_APONTAMENTOS: Apontamento[] = [
   {
     id: 'mock-1',
@@ -105,6 +131,8 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
     status: 'Aberto',
     prioridade: 'Alta',
     tipo_conflito: 'Conflito Físico',
+    pavimento: '3º Pavimento (Centro Cirúrgico)',
+    localizacao: 'Corredor de Acesso UTI - Eixo C-12',
     solucao: 'DIRETRIZ DE ENGENHARIA:\n1. Alterar a rota do duto com desvio de 45° contornando o bordo esquerdo da viga pelo Eixo C-13.\n2. Caso a perda de carga não permita o desvio, executar furação circular de 350mm no centro neutro da viga conforme aprovação do calculista estrutural (ver detalhe no desenho de armação A-402).\n3. Rebaixar o forro acartonado em 12cm no trecho do corredor de circulação.',
     url_imagem: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
     url_imagem_solucao: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80',
@@ -118,7 +146,18 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
       'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
     ],
     projeto_id: 'proj-1',
-    projetos: { nome: 'Hospital Central - Bloco A' },
+    projetos: {
+      nome: 'Hospital Central - Bloco A',
+      pavimentos: [
+        'Subsolo 2 (Garagem / Utilidades)',
+        'Subsolo 1 (Gases Medicinais / Almoxarifado)',
+        'Térreo (Recepção / Emergência)',
+        '1º Pavimento (UTI Geral)',
+        '2º Pavimento (Internação Cirúrgica)',
+        '3º Pavimento (Centro Cirúrgico)',
+        'Cobertura Técnica (Chillers / HVAC)',
+      ],
+    },
   },
   {
     id: 'mock-2',
@@ -130,6 +169,8 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
     status: 'Aberto',
     prioridade: 'Média',
     tipo_conflito: 'Inconsistência Normativa',
+    pavimento: '2º ao 20º Pavimento Tipo',
+    localizacao: 'Shaft Hidráulico Cozinha - Apto Final 01 e 02',
     solucao: 'Ajustar o projeto arquitetônico criando uma carenagem técnica em gesso acartonado (drywall hidráulico RU) de 15cm paralela à parede, permitindo a descida de todas as prumadas sanitárias e de água fria sem rasgos no bloco.',
     url_imagem: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
     url_imagem_solucao: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
@@ -140,7 +181,19 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
       'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
     ],
     projeto_id: 'proj-2',
-    projetos: { nome: 'Edifício Residencial Horizonte' },
+    projetos: {
+      nome: 'Edifício Residencial Horizonte',
+      pavimentos: [
+        'Subsolo 2',
+        'Subsolo 1',
+        'Térreo (Hall Social)',
+        '1º Pavimento (Lazer / Piscina)',
+        '2º ao 20º Pavimento Tipo',
+        '21º Pavimento (Penthouse)',
+        'Cobertura / Ático',
+        'Reservatórios Superiores',
+      ],
+    },
   },
   {
     id: 'mock-3',
@@ -152,6 +205,8 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
     status: 'Resolvido',
     prioridade: 'Baixa',
     tipo_conflito: 'Concepção Técnica',
+    pavimento: 'Cobertura Técnica (Chillers / HVAC)',
+    localizacao: 'Sala de Painéis Elétricos QGD - Ala Leste',
     solucao: 'Redimensionado o disjuntor geral caixa moldada de 400A para 630A motorizado e atualizada a especificação do barramento de cobre para 80x10mm no projeto executivo de instalações elétricas industriais.',
     url_imagem: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
     url_imagem_solucao: null,
@@ -160,6 +215,17 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
     ],
     imagens_solucao: [],
     projeto_id: 'proj-1',
-    projetos: { nome: 'Hospital Central - Bloco A' },
+    projetos: {
+      nome: 'Hospital Central - Bloco A',
+      pavimentos: [
+        'Subsolo 2 (Garagem / Utilidades)',
+        'Subsolo 1 (Gases Medicinais / Almoxarifado)',
+        'Térreo (Recepção / Emergência)',
+        '1º Pavimento (UTI Geral)',
+        '2º Pavimento (Internação Cirúrgica)',
+        '3º Pavimento (Centro Cirúrgico)',
+        'Cobertura Técnica (Chillers / HVAC)',
+      ],
+    },
   },
 ];

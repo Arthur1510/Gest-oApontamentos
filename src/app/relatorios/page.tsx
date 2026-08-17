@@ -23,7 +23,7 @@ import { Apontamento, Projeto, DISCIPLINAS_OPCOES, TIPOS_CONFLITO_OPCOES } from 
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Button } from '@/components/ui/button';
-import { SelectNative } from '@/components/ui/select-native';
+import { MultiSelectFilter, MultiSelectOption } from '@/components/ui/multi-select-filter';
 import { formatDate } from '@/lib/utils';
 
 export default function RelatoriosPage() {
@@ -31,11 +31,11 @@ export default function RelatoriosPage() {
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filtros de Relatório
-  const [selectedProjeto, setSelectedProjeto] = useState<string>('Todos');
-  const [selectedStatus, setSelectedStatus] = useState<string>('Todos');
-  const [selectedDisciplina, setSelectedDisciplina] = useState<string>('Todas');
-  const [selectedTipoConflito, setSelectedTipoConflito] = useState<string>('Todos');
+  // Filtros de Relatório com multi-seleção
+  const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
+  const [selectedTiposConflito, setSelectedTiposConflito] = useState<string[]>([]);
 
   // Referência para impressão react-to-print
   const contentRef = useRef<HTMLDivElement>(null);
@@ -90,37 +90,41 @@ export default function RelatoriosPage() {
     fetchData();
   }, [fetchData]);
 
-  // Filtrar Lista de Apontamentos
+  // Filtrar Lista de Apontamentos com multi-seleção
   const filteredApontamentos = apontamentos.filter((item) => {
     const matchesProjeto =
-      selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
+      selectedProjetos.length === 0 ||
+      (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
 
     const matchesStatus =
-      selectedStatus === 'Todos' || item.status === selectedStatus;
+      selectedStatus.length === 0 || selectedStatus.includes(item.status);
 
     const matchesDisciplina =
-      selectedDisciplina === 'Todas' ||
-      item.disciplina_origem === selectedDisciplina ||
-      item.disciplina_destino === selectedDisciplina;
+      selectedDisciplinas.length === 0 ||
+      selectedDisciplinas.includes(item.disciplina_origem) ||
+      selectedDisciplinas.includes(item.disciplina_destino);
 
+    const itemTipo = item.tipo_conflito || 'Conflito Físico';
     const matchesTipoConflito =
-      selectedTipoConflito === 'Todos' || item.tipo_conflito === selectedTipoConflito;
+      selectedTiposConflito.length === 0 || selectedTiposConflito.includes(itemTipo);
 
     return matchesProjeto && matchesStatus && matchesDisciplina && matchesTipoConflito;
   });
 
   const resetFilters = () => {
-    setSelectedProjeto('Todos');
-    setSelectedStatus('Todos');
-    setSelectedDisciplina('Todas');
-    setSelectedTipoConflito('Todos');
+    setSelectedProjetos([]);
+    setSelectedStatus([]);
+    setSelectedDisciplinas([]);
+    setSelectedTiposConflito([]);
   };
 
   // Nome do projeto selecionado para a Capa
   const projetoSelecionadoNome =
-    selectedProjeto === 'Todos'
+    selectedProjetos.length === 0
       ? 'TODOS OS PROJETOS'
-      : projetosList.find((p) => p.id === selectedProjeto)?.nome || 'PROJETO SELECIONADO';
+      : selectedProjetos.length === 1
+      ? projetosList.find((p) => p.id === selectedProjetos[0])?.nome || 'PROJETO SELECIONADO'
+      : `${selectedProjetos.length} PROJETOS SELECIONADOS`;
 
   const dataAtualFormatada = new Date().toLocaleDateString('pt-BR');
   const totalPaginasPDF = filteredApontamentos.length + 1; // 1 Capa + N Páginas
@@ -159,17 +163,17 @@ export default function RelatoriosPage() {
         </div>
 
         {/* Painel de Filtros (no-print) */}
-        <div className="no-print bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-4 shadow-2xs space-y-3">
+        <div className="no-print bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-              <Filter className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" /> Filtrar Conteúdo do Relatório
+            <div className="flex items-center gap-2 text-xs font-extrabold text-[#072B3B] dark:text-slate-100 uppercase tracking-wider">
+              <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> Filtrar Conteúdo do Relatório (Multi-Seleção)
             </div>
-            {(selectedProjeto !== 'Todos' || selectedStatus !== 'Todos' || selectedDisciplina !== 'Todas' || selectedTipoConflito !== 'Todos') && (
+            {(selectedProjetos.length > 0 || selectedStatus.length > 0 || selectedDisciplinas.length > 0 || selectedTiposConflito.length > 0) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={resetFilters}
-                className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 h-7 gap-1"
+                className="text-xs font-semibold text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 h-7 gap-1"
               >
                 <RefreshCw className="h-3 w-3" /> Limpar Filtros
               </Button>
@@ -177,67 +181,62 @@ export default function RelatoriosPage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Filtro por Projeto */}
+            {/* Multi-Select de Projeto */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Projeto:</label>
-              <SelectNative
-                variant="indigo"
-                value={selectedProjeto}
-                onChange={(e) => setSelectedProjeto(e.target.value)}
-              >
-                <option value="Todos">Todos os Projetos</option>
-                {projetosList.map((p) => (
-                  <option key={`rel-proj-${p.id}`} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </SelectNative>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Projetos:</label>
+              <MultiSelectFilter
+                label="Projeto"
+                placeholder="Todos"
+                options={projetosList.map((p) => ({ value: p.id, label: p.nome }))}
+                selectedValues={selectedProjetos}
+                onChange={setSelectedProjetos}
+                variant="wcc"
+                searchable
+              />
             </div>
 
-            {/* Filtro por Tipo de Apontamento */}
+            {/* Multi-Select de Tipo de Apontamento */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Tipo de Apontamento:</label>
-              <SelectNative
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Tipo:</label>
+              <MultiSelectFilter
+                label="Tipo"
+                placeholder="Todos"
+                options={TIPOS_CONFLITO_OPCOES.map((tc) => ({ value: tc, label: tc }))}
+                selectedValues={selectedTiposConflito}
+                onChange={setSelectedTiposConflito}
                 variant="amber"
-                value={selectedTipoConflito}
-                onChange={(e) => setSelectedTipoConflito(e.target.value)}
-              >
-                <option value="Todos">Todos os Tipos</option>
-                {TIPOS_CONFLITO_OPCOES.map((tc) => (
-                  <option key={`rel-tc-${tc}`} value={tc}>
-                    {tc}
-                  </option>
-                ))}
-              </SelectNative>
+                searchable
+              />
             </div>
 
-            {/* Filtro por Status */}
+            {/* Multi-Select de Status */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Status:</label>
-              <SelectNative
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-              >
-                <option value="Todos">Todos os Status</option>
-                <option value="Aberto">Aberto</option>
-                <option value="Resolvido">Resolvido</option>
-              </SelectNative>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Status:</label>
+              <MultiSelectFilter
+                label="Status"
+                placeholder="Todos"
+                options={[
+                  { value: 'Aberto', label: 'Aberto' },
+                  { value: 'Resolvido', label: 'Resolvido' },
+                ]}
+                selectedValues={selectedStatus}
+                onChange={setSelectedStatus}
+                variant="emerald"
+              />
             </div>
 
-            {/* Filtro por Disciplina */}
+            {/* Multi-Select de Disciplina */}
             <div>
-              <label className="block text-[11px] font-medium text-slate-500 mb-1">Disciplina:</label>
-              <SelectNative
-                value={selectedDisciplina}
-                onChange={(e) => setSelectedDisciplina(e.target.value)}
-              >
-                <option value="Todas">Todas as Disciplinas</option>
-                {DISCIPLINAS_OPCOES.map((d) => (
-                  <option key={`rel-disc-${d}`} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </SelectNative>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Disciplinas:</label>
+              <MultiSelectFilter
+                label="Disciplina"
+                placeholder="Todas"
+                options={DISCIPLINAS_OPCOES.map((d) => ({ value: d, label: d }))}
+                selectedValues={selectedDisciplinas}
+                onChange={setSelectedDisciplinas}
+                variant="default"
+                searchable
+              />
             </div>
           </div>
         </div>
@@ -245,38 +244,39 @@ export default function RelatoriosPage() {
         {/* Estado de Carregamento */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
             <p className="text-xs text-slate-500 font-medium">Montando relatório técnico A4...</p>
           </div>
         ) : filteredApontamentos.length === 0 ? (
-          <div className="no-print rounded-2xl border border-dashed border-slate-300 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 p-12 text-center flex flex-col items-center justify-center gap-4">
-            <div className="p-4 rounded-full bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400">
-              <Sparkles className="h-8 w-8" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Nenhum apontamento encontrado para o relatório
-              </h3>
-              <p className="text-xs text-slate-500 max-w-md mt-1">
-                Ajuste os filtros acima para listar os apontamentos que deseja exportar em PDF.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs">
+          /* Estado Vazio */
+          <div className="bg-white dark:bg-[#072B3B]/80 border border-dashed border-slate-300 dark:border-[#0B384D] rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-3">
+            <p className="text-sm font-bold text-[#072B3B] dark:text-white">Nenhum apontamento encontrado para este filtro.</p>
+            <p className="text-xs text-slate-500">Tente ajustar ou limpar os filtros para gerar o relatório impresso.</p>
+            <Button variant="outline" size="sm" onClick={resetFilters} className="text-xs mt-2">
               Limpar Filtros
             </Button>
           </div>
         ) : (
-          /* AREA DE IMPRESSAO COM SUPORTE A OVERFLOW MOBILE */
-          <div className="w-full overflow-x-auto pb-4">
-            <div ref={contentRef} className="space-y-8 print:space-y-0 min-w-[210mm]">
-              {/* PAGINA 1: CAPA PROFISSIONAL DO RELATORIO (PADRÃO WCC 2026) */}
-              <div
-                style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
-                className="w-[210mm] min-h-[297mm] h-auto p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page"
-              >
-                {/* Header Topo da Capa */}
-                <div className="flex items-center justify-between border-b border-slate-300 pb-2 text-[11px] text-slate-600 font-sans">
-                  <span className="font-bold text-[#072B3B]">WCC PARTICIPAÇÕES • COMPATIBILIZAÇÃO BIM</span>
+          /* CONTEUDO DO RELATORIO PARA VISUALIZAR E IMPRIMIR */
+          <div className="space-y-4">
+            <div className="flex items-center justify-between no-print px-1">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                Visualização do Documento A4 ({filteredApontamentos.length} apontamentos • {totalPaginasPDF} páginas)
+              </span>
+              <span className="text-[11px] text-[#00A3C4] font-semibold">
+                Padrão Institucional WCC Participações
+              </span>
+            </div>
+
+            {/* AREA IMPRIMÍVEL (REACT-TO-PRINT) */}
+            <div ref={contentRef} className="print-area space-y-8 flex flex-col items-center">
+              {/* PAGINA 1: CAPA INSTITUCIONAL WCC */}
+              <div className="a4-page bg-white text-slate-900 shadow-2xl p-10 flex flex-col justify-between border border-slate-300 print:border-none print:shadow-none relative overflow-hidden">
+                {/* Faixa decorativa topo */}
+                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
+
+                {/* Topo da Capa */}
+                <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-xs text-slate-500 font-sans">
                   <span className="font-extrabold text-[#00A3C4] uppercase">{projetoSelecionadoNome}</span>
                   <span>{dataAtualFormatada}</span>
                 </div>
@@ -314,9 +314,9 @@ export default function RelatoriosPage() {
 
                     <div className="space-y-1 text-slate-600 text-left">
                       <p className="font-bold text-[#072B3B]">Filtros Aplicados no Relatório:</p>
-                      <p>• <strong>Tipo de Apontamento:</strong> {selectedTipoConflito}</p>
-                      <p>• <strong>Status:</strong> {selectedStatus}</p>
-                      <p>• <strong>Disciplina:</strong> {selectedDisciplina}</p>
+                      <p>• <strong>Tipo de Apontamento:</strong> {selectedTiposConflito.length > 0 ? selectedTiposConflito.join(', ') : 'Todos os Tipos'}</p>
+                      <p>• <strong>Status:</strong> {selectedStatus.length > 0 ? selectedStatus.join(', ') : 'Todos os Status'}</p>
+                      <p>• <strong>Disciplina:</strong> {selectedDisciplinas.length > 0 ? selectedDisciplinas.join(', ') : 'Todas as Disciplinas'}</p>
                       <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
                     </div>
                   </div>
@@ -375,41 +375,114 @@ export default function RelatoriosPage() {
                         </span>
                       </div>
 
-                      {/* Layout Dividido Lado a Lado: Imagem Principal (Esquerda) + Metadados (Direita) */}
+                      {/* Layout Dividido Lado a Lado: Galeria Fotográfica do Conflito (Esquerda) + Metadados (Direita) */}
                       <div className="grid grid-cols-12 gap-4 items-start shrink-0">
-                        {/* LADO ESQUERDO: IMAGEM PRINCIPAL + MINI-GALERIA */}
-                        <div className="col-span-7 space-y-1.5">
-                          <div className={`border-2 border-slate-300 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative transition-all ${
-                            isLongText ? 'h-[62mm]' : 'h-[78mm]'
-                          }`}>
-                            {listImagensApt.length > 0 ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
+                        {/* LADO ESQUERDO: SISTEMA DE GALERIA INTELIGENTE DE FOTOS DO APONTAMENTO */}
+                        <div className="col-span-7 space-y-1">
+                          {listImagensApt.length === 0 ? (
+                            <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-4 text-center ${
+                              isLongText ? 'h-[56mm]' : 'h-[72mm]'
+                            }`}>
+                              <ImageIcon className="h-8 w-8 text-slate-400 opacity-60" />
+                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                                Sem Imagem Anexada
+                              </p>
+                            </div>
+                          ) : listImagensApt.length === 1 ? (
+                            /* 1 Imagem: Destaque Executivo Amplo */
+                            <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative ${
+                              isLongText ? 'h-[56mm]' : 'h-[72mm]'
+                            }`}>
+                              <div className="absolute top-1.5 left-1.5 bg-[#072B3B]/90 text-white text-[8px] font-mono px-2 py-0.5 rounded border border-[#00A3C4]/40 z-10">
+                                📸 Vista Principal (#1)
+                              </div>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={listImagensApt[0]}
                                 alt={apontamento.titulo}
                                 crossOrigin="anonymous"
                                 className="w-full h-full object-contain mx-auto"
-                                onError={(e) => {
-                                  (e.target as HTMLElement).style.display = 'none';
-                                }}
                               />
-                            ) : (
-                              <div className="flex flex-col items-center gap-2 text-slate-400 text-center p-4">
-                                <ImageIcon className="h-10 w-10 text-[#00A3C4] opacity-60" />
-                                <p className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                                  Sem Imagem Anexada
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Grade de Fotos Adicionais do Apontamento no PDF */}
-                          {listImagensApt.length > 1 && (
-                            <div className="grid grid-cols-4 gap-1">
-                              {listImagensApt.slice(1, 5).map((secUrl, secIdx) => (
-                                <div key={`pdf-sec-apt-${secIdx}`} className="h-10 border border-slate-300 rounded overflow-hidden bg-[#041A24]">
+                            </div>
+                          ) : listImagensApt.length === 2 ? (
+                            /* 2 Imagens: Grid Lado a Lado 2 Colunas */
+                            <div className={`grid grid-cols-2 gap-1.5 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
+                              {listImagensApt.slice(0, 2).map((imgUrl, imgIdx) => (
+                                <div
+                                  key={`pdf-grid-2-${imgIdx}`}
+                                  className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative h-full"
+                                >
+                                  <div className="absolute top-1 left-1 bg-[#072B3B]/90 text-[#00C4EB] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#00A3C4]/40 z-10">
+                                    {imgIdx === 0 ? '📸 #1 Principal' : '📸 #2 Detalhe'}
+                                  </div>
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img src={secUrl} alt={`Sec ${secIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                  <img
+                                    src={imgUrl}
+                                    alt={`Foto ${imgIdx + 1}`}
+                                    crossOrigin="anonymous"
+                                    className="w-full h-full object-contain mx-auto"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          ) : listImagensApt.length === 3 ? (
+                            /* 3 Imagens: 1 Destaque Superior + 2 Inferiores */
+                            <div className={`space-y-1 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
+                              <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 shadow-sm relative ${
+                                isLongText ? 'h-[34mm]' : 'h-[46mm]'
+                              }`}>
+                                <div className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#00A3C4]/40 z-10">
+                                  📸 #1 Vista Principal
+                                </div>
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={listImagensApt[0]}
+                                  alt={apontamento.titulo}
+                                  crossOrigin="anonymous"
+                                  className="w-full h-full object-contain mx-auto"
+                                />
+                              </div>
+                              <div className={`grid grid-cols-2 gap-1 ${isLongText ? 'h-[21mm]' : 'h-[25mm]'}`}>
+                                {listImagensApt.slice(1, 3).map((imgUrl, imgIdx) => (
+                                  <div
+                                    key={`pdf-grid-3-${imgIdx}`}
+                                    className="border border-[#00A3C4]/30 rounded-md overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 relative h-full"
+                                  >
+                                    <div className="absolute top-0.5 left-0.5 bg-[#072B3B]/90 text-[#00C4EB] text-[7px] font-mono px-1 rounded z-10">
+                                      #{imgIdx + 2}
+                                    </div>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={imgUrl}
+                                      alt={`Foto ${imgIdx + 2}`}
+                                      crossOrigin="anonymous"
+                                      className="w-full h-full object-contain mx-auto"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            /* 4 ou mais Imagens: Grid Simétrico 2x2 */
+                            <div className={`grid grid-cols-2 gap-1 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
+                              {listImagensApt.slice(0, 4).map((imgUrl, imgIdx) => (
+                                <div
+                                  key={`pdf-grid-4-${imgIdx}`}
+                                  className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 shadow-sm relative h-full"
+                                >
+                                  <div className="absolute top-0.5 left-0.5 bg-[#072B3B]/90 text-[#00C4EB] text-[7px] font-mono px-1 rounded border border-[#00A3C4]/40 z-10 flex items-center gap-1">
+                                    <span>📸 #{imgIdx + 1}</span>
+                                    {imgIdx === 3 && listImagensApt.length > 4 && (
+                                      <span className="text-amber-300 font-bold">+{listImagensApt.length - 4}</span>
+                                    )}
+                                  </div>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={imgUrl}
+                                    alt={`Foto ${imgIdx + 1}`}
+                                    crossOrigin="anonymous"
+                                    className="w-full h-full object-contain mx-auto"
+                                  />
                                 </div>
                               ))}
                             </div>
@@ -465,13 +538,15 @@ export default function RelatoriosPage() {
                           {/* Edificacao / Pavimento */}
                           <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
                             <span className="text-[9px] text-slate-500 font-bold uppercase block">Localização / Pavimento</span>
-                            <span className="font-semibold text-slate-800 block mt-0.5 text-[11px]">TÉRREO / PAVIMENTO TIPO</span>
+                            <span className="font-extrabold text-[#072B3B] block mt-0.5 text-[11px] truncate" title={[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ')}>
+                              {[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ') || 'Não especificado / Geral'}
+                            </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Descricao Detalhada */}
-                      <div className="bg-slate-50 p-3 rounded-lg border border-slate-300 space-y-1">
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-300 space-y-1">
                         <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                           <span className="text-[10px] font-bold text-slate-900 uppercase truncate max-w-[400px]">
                             Título: {apontamento.titulo}
@@ -493,42 +568,83 @@ export default function RelatoriosPage() {
                         </div>
 
                         <span className="text-[9px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
-                        <p className="text-[11px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                        <p className="text-[10.5px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
                           {apontamento.descricao}
                         </p>
                       </div>
 
-                      {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA */}
-                      <div className="bg-emerald-50/90 p-3 rounded-lg border border-emerald-300 space-y-2">
-                        <span className="text-[10px] font-bold text-[#047857] uppercase flex items-center gap-1">
-                          <Lightbulb className="h-3.5 w-3.5 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
-                        </span>
+                      {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA COM GALERIA */}
+                      <div className="bg-emerald-50/90 p-2.5 rounded-lg border border-emerald-300 space-y-1.5">
+                        <div className="flex items-center justify-between border-b border-emerald-200 pb-1">
+                          <span className="text-[10px] font-bold text-[#047857] uppercase flex items-center gap-1">
+                            <Lightbulb className="h-3.5 w-3.5 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
+                          </span>
+                          {listImagensSol.length > 0 && (
+                            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300">
+                              💡 {listImagensSol.length} Foto(s)
+                            </span>
+                          )}
+                        </div>
 
                         <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-3 items-start" : ""}>
-                          <div className={listImagensSol.length > 0 ? "col-span-8" : ""}>
-                            <p className="text-[11px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                          <div className={listImagensSol.length > 0 ? "col-span-7" : ""}>
+                            <p className="text-[10.5px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
                               {apontamento.solucao || 'Aguardando definição técnica de solução pelos projetistas envolvidos.'}
                             </p>
                           </div>
 
                           {listImagensSol.length > 0 && (
-                            <div className="col-span-4 space-y-1">
-                              <div className="border border-emerald-300 rounded overflow-hidden bg-[#041A24] h-24 relative flex items-center justify-center">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={listImagensSol[0]}
-                                  alt="Foto da Solução"
-                                  crossOrigin="anonymous"
-                                  className="w-full h-full object-contain mx-auto"
-                                />
-                              </div>
-
-                              {listImagensSol.length > 1 && (
-                                <div className="grid grid-cols-3 gap-1">
-                                  {listImagensSol.slice(1, 4).map((solSecUrl, solSecIdx) => (
-                                    <div key={`pdf-sec-sol-${solSecIdx}`} className="h-8 border border-emerald-300 rounded overflow-hidden bg-[#041A24]">
+                            <div className="col-span-5">
+                              {listImagensSol.length === 1 ? (
+                                <div className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] h-20 relative flex items-center justify-center p-0.5 shadow-sm">
+                                  <div className="absolute top-1 left-1 bg-[#041A24]/90 text-emerald-400 text-[8px] font-mono px-1.5 py-0.5 rounded border border-emerald-400/40 z-10">
+                                    💡 Solução #1
+                                  </div>
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={listImagensSol[0]}
+                                    alt="Foto da Solução"
+                                    crossOrigin="anonymous"
+                                    className="w-full h-full object-contain mx-auto"
+                                  />
+                                </div>
+                              ) : listImagensSol.length === 2 ? (
+                                <div className="grid grid-cols-2 gap-1.5 h-20">
+                                  {listImagensSol.slice(0, 2).map((solUrl, solIdx) => (
+                                    <div
+                                      key={`pdf-sol-grid2-${solIdx}`}
+                                      className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] relative flex items-center justify-center p-0.5 shadow-sm h-full"
+                                    >
+                                      <div className="absolute top-0.5 left-0.5 bg-[#041A24]/90 text-emerald-400 text-[7px] font-mono px-1 rounded z-10">
+                                        💡 #{solIdx + 1}
+                                      </div>
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img src={solSecUrl} alt={`Sol ${solSecIdx + 1}`} crossOrigin="anonymous" className="w-full h-full object-cover" />
+                                      <img
+                                        src={solUrl}
+                                        alt={`Solução ${solIdx + 1}`}
+                                        crossOrigin="anonymous"
+                                        className="w-full h-full object-contain mx-auto"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-3 gap-1 h-20">
+                                  {listImagensSol.slice(0, 3).map((solUrl, solIdx) => (
+                                    <div
+                                      key={`pdf-sol-grid3-${solIdx}`}
+                                      className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] relative flex items-center justify-center p-0.5 shadow-sm h-full"
+                                    >
+                                      <div className="absolute top-0.5 left-0.5 bg-[#041A24]/90 text-emerald-400 text-[7px] font-mono px-1 rounded z-10">
+                                        #{solIdx + 1}
+                                      </div>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={solUrl}
+                                        alt={`Solução ${solIdx + 1}`}
+                                        crossOrigin="anonymous"
+                                        className="w-full h-full object-contain mx-auto"
+                                      />
                                     </div>
                                   ))}
                                 </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images, Pencil } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images, Pencil, Layers } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -150,6 +150,16 @@ export function ApontamentoCard({
               {apontamento.disciplina_destino}
             </span>
           </div>
+
+          {/* Pavimento e Localização */}
+          {(apontamento.pavimento || apontamento.localizacao) && (
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 truncate">
+              <Layers className="h-3 w-3 text-[#00A3C4] shrink-0" />
+              <span className="truncate">
+                {[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ')}
+              </span>
+            </div>
+          )}
 
           {/* Resumo da Descrição */}
           <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">

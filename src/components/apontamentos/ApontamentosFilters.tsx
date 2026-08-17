@@ -1,25 +1,25 @@
 "use client";
 
 import React from 'react';
-import { Search, Filter, RefreshCw } from 'lucide-react';
+import { Search, Filter, RefreshCw, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { SelectNative } from '@/components/ui/select-native';
+import { MultiSelectFilter, MultiSelectOption } from '@/components/ui/multi-select-filter';
 import { DISCIPLINAS_OPCOES, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 
 interface ApontamentosFiltersProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
-  selectedStatus: string;
-  onStatusChange: (status: string) => void;
-  selectedPrioridade: string;
-  onPrioridadeChange: (prioridade: string) => void;
-  selectedDisciplina: string;
-  onDisciplinaChange: (disciplina: string) => void;
-  selectedTipoConflito: string;
-  onTipoConflitoChange: (tipo: string) => void;
-  selectedProjeto: string;
-  onProjetoChange: (projetoId: string) => void;
+  selectedStatus: string[];
+  onStatusChange: (status: string[]) => void;
+  selectedPrioridades: string[];
+  onPrioridadesChange: (prioridades: string[]) => void;
+  selectedDisciplinas: string[];
+  onDisciplinasChange: (disciplinas: string[]) => void;
+  selectedTiposConflito: string[];
+  onTiposConflitoChange: (tipos: string[]) => void;
+  selectedProjetos: string[];
+  onProjetosChange: (projetosIds: string[]) => void;
   projetosList: Projeto[];
   onResetFilters: () => void;
 }
@@ -29,127 +29,200 @@ export function ApontamentosFilters({
   onSearchChange,
   selectedStatus,
   onStatusChange,
-  selectedPrioridade,
-  onPrioridadeChange,
-  selectedDisciplina,
-  onDisciplinaChange,
-  selectedTipoConflito,
-  onTipoConflitoChange,
-  selectedProjeto,
-  onProjetoChange,
+  selectedPrioridades,
+  onPrioridadesChange,
+  selectedDisciplinas,
+  onDisciplinasChange,
+  selectedTiposConflito,
+  onTiposConflitoChange,
+  selectedProjetos,
+  onProjetosChange,
   projetosList,
   onResetFilters,
 }: ApontamentosFiltersProps) {
   const hasActiveFilters =
-    searchTerm ||
-    selectedStatus !== 'Todos' ||
-    selectedPrioridade !== 'Todas' ||
-    selectedDisciplina !== 'Todas' ||
-    selectedTipoConflito !== 'Todos' ||
-    selectedProjeto !== 'Todos';
+    Boolean(searchTerm) ||
+    selectedStatus.length > 0 ||
+    selectedPrioridades.length > 0 ||
+    selectedDisciplinas.length > 0 ||
+    selectedTiposConflito.length > 0 ||
+    selectedProjetos.length > 0;
+
+  const projetoOptions: MultiSelectOption[] = projetosList.map((p) => ({
+    value: p.id,
+    label: p.nome,
+  }));
+
+  const tipoConflitoOptions: MultiSelectOption[] = TIPOS_CONFLITO_OPCOES.map((tc) => ({
+    value: tc,
+    label: tc,
+  }));
+
+  const statusOptions: MultiSelectOption[] = [
+    { value: 'Aberto', label: 'Aberto' },
+    { value: 'Resolvido', label: 'Resolvido' },
+  ];
+
+  const prioridadeOptions: MultiSelectOption[] = [
+    { value: 'Alta', label: 'Alta' },
+    { value: 'Média', label: 'Média' },
+    { value: 'Baixa', label: 'Baixa' },
+  ];
+
+  const disciplinaOptions: MultiSelectOption[] = DISCIPLINAS_OPCOES.map((d) => ({
+    value: d,
+    label: d,
+  }));
 
   return (
-    <div className="bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-4">
+    <div className="bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3.5">
+      {/* Cabeçalho do Bloco de Filtros */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-bold text-[#072B3B] dark:text-slate-200 uppercase tracking-wider">
-          <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> Filtros e Busca
+        <div className="flex items-center gap-2 text-xs font-extrabold text-[#072B3B] dark:text-slate-100 uppercase tracking-wider">
+          <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> Filtros Dinâmicos (Multi-Seleção)
         </div>
         {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
             onClick={onResetFilters}
-            className="text-xs text-slate-500 hover:text-[#00A3C4] dark:text-slate-400 dark:hover:text-white h-7 gap-1"
+            className="text-xs font-semibold text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 h-7 gap-1"
           >
-            <RefreshCw className="h-3 w-3" /> Limpar Filtros
+            <RefreshCw className="h-3 w-3" /> Limpar Todos os Filtros
           </Button>
         )}
       </div>
 
+      {/* Grid de Controles Multi-Select */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-        {/* Campo de Busca por Título */}
+        {/* Campo de Busca Textual */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
-            placeholder="Buscar por título..."
+            placeholder="Buscar por texto..."
             value={searchTerm}
             onChange={(e) => onSearchChange(e.target.value)}
             className="pl-9 text-xs sm:text-sm h-10 rounded-xl"
           />
         </div>
 
-        {/* Filtro por Projeto */}
-        <div>
-          <SelectNative
-            variant="indigo"
-            value={selectedProjeto}
-            onChange={(e) => onProjetoChange(e.target.value)}
-          >
-            <option value="Todos">Projeto: Todos</option>
-            {projetosList.map((p) => (
-              <option key={`filter-proj-${p.id}`} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </SelectNative>
-        </div>
+        {/* Multi-Select de Projetos */}
+        <MultiSelectFilter
+          label="Projeto"
+          placeholder="Todos"
+          options={projetoOptions}
+          selectedValues={selectedProjetos}
+          onChange={onProjetosChange}
+          variant="wcc"
+          searchable
+        />
 
-        {/* Filtro de Tipo de Apontamento */}
-        <div>
-          <SelectNative
-            variant="amber"
-            value={selectedTipoConflito}
-            onChange={(e) => onTipoConflitoChange(e.target.value)}
-          >
-            <option value="Todos">Tipo de Apontamento: Todos</option>
-            {TIPOS_CONFLITO_OPCOES.map((tc) => (
-              <option key={`filter-tc-${tc}`} value={tc}>
-                {tc}
-              </option>
-            ))}
-          </SelectNative>
-        </div>
+        {/* Multi-Select de Tipo de Apontamento */}
+        <MultiSelectFilter
+          label="Tipo"
+          placeholder="Todos"
+          options={tipoConflitoOptions}
+          selectedValues={selectedTiposConflito}
+          onChange={onTiposConflitoChange}
+          variant="amber"
+          searchable
+        />
 
-        {/* Filtro de Status */}
-        <div>
-          <SelectNative
-            value={selectedStatus}
-            onChange={(e) => onStatusChange(e.target.value)}
-          >
-            <option value="Todos">Status: Todos</option>
-            <option value="Aberto">Aberto</option>
-            <option value="Resolvido">Resolvido</option>
-          </SelectNative>
-        </div>
+        {/* Multi-Select de Status */}
+        <MultiSelectFilter
+          label="Status"
+          placeholder="Todos"
+          options={statusOptions}
+          selectedValues={selectedStatus}
+          onChange={onStatusChange}
+          variant="emerald"
+        />
 
-        {/* Filtro de Prioridade */}
-        <div>
-          <SelectNative
-            value={selectedPrioridade}
-            onChange={(e) => onPrioridadeChange(e.target.value)}
-          >
-            <option value="Todas">Prioridade: Todas</option>
-            <option value="Baixa">Baixa</option>
-            <option value="Média">Média</option>
-            <option value="Alta">Alta</option>
-          </SelectNative>
-        </div>
+        {/* Multi-Select de Prioridade */}
+        <MultiSelectFilter
+          label="Prioridade"
+          placeholder="Todas"
+          options={prioridadeOptions}
+          selectedValues={selectedPrioridades}
+          onChange={onPrioridadesChange}
+          variant="default"
+        />
 
-        {/* Filtro por Disciplina */}
-        <div>
-          <SelectNative
-            value={selectedDisciplina}
-            onChange={(e) => onDisciplinaChange(e.target.value)}
-          >
-            <option value="Todas">Disciplina: Todas</option>
-            {DISCIPLINAS_OPCOES.map((d) => (
-              <option key={`filter-${d}`} value={d}>
-                {d}
-              </option>
-            ))}
-          </SelectNative>
-        </div>
+        {/* Multi-Select de Disciplinas */}
+        <MultiSelectFilter
+          label="Disciplina"
+          placeholder="Todas"
+          options={disciplinaOptions}
+          selectedValues={selectedDisciplinas}
+          onChange={onDisciplinasChange}
+          variant="default"
+          searchable
+        />
       </div>
+
+      {/* Chips / Tags de Filtros Ativos (Removíveis com 1 clique) */}
+      {hasActiveFilters && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-[#0B384D] text-xs">
+          <span className="text-[11px] font-bold text-slate-400 mr-1">Filtros ativos:</span>
+
+          {searchTerm && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 text-[11px] font-medium border border-slate-200 dark:border-slate-700">
+              Busca: &quot;{searchTerm}&quot;
+              <button type="button" onClick={() => onSearchChange('')} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
+
+          {selectedProjetos.map((projId) => {
+            const name = projetosList.find((p) => p.id === projId)?.nome || projId;
+            return (
+              <span key={`chip-proj-${projId}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[11px] font-bold border border-[#00A3C4]/30">
+                Proj: {name}
+                <button type="button" onClick={() => onProjetosChange(selectedProjetos.filter((id) => id !== projId))} className="hover:text-rose-500">
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            );
+          })}
+
+          {selectedTiposConflito.map((tipo) => (
+            <span key={`chip-tc-${tipo}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-[11px] font-bold border border-amber-300 dark:border-amber-800">
+              {tipo}
+              <button type="button" onClick={() => onTiposConflitoChange(selectedTiposConflito.filter((t) => t !== tipo))} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+
+          {selectedStatus.map((st) => (
+            <span key={`chip-st-${st}`} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold border ${st === 'Aberto' ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 border-amber-300 dark:border-amber-800' : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 border-emerald-300 dark:border-emerald-800'}`}>
+              Status: {st}
+              <button type="button" onClick={() => onStatusChange(selectedStatus.filter((s) => s !== st))} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+
+          {selectedPrioridades.map((prio) => (
+            <span key={`chip-prio-${prio}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 text-[11px] font-bold border border-slate-200 dark:border-slate-700">
+              Prio: {prio}
+              <button type="button" onClick={() => onPrioridadesChange(selectedPrioridades.filter((p) => p !== prio))} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+
+          {selectedDisciplinas.map((disc) => (
+            <span key={`chip-disc-${disc}`} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-cyan-50 dark:bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[11px] font-bold border border-[#00A3C4]/30">
+              Disc: {disc}
+              <button type="button" onClick={() => onDisciplinasChange(selectedDisciplinas.filter((d) => d !== disc))} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, FolderKanban, Loader2, Sparkles, AlertCircle, Trash2, Calendar, CheckCircle2, XCircle, Search } from 'lucide-react';
-import { Projeto, NovoProjeto } from '@/types/apontamento';
+import { Plus, FolderKanban, Loader2, Sparkles, AlertCircle, Trash2, Calendar, CheckCircle2, XCircle, Search, X, Layers } from 'lucide-react';
+import { Projeto, NovoProjeto, SUGESTOES_PAVIMENTOS } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -25,8 +25,28 @@ export default function ProjetosPage() {
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
   const [status, setStatus] = useState<'Ativo' | 'Inativo'>('Ativo');
+  const [pavimentos, setPavimentos] = useState<string[]>([
+    'Subsolo 1',
+    'Térreo',
+    'Pavimento Tipo',
+    'Cobertura',
+  ]);
+  const [novoPavimentoInput, setNovoPavimentoInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  const addPavimento = (nomePav: string) => {
+    const trimmed = nomePav.trim();
+    if (!trimmed) return;
+    if (!pavimentos.includes(trimmed)) {
+      setPavimentos((prev) => [...prev, trimmed]);
+    }
+    setNovoPavimentoInput('');
+  };
+
+  const removePavimento = (nomePav: string) => {
+    setPavimentos((prev) => prev.filter((p) => p !== nomePav));
+  };
 
   // Carregar Projetos do Supabase ou Mock
   const fetchProjetos = useCallback(async () => {
@@ -76,6 +96,7 @@ export default function ProjetosPage() {
         nome: nome.trim(),
         descricao: descricao.trim() || null,
         status,
+        pavimentos: pavimentos.length > 0 ? pavimentos : null,
       };
 
       if (isSupabaseConfigured() && supabase) {
@@ -101,6 +122,7 @@ export default function ProjetosPage() {
       setNome('');
       setDescricao('');
       setStatus('Ativo');
+      setPavimentos(['Subsolo 1', 'Térreo', 'Pavimento Tipo', 'Cobertura']);
       setIsFormOpen(false);
     } catch (err: unknown) {
       const error = err as Error;
@@ -226,10 +248,26 @@ export default function ProjetosPage() {
                     </div>
                     <CardTitle className="text-lg font-bold leading-snug text-[#072B3B] dark:text-white">{projeto.nome}</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
                       {projeto.descricao || 'Sem descrição cadastrada.'}
                     </p>
+
+                    {/* Exibição dos Pavimentos / Níveis Configurados */}
+                    {projeto.pavimentos && projeto.pavimentos.length > 0 && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-[#0B384D]/60 space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                          <Layers className="h-3 w-3 text-[#00A3C4]" /> Pavimentos / Níveis ({projeto.pavimentos.length})
+                        </span>
+                        <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto">
+                          {projeto.pavimentos.map((pav) => (
+                            <span key={pav} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 text-[10px] font-semibold border border-slate-200 dark:border-slate-700">
+                              {pav}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </div>
 
@@ -284,14 +322,14 @@ export default function ProjetosPage() {
 
       {/* Modal de Cadastro de Projeto */}
       <Dialog open={isFormOpen} onOpenChange={(open) => !open && setIsFormOpen(false)}>
-        <DialogContent className="sm:max-w-md dark:bg-[#072B3B] dark:border-[#0B384D]">
+        <DialogContent className="sm:max-w-lg dark:bg-[#072B3B] dark:border-[#0B384D] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
               <Sparkles className="h-4 w-4" /> WCC • Novo Empreendimento
             </div>
             <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white">Cadastrar Projeto</DialogTitle>
-            <DialogDescription className="text-slate-500 dark:text-slate-400">
-              Adicione um novo projeto à base de dados para associar apontamentos.
+            <DialogDescription className="text-slate-500 dark:text-slate-400 text-xs">
+              Adicione um novo projeto e configure seus pavimentos para uso nos apontamentos e relatórios.
             </DialogDescription>
           </DialogHeader>
 
@@ -327,6 +365,77 @@ export default function ProjetosPage() {
               </SelectNative>
             </div>
 
+            {/* Gerenciamento de Pavimentos / Níveis */}
+            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-[#0B384D]">
+              <Label className="flex items-center justify-between text-xs font-bold text-[#072B3B] dark:text-slate-200">
+                <span className="flex items-center gap-1.5">
+                  <Layers className="h-3.5 w-3.5 text-[#00A3C4]" /> Pavimentos / Níveis do Projeto
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">({pavimentos.length} configurados)</span>
+              </Label>
+
+              {/* Input para adicionar pavimento customizado */}
+              <div className="flex items-center gap-1.5">
+                <Input
+                  placeholder="Ex: Subsolo 2, 5º Pavimento, Cobertura..."
+                  value={novoPavimentoInput}
+                  onChange={(e) => setNovoPavimentoInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addPavimento(novoPavimentoInput);
+                    }
+                  }}
+                  className="h-9 text-xs rounded-xl"
+                />
+                <Button
+                  type="button"
+                  variant="wcc"
+                  size="sm"
+                  onClick={() => addPavimento(novoPavimentoInput)}
+                  className="h-9 text-xs font-bold shrink-0"
+                >
+                  + Adicionar
+                </Button>
+              </div>
+
+              {/* Sugestões Rápidas */}
+              <div className="flex flex-wrap items-center gap-1 pt-1">
+                <span className="text-[10px] text-slate-400 font-bold mr-1">Sugestões rápidas:</span>
+                {SUGESTOES_PAVIMENTOS.slice(0, 8).map((sug) => (
+                  <button
+                    key={sug}
+                    type="button"
+                    onClick={() => addPavimento(sug)}
+                    className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#0B384D] text-slate-700 dark:text-slate-300 text-[10px] font-semibold hover:bg-[#00A3C4]/15 hover:text-[#008EA9] transition-colors border border-slate-200 dark:border-slate-700"
+                  >
+                    + {sug}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tags dos Pavimentos Adicionados */}
+              {pavimentos.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1.5 p-2.5 bg-slate-50 dark:bg-[#041A24] rounded-xl border border-slate-200 dark:border-[#0B384D] max-h-28 overflow-y-auto">
+                  {pavimentos.map((p) => (
+                    <span
+                      key={p}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[11px] font-bold border border-[#00A3C4]/30"
+                    >
+                      {p}
+                      <button
+                        type="button"
+                        onClick={() => removePavimento(p)}
+                        className="hover:text-rose-500 transition-colors cursor-pointer"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <Label htmlFor="descricao">Descrição (Opcional)</Label>
               <Textarea
@@ -334,8 +443,8 @@ export default function ProjetosPage() {
                 placeholder="Breve descrição do escopo do projeto ou obra..."
                 value={descricao}
                 onChange={(e) => setDescricao(e.target.value)}
-                rows={3}
-                className="rounded-xl"
+                rows={2}
+                className="rounded-xl text-xs"
               />
             </div>
 

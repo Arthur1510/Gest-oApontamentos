@@ -28,13 +28,13 @@ export default function HomePage() {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Filtros
+  // Filtros com suporte a multi-seleção
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('Todos');
-  const [selectedPrioridade, setSelectedPrioridade] = useState('Todas');
-  const [selectedDisciplina, setSelectedDisciplina] = useState('Todas');
-  const [selectedTipoConflito, setSelectedTipoConflito] = useState('Todos');
-  const [selectedProjeto, setSelectedProjeto] = useState('Todos');
+  const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
+  const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
+  const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
+  const [selectedTiposConflito, setSelectedTiposConflito] = useState<string[]>([]);
+  const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
 
   // Carregar Apontamentos e Projetos do Supabase ou Mock
   const fetchApontamentos = useCallback(async () => {
@@ -228,7 +228,7 @@ export default function HomePage() {
     }
   };
 
-  // Filtragem dinâmica e reativa dos itens exibidos
+  // Filtragem dinâmica e reativa dos itens exibidos com suporte a multi-seleção
   const filteredApontamentos = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
@@ -243,28 +243,29 @@ export default function HomePage() {
         (Boolean(item.disciplina_destino) && item.disciplina_destino.toLowerCase().includes(term)) ||
         (Boolean(item.tipo_conflito) && item.tipo_conflito!.toLowerCase().includes(term));
 
-      // 2. Filtro de Status
+      // 2. Filtro de Status (multi-seleção)
       const matchesStatus =
-        selectedStatus === 'Todos' || item.status === selectedStatus;
+        selectedStatus.length === 0 || selectedStatus.includes(item.status);
 
-      // 3. Filtro de Prioridade
+      // 3. Filtro de Prioridade (multi-seleção)
       const matchesPrioridade =
-        selectedPrioridade === 'Todas' || item.prioridade === selectedPrioridade;
+        selectedPrioridades.length === 0 || selectedPrioridades.includes(item.prioridade);
 
-      // 4. Filtro de Disciplina (origem ou destino)
+      // 4. Filtro de Disciplina (multi-seleção para origem ou destino)
       const matchesDisciplina =
-        selectedDisciplina === 'Todas' ||
-        item.disciplina_origem === selectedDisciplina ||
-        item.disciplina_destino === selectedDisciplina;
+        selectedDisciplinas.length === 0 ||
+        selectedDisciplinas.includes(item.disciplina_origem) ||
+        selectedDisciplinas.includes(item.disciplina_destino);
 
-      // 5. Filtro de Tipo de Conflito
+      // 5. Filtro de Tipo de Conflito (multi-seleção)
       const itemTipo = item.tipo_conflito || 'Conflito Físico';
       const matchesTipoConflito =
-        selectedTipoConflito === 'Todos' || itemTipo === selectedTipoConflito;
+        selectedTiposConflito.length === 0 || selectedTiposConflito.includes(itemTipo);
 
-      // 6. Filtro de Projeto
+      // 6. Filtro de Projeto (multi-seleção)
       const matchesProjeto =
-        selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
+        selectedProjetos.length === 0 ||
+        (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
 
       return (
         matchesSearch &&
@@ -279,19 +280,19 @@ export default function HomePage() {
     apontamentos,
     searchTerm,
     selectedStatus,
-    selectedPrioridade,
-    selectedDisciplina,
-    selectedTipoConflito,
-    selectedProjeto,
+    selectedPrioridades,
+    selectedDisciplinas,
+    selectedTiposConflito,
+    selectedProjetos,
   ]);
 
   const resetFilters = () => {
     setSearchTerm('');
-    setSelectedStatus('Todos');
-    setSelectedPrioridade('Todas');
-    setSelectedDisciplina('Todas');
-    setSelectedTipoConflito('Todos');
-    setSelectedProjeto('Todos');
+    setSelectedStatus([]);
+    setSelectedPrioridades([]);
+    setSelectedDisciplinas([]);
+    setSelectedTiposConflito([]);
+    setSelectedProjetos([]);
   };
 
   return (
@@ -312,27 +313,27 @@ export default function HomePage() {
         <ApontamentosHeader
           apontamentos={filteredApontamentos}
           totalRawCount={apontamentos.length}
-          selectedStatus={selectedStatus}
-          selectedPrioridade={selectedPrioridade}
+          selectedStatus={selectedStatus.length === 1 ? selectedStatus[0] : selectedStatus.length > 1 ? 'Multi' : 'Todos'}
+          selectedPrioridade={selectedPrioridades.length === 1 ? selectedPrioridades[0] : selectedPrioridades.length > 1 ? 'Multi' : 'Todas'}
           onOpenNewModal={handleOpenNewModal}
-          onFilterStatus={(status) => setSelectedStatus(status)}
-          onFilterPrioridade={(prio) => setSelectedPrioridade(prio)}
+          onFilterStatus={(status) => setSelectedStatus(status === 'Todos' ? [] : [status])}
+          onFilterPrioridade={(prio) => setSelectedPrioridades(prio === 'Todas' ? [] : [prio])}
         />
 
-        {/* Filtros e Barra de Pesquisa */}
+        {/* Filtros com Suporte a Múltiplas Seleções Simultâneas */}
         <ApontamentosFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           selectedStatus={selectedStatus}
           onStatusChange={setSelectedStatus}
-          selectedPrioridade={selectedPrioridade}
-          onPrioridadeChange={setSelectedPrioridade}
-          selectedDisciplina={selectedDisciplina}
-          onDisciplinaChange={setSelectedDisciplina}
-          selectedTipoConflito={selectedTipoConflito}
-          onTipoConflitoChange={setSelectedTipoConflito}
-          selectedProjeto={selectedProjeto}
-          onProjetoChange={setSelectedProjeto}
+          selectedPrioridades={selectedPrioridades}
+          onPrioridadesChange={setSelectedPrioridades}
+          selectedDisciplinas={selectedDisciplinas}
+          onDisciplinasChange={setSelectedDisciplinas}
+          selectedTiposConflito={selectedTiposConflito}
+          onTiposConflitoChange={setSelectedTiposConflito}
+          selectedProjetos={selectedProjetos}
+          onProjetosChange={setSelectedProjetos}
           projetosList={projetosList}
           onResetFilters={resetFilters}
         />

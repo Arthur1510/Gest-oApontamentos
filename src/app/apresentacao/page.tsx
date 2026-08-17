@@ -24,7 +24,7 @@ import { Apontamento, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SelectNative } from '@/components/ui/select-native';
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { formatDate } from '@/lib/utils';
 
@@ -33,9 +33,9 @@ export default function ResumoExecutivoPage() {
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filtros de Resumo
-  const [selectedProjeto, setSelectedProjeto] = useState<string>('Todos');
-  const [selectedPrioridade, setSelectedPrioridade] = useState<string>('Todas');
+  // Filtros de Resumo com multi-seleção
+  const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
+  const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
 
   // Controle de Slides (0 = Capa Resumo Executivo, 1..N = Apontamentos)
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
@@ -91,12 +91,13 @@ export default function ResumoExecutivoPage() {
     fetchData();
   }, [fetchData]);
 
-  // Lista Filtrada para Resumo
+  // Lista Filtrada para Resumo com multi-seleção
   const filteredApontamentos = apontamentos.filter((item) => {
     const matchesProjeto =
-      selectedProjeto === 'Todos' || item.projeto_id === selectedProjeto;
+      selectedProjetos.length === 0 ||
+      (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
     const matchesPrioridade =
-      selectedPrioridade === 'Todas' || item.prioridade === selectedPrioridade;
+      selectedPrioridades.length === 0 || selectedPrioridades.includes(item.prioridade);
     return matchesProjeto && matchesPrioridade;
   });
 
@@ -186,40 +187,36 @@ export default function ResumoExecutivoPage() {
 
         {/* Filtros Rápido no Topo */}
         <div className="hidden md:flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
-            <Filter className="h-3.5 w-3.5 text-[#00A3C4]" />
-            <span>Projeto:</span>
-          </div>
-          <SelectNative
-            variant="indigo"
-            value={selectedProjeto}
-            onChange={(e) => {
-              setSelectedProjeto(e.target.value);
+          <MultiSelectFilter
+            label="Projetos"
+            placeholder="Todos"
+            options={projetosList.map((p) => ({ value: p.id, label: p.nome }))}
+            selectedValues={selectedProjetos}
+            onChange={(values) => {
+              setSelectedProjetos(values);
               setCurrentSlideIdx(0);
             }}
-            className="h-8 text-xs py-0 w-48"
-          >
-            <option value="Todos">Todos os Projetos</option>
-            {projetosList.map((p) => (
-              <option key={`res-proj-${p.id}`} value={p.id}>
-                {p.nome}
-              </option>
-            ))}
-          </SelectNative>
+            variant="wcc"
+            searchable
+            className="w-48"
+          />
 
-          <SelectNative
-            value={selectedPrioridade}
-            onChange={(e) => {
-              setSelectedPrioridade(e.target.value);
+          <MultiSelectFilter
+            label="Prioridade"
+            placeholder="Todas"
+            options={[
+              { value: 'Alta', label: 'Alta Severidade' },
+              { value: 'Média', label: 'Média Severidade' },
+              { value: 'Baixa', label: 'Baixa Severidade' },
+            ]}
+            selectedValues={selectedPrioridades}
+            onChange={(values) => {
+              setSelectedPrioridades(values);
               setCurrentSlideIdx(0);
             }}
-            className="h-8 text-xs py-0 w-36"
-          >
-            <option value="Todas">Todas Prioridades</option>
-            <option value="Alta">Alta Severidade</option>
-            <option value="Média">Média Severidade</option>
-            <option value="Baixa">Baixa Severidade</option>
-          </SelectNative>
+            variant="default"
+            className="w-44"
+          />
         </div>
 
         {/* Toggle Tema, Contador de Slides e Fullscreen */}

@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check, Pencil, Save } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check, Pencil, Save, Layers, MapPin } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { SelectNative } from '@/components/ui/select-native';
-import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES, Apontamento } from '@/types/apontamento';
+import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES, Apontamento, SUGESTOES_PAVIMENTOS } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { compressImage, formatFileSize } from '@/lib/image-compression';
 
@@ -51,6 +51,11 @@ export function ApontamentoFormModal({
   const [status, setStatus] = useState<StatusApontamento>('Aberto');
   const [prioridade, setPrioridade] = useState<PrioridadeApontamento>('Média');
   const [tipoConflito, setTipoConflito] = useState<TipoConflito>('Conflito Físico');
+  
+  // Localização & Pavimento
+  const [pavimento, setPavimento] = useState<string>('');
+  const [localizacao, setLocalizacao] = useState<string>('');
+  const [customPavimentoMode, setCustomPavimentoMode] = useState(false);
   
   // Relacionamento com Projeto (Dropdown)
   const [projetoId, setProjetoId] = useState<string>('');
@@ -96,6 +101,9 @@ export function ApontamentoFormModal({
       setPrioridade(apontamentoToEdit.prioridade || 'Média');
       setTipoConflito(apontamentoToEdit.tipo_conflito || 'Conflito Físico');
       setProjetoId(apontamentoToEdit.projeto_id || '');
+      setPavimento(apontamentoToEdit.pavimento || '');
+      setLocalizacao(apontamentoToEdit.localizacao || '');
+      setCustomPavimentoMode(false);
 
       const initialAptImages: ImageItem[] = [];
       if (apontamentoToEdit.imagens_apontamento && apontamentoToEdit.imagens_apontamento.length > 0) {
@@ -144,6 +152,9 @@ export function ApontamentoFormModal({
       setPrioridade('Média');
       setTipoConflito('Conflito Físico');
       setProjetoId('');
+      setPavimento('');
+      setLocalizacao('');
+      setCustomPavimentoMode(false);
       setApontamentoImages([]);
       setSolucaoImages([]);
       setErrorMsg('');
@@ -372,6 +383,8 @@ export function ApontamentoFormModal({
         status,
         prioridade,
         tipo_conflito: tipoConflito,
+        pavimento: pavimento.trim() || null,
+        localizacao: localizacao.trim() || null,
         url_imagem: finalApontamentoUrls[0] || null,
         url_imagem_solucao: finalSolucaoUrls[0] || null,
         imagens_apontamento: finalApontamentoUrls,
@@ -394,6 +407,9 @@ export function ApontamentoFormModal({
       setDescricao('');
       setSolucao('');
       setProjetoId('');
+      setPavimento('');
+      setLocalizacao('');
+      setCustomPavimentoMode(false);
       setApontamentoImages([]);
       setSolucaoImages([]);
       setStatus('Aberto');
@@ -402,7 +418,8 @@ export function ApontamentoFormModal({
       onClose();
     } catch (err: unknown) {
       const error = err as Error;
-      setErrorMsg(error.message || 'Erro ao registrar apontamento.');
+      console.error('Falha ao salvar apontamento:', error);
+      setErrorMsg(error.message || 'Erro inesperado ao salvar apontamento.');
     } finally {
       setIsSubmitting(false);
       setUploadStatusText('');
@@ -411,7 +428,7 @@ export function ApontamentoFormModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:bg-[#072B3B] dark:border-[#0B384D]">
+      <DialogContent className="sm:max-w-2xl max-h-[92vh] overflow-y-auto dark:bg-[#072B3B] dark:border-[#0B384D]">
         <DialogHeader>
           <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
             {isEditing ? (
@@ -470,6 +487,74 @@ export function ApontamentoFormModal({
             {isLoadingProjetos && (
               <span className="text-[11px] text-slate-400">Carregando projetos do Supabase...</span>
             )}
+          </div>
+
+          {/* Localização e Pavimento */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50/80 dark:bg-[#041A24]/60 p-3 rounded-xl border border-slate-200/80 dark:border-[#0B384D]">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="pavimento" className="flex items-center gap-1 font-semibold text-xs text-[#072B3B] dark:text-slate-200">
+                  <Layers className="h-3.5 w-3.5 text-[#00A3C4]" /> Pavimento / Nível
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setCustomPavimentoMode(!customPavimentoMode)}
+                  className="text-[10px] text-[#00A3C4] hover:underline font-bold cursor-pointer"
+                >
+                  {customPavimentoMode ? 'Escolher da lista' : '+ Digitar outro'}
+                </button>
+              </div>
+
+              {customPavimentoMode ? (
+                <Input
+                  id="pavimento"
+                  placeholder="Ex: 5º Pavimento Tipo, Cobertura..."
+                  value={pavimento}
+                  onChange={(e) => setPavimento(e.target.value)}
+                  className="h-9 text-xs rounded-xl"
+                />
+              ) : (
+                <SelectNative
+                  id="pavimento"
+                  value={pavimento}
+                  onChange={(e) => {
+                    if (e.target.value === '__OUTRO__') {
+                      setCustomPavimentoMode(true);
+                      setPavimento('');
+                    } else {
+                      setPavimento(e.target.value);
+                    }
+                  }}
+                  className="h-9 text-xs"
+                >
+                  <option value="">-- Selecione o Pavimento / Nível --</option>
+                  {/* Pavimentos do Projeto selecionado ou Sugestões Padrão */}
+                  {(() => {
+                    const proj = projetosOpcoes.find((p) => p.id === projetoId);
+                    const lista = proj?.pavimentos && proj.pavimentos.length > 0 ? proj.pavimentos : SUGESTOES_PAVIMENTOS;
+                    return lista.map((pav) => (
+                      <option key={`pav-${pav}`} value={pav}>
+                        {pav}
+                      </option>
+                    ));
+                  })()}
+                  <option value="__OUTRO__">+ Digitar outro pavimento...</option>
+                </SelectNative>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="localizacao" className="flex items-center gap-1 font-semibold text-xs text-[#072B3B] dark:text-slate-200">
+                <MapPin className="h-3.5 w-3.5 text-[#00A3C4]" /> Localização / Eixo / Ambiente
+              </Label>
+              <Input
+                id="localizacao"
+                placeholder="Ex: Eixo 4-C / Shaft Cozinha / Vaga 12"
+                value={localizacao}
+                onChange={(e) => setLocalizacao(e.target.value)}
+                className="h-9 text-xs rounded-xl"
+              />
+            </div>
           </div>
 
           {/* Título */}

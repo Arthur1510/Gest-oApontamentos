@@ -29,6 +29,7 @@ import {
 import { Apontamento, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
+import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -56,7 +57,7 @@ const TIPO_CONFLITO_COLORS = [
 export default function DashboardPage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
-  const [selectedProjeto, setSelectedProjeto] = useState<string>('Todos');
+  const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
@@ -103,11 +104,11 @@ export default function DashboardPage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Lista Filtrada por Projeto
+  // Lista Filtrada por Projetos (Multi-Seleção)
   const filteredApontamentos = useMemo(() => {
-    if (selectedProjeto === 'Todos') return apontamentos;
-    return apontamentos.filter((item) => item.projeto_id === selectedProjeto);
-  }, [apontamentos, selectedProjeto]);
+    if (selectedProjetos.length === 0) return apontamentos;
+    return apontamentos.filter((item) => Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
+  }, [apontamentos, selectedProjetos]);
 
   // 1. Apontamentos por Disciplina de Origem (Abertos vs Resolvidos)
   const dataPorDisciplinaOrigem = useMemo(() => {
@@ -206,22 +207,17 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3 self-start sm:self-auto">
-            {/* Filtro por Projeto no Dashboard */}
-            <div className="flex items-center gap-2 bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] p-1.5 rounded-xl shadow-2xs">
-              <FolderKanban className="h-4 w-4 text-[#00A3C4] ml-2" />
-              <select
-                value={selectedProjeto}
-                onChange={(e) => setSelectedProjeto(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#072B3B] dark:text-slate-200 focus:outline-none pr-2 cursor-pointer"
-              >
-                <option value="Todos">Todos os Projetos</option>
-                {projetosList.map((p) => (
-                  <option key={`dash-proj-${p.id}`} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Multi-Select por Projetos no Dashboard */}
+            <MultiSelectFilter
+              label="Projetos"
+              placeholder="Todos"
+              options={projetosList.map((p) => ({ value: p.id, label: p.nome }))}
+              selectedValues={selectedProjetos}
+              onChange={setSelectedProjetos}
+              variant="wcc"
+              searchable
+              className="w-56"
+            />
 
             <Button
               variant="outline"

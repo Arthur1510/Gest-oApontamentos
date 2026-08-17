@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil } from 'lucide-react';
+import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil, Layers, MapPin, FolderKanban } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -175,6 +175,14 @@ export function ApontamentoDetailModal({
                 <ShieldAlert className="h-3 w-3" />
                 {apontamento.tipo_conflito || 'Conflito Físico'}
               </Badge>
+
+              {/* Badge Projeto */}
+              {apontamento.projetos?.nome && (
+                <Badge variant="outline" className="bg-[#00A3C4]/10 text-[#008EA9] dark:text-[#00C4EB] border-[#00A3C4]/30 flex items-center gap-1 font-semibold">
+                  <FolderKanban className="h-3 w-3" />
+                  {apontamento.projetos.nome}
+                </Badge>
+              )}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-slate-500">
               <Calendar className="h-3.5 w-3.5" />
@@ -187,17 +195,40 @@ export function ApontamentoDetailModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Informações da Rota de Disciplina */}
-        <div className="flex items-center gap-3 bg-slate-50 dark:bg-[#041A24] p-3 rounded-xl border border-slate-200/80 dark:border-[#0B384D] text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
-          <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Origem:</span>
-          <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-[#00A3C4] dark:text-[#00C4EB]">
-            {apontamento.disciplina_origem}
-          </span>
-          <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
-          <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Destino:</span>
-          <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-rose-600 dark:text-rose-400">
-            {apontamento.disciplina_destino}
-          </span>
+        {/* Informações da Rota de Disciplina e Localização */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-3 bg-slate-50 dark:bg-[#041A24] p-3 rounded-xl border border-slate-200/80 dark:border-[#0B384D] text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-300">
+            <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Origem:</span>
+            <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-[#00A3C4] dark:text-[#00C4EB]">
+              {apontamento.disciplina_origem}
+            </span>
+            <ArrowRight className="h-4 w-4 text-slate-400 shrink-0" />
+            <span className="text-slate-500 uppercase text-[11px] font-bold tracking-wider">Destino:</span>
+            <span className="px-2.5 py-1 rounded bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-2xs font-extrabold text-rose-600 dark:text-rose-400">
+              {apontamento.disciplina_destino}
+            </span>
+          </div>
+
+          {/* Pavimento e Localização */}
+          {(apontamento.pavimento || apontamento.localizacao) && (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl bg-slate-100/70 dark:bg-[#072B3B] border border-slate-200/70 dark:border-[#0B384D] text-xs">
+              {apontamento.pavimento && (
+                <span className="inline-flex items-center gap-1 font-semibold text-[#072B3B] dark:text-slate-200">
+                  <Layers className="h-3.5 w-3.5 text-[#00A3C4]" />
+                  <span className="text-slate-500 font-normal">Pavimento:</span> {apontamento.pavimento}
+                </span>
+              )}
+              {apontamento.pavimento && apontamento.localizacao && (
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+              )}
+              {apontamento.localizacao && (
+                <span className="inline-flex items-center gap-1 font-semibold text-[#072B3B] dark:text-slate-200">
+                  <MapPin className="h-3.5 w-3.5 text-[#00A3C4]" />
+                  <span className="text-slate-500 font-normal">Local:</span> {apontamento.localizacao}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* GALERIA DE IMAGENS DO APONTAMENTO */}
