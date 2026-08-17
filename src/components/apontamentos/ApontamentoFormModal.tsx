@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check, Pencil, Save, Layers, MapPin } from 'lucide-react';
+import { Plus, Image as ImageIcon, Loader2, Sparkles, AlertCircle, Upload, X, Link as LinkIcon, ClipboardCheck, FolderKanban, ShieldAlert, Lightbulb, Images, Check, Pencil, Save, Layers, MapPin, RotateCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { SelectNative } from '@/components/ui/select-native';
 import { DISCIPLINAS_OPCOES, NovoApontamento, PrioridadeApontamento, StatusApontamento, Projeto, TipoConflito, TIPOS_CONFLITO_OPCOES, Apontamento, SUGESTOES_PAVIMENTOS } from '@/types/apontamento';
 import { uploadImageToClashesBucket, supabase, isSupabaseConfigured, MOCK_PROJETOS } from '@/lib/supabase/client';
-import { compressImage, formatFileSize } from '@/lib/image-compression';
+import { compressImage, formatFileSize, rotateImageFile, rotateImageUrl } from '@/lib/image-compression';
 
 interface ApontamentoFormModalProps {
   isOpen: boolean;
@@ -312,6 +312,40 @@ export function ApontamentoFormModal({
         if (item && !item.isUrl) URL.revokeObjectURL(item.previewUrl);
         return prev.filter((i) => i.id !== id);
       });
+    }
+  };
+
+  const handleRotateImage = async (target: 'apontamento' | 'solucao', id: string) => {
+    try {
+      if (target === 'solucao') {
+        const list = [...solucaoImages];
+        const idx = list.findIndex((i) => i.id === id);
+        if (idx === -1) return;
+        const item = list[idx];
+        if (item.file) {
+          const rotated = await rotateImageFile(item.file, 90);
+          list[idx] = { ...item, file: rotated, previewUrl: URL.createObjectURL(rotated) };
+        } else {
+          const rotatedUrl = await rotateImageUrl(item.previewUrl, 90);
+          list[idx] = { ...item, previewUrl: rotatedUrl };
+        }
+        setSolucaoImages(list);
+      } else {
+        const list = [...apontamentoImages];
+        const idx = list.findIndex((i) => i.id === id);
+        if (idx === -1) return;
+        const item = list[idx];
+        if (item.file) {
+          const rotated = await rotateImageFile(item.file, 90);
+          list[idx] = { ...item, file: rotated, previewUrl: URL.createObjectURL(rotated) };
+        } else {
+          const rotatedUrl = await rotateImageUrl(item.previewUrl, 90);
+          list[idx] = { ...item, previewUrl: rotatedUrl };
+        }
+        setApontamentoImages(list);
+      }
+    } catch (err) {
+      console.error('Erro ao girar imagem:', err);
     }
   };
 
@@ -747,17 +781,32 @@ export function ApontamentoFormModal({
                 {apontamentoImages.map((img, idx) => (
                   <div key={img.id} className="relative group rounded-lg overflow-hidden border border-[#00A3C4]/30 bg-[#041A24] aspect-square">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.previewUrl} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={img.previewUrl} alt={`Foto ${idx + 1}`} className="w-full h-full object-contain" />
                     <span className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[9px] font-mono px-1 rounded border border-[#0B384D]">
                       #{idx + 1}
                     </span>
+
+                    {/* Botão de Rotação 90° */}
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        await handleRotateImage('apontamento', img.id);
+                      }}
+                      className="absolute bottom-1 right-1 bg-[#072B3B]/90 text-white rounded p-1 hover:bg-[#00A3C4] opacity-90 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
+                      title="Girar imagem 90° (Vertical ⟷ Horizontal)"
+                    >
+                      <RotateCw className="h-3 w-3" />
+                    </button>
+
+                    {/* Botão de Remover Foto */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveImage('apontamento', img.id);
                       }}
-                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 opacity-90 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
                       title="Remover foto"
                     >
                       <X className="h-3 w-3" />
@@ -865,17 +914,32 @@ export function ApontamentoFormModal({
                   {solucaoImages.map((img, idx) => (
                     <div key={img.id} className="relative group rounded-lg overflow-hidden border border-emerald-300 dark:border-emerald-800 bg-[#041A24] aspect-square">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={img.previewUrl} alt={`Foto Solução ${idx + 1}`} className="w-full h-full object-cover" />
+                      <img src={img.previewUrl} alt={`Foto Solução ${idx + 1}`} className="w-full h-full object-contain" />
                       <span className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[9px] font-mono px-1 rounded border border-[#0B384D]">
                         Solução #{idx + 1}
                       </span>
+
+                      {/* Botão de Rotação 90° */}
+                      <button
+                        type="button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          await handleRotateImage('solucao', img.id);
+                        }}
+                        className="absolute bottom-1 right-1 bg-[#072B3B]/90 text-white rounded p-1 hover:bg-emerald-600 opacity-90 group-hover:opacity-100 transition-all shadow-md cursor-pointer"
+                        title="Girar imagem 90° (Vertical ⟷ Horizontal)"
+                      >
+                        <RotateCw className="h-3 w-3" />
+                      </button>
+
+                      {/* Botão de Remover Foto */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveImage('solucao', img.id);
                         }}
-                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 opacity-90 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 bg-red-600 text-white rounded-full p-0.5 hover:bg-red-700 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
                         title="Remover foto"
                       >
                         <X className="h-3 w-3" />

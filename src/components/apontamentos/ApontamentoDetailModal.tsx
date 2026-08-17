@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil, Layers, MapPin, FolderKanban } from 'lucide-react';
+import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil, Layers, MapPin, FolderKanban, RotateCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Apontamento } from '@/types/apontamento';
 import { formatDate } from '@/lib/utils';
 import { supabase, isSupabaseConfigured, uploadImageToClashesBucket } from '@/lib/supabase/client';
-import { compressImage, formatFileSize } from '@/lib/image-compression';
+import { compressImage, formatFileSize, rotateImageUrl, rotateImageFile } from '@/lib/image-compression';
 
 interface ApontamentoDetailModalProps {
   apontamento: Apontamento | null;
@@ -149,6 +149,39 @@ export function ApontamentoDetailModal({
     }
   };
 
+  const [isRotating, setIsRotating] = useState(false);
+
+  const handleRotateActiveApontamentoImage = async () => {
+    if (!apontamento || allApontamentoImages.length === 0) return;
+    try {
+      setIsRotating(true);
+      const targetUrl = allApontamentoImages[selectedApontamentoImageIdx];
+      const rotatedDataUrl = await rotateImageUrl(targetUrl, 90);
+
+      const updatedList = [...allApontamentoImages];
+      updatedList[selectedApontamentoImageIdx] = rotatedDataUrl;
+
+      apontamento.imagens_apontamento = updatedList;
+      apontamento.url_imagem = updatedList[0] || null;
+
+      if (isSupabaseConfigured() && supabase) {
+        await supabase
+          .from('apontamentos')
+          .update({
+            imagens_apontamento: updatedList,
+            url_imagem: updatedList[0] || null,
+          })
+          .eq('id', apontamento.id);
+      }
+      setPasteNotice('Imagem girada 90° com sucesso! 🔄');
+      setTimeout(() => setPasteNotice(''), 3000);
+    } catch (err) {
+      console.error('Erro ao girar imagem:', err);
+    } finally {
+      setIsRotating(false);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -239,14 +272,28 @@ export function ApontamentoDetailModal({
                 <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
                 Galeria de Fotos do Apontamento ({allApontamentoImages.length})
               </span>
-              <a
-                href={allApontamentoImages[selectedApontamentoImageIdx]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
-              >
-                <ExternalLink className="h-3 w-3" /> Abrir imagem original
-              </a>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRotateActiveApontamentoImage}
+                  disabled={isRotating}
+                  className="h-7 px-2 text-xs gap-1.5 font-bold hover:border-[#00A3C4] cursor-pointer"
+                  title="Girar foto ativa em 90°"
+                >
+                  <RotateCw className={`h-3 w-3 text-[#00A3C4] ${isRotating ? 'animate-spin' : ''}`} />
+                  Girar 90°
+                </Button>
+                <a
+                  href={allApontamentoImages[selectedApontamentoImageIdx]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir original
+                </a>
+              </div>
             </div>
 
             {/* Imagem Principal Ativa */}
@@ -260,6 +307,16 @@ export function ApontamentoDetailModal({
               <div className="absolute top-2 left-2 bg-[#072B3B]/90 text-white text-[10px] font-mono px-2 py-0.5 rounded border border-[#0B384D]">
                 Foto #{selectedApontamentoImageIdx + 1} de {allApontamentoImages.length}
               </div>
+              <button
+                type="button"
+                onClick={handleRotateActiveApontamentoImage}
+                disabled={isRotating}
+                className="absolute bottom-2 right-2 bg-[#072B3B]/90 text-white text-[10px] font-bold px-2 py-1 rounded-lg border border-[#00A3C4]/40 flex items-center gap-1 hover:bg-[#00A3C4] transition-colors shadow-md cursor-pointer"
+                title="Girar imagem 90° (Vertical ⟷ Horizontal)"
+              >
+                <RotateCw className={`h-3.5 w-3.5 ${isRotating ? 'animate-spin' : ''}`} />
+                Girar 90°
+              </button>
             </div>
 
             {/* Carrossel de Miniaturas se houver mais de 1 foto */}

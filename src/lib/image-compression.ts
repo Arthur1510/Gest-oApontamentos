@@ -142,3 +142,119 @@ export function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
+
+/**
+ * Gira uma imagem (File ou URL) em 90 graus no sentido horário no navegador,
+ * ajustando proporções e re-otimizando para WebP.
+ */
+export async function rotateImageFile(file: File, degrees: number = 90): Promise<File> {
+  if (typeof window === 'undefined') return file;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+
+      const rads = (degrees * Math.PI) / 180;
+      const is90or270 = Math.abs(degrees % 180) === 90;
+
+      const origWidth = img.naturalWidth || img.width;
+      const origHeight = img.naturalHeight || img.height;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = is90or270 ? origHeight : origWidth;
+      canvas.height = is90or270 ? origWidth : origHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Move a origem para o centro e gira
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rads);
+      ctx.drawImage(img, -origWidth / 2, -origHeight / 2);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+
+          const baseName = file.name.replace(/\.[^/.]+$/, '').replace(/_rot\d+$/, '');
+          const newFileName = `${baseName}_rot${Date.now().toString().slice(-4)}.webp`;
+
+          const rotatedFile = new File([blob], newFileName, {
+            type: 'image/webp',
+            lastModified: Date.now(),
+          });
+
+          resolve(rotatedFile);
+        },
+        'image/webp',
+        0.85
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
+  });
+}
+
+/**
+ * Gira uma URL ou base64 de imagem em 90 graus e retorna nova dataUrl WebP.
+ */
+export async function rotateImageUrl(imageUrl: string, degrees: number = 90): Promise<string> {
+  if (typeof window === 'undefined') return imageUrl;
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    img.onload = () => {
+      const rads = (degrees * Math.PI) / 180;
+      const is90or270 = Math.abs(degrees % 180) === 90;
+
+      const origWidth = img.naturalWidth || img.width;
+      const origHeight = img.naturalHeight || img.height;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = is90or270 ? origHeight : origWidth;
+      canvas.height = is90or270 ? origWidth : origHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(imageUrl);
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rads);
+      ctx.drawImage(img, -origWidth / 2, -origHeight / 2);
+
+      const rotatedDataUrl = canvas.toDataURL('image/webp', 0.85);
+      resolve(rotatedDataUrl);
+    };
+
+    img.onerror = () => {
+      resolve(imageUrl);
+    };
+
+    img.src = imageUrl;
+  });
+}
+

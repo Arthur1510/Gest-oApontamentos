@@ -309,12 +309,14 @@ export default function HomePage() {
         {/* Banner de Conexão Supabase */}
         <SupabaseStatusBanner />
 
-        {/* Cabeçalho da Aplicação e Métricas Dinâmicas */}
+        {/* Cabeçalho da Aplicação e Métricas Dinâmicas com Nome do Projeto */}
         <ApontamentosHeader
           apontamentos={filteredApontamentos}
           totalRawCount={apontamentos.length}
           selectedStatus={selectedStatus.length === 1 ? selectedStatus[0] : selectedStatus.length > 1 ? 'Multi' : 'Todos'}
           selectedPrioridade={selectedPrioridades.length === 1 ? selectedPrioridades[0] : selectedPrioridades.length > 1 ? 'Multi' : 'Todas'}
+          selectedProjetos={selectedProjetos}
+          projetosList={projetosList}
           onOpenNewModal={handleOpenNewModal}
           onFilterStatus={(status) => setSelectedStatus(status === 'Todos' ? [] : [status])}
           onFilterPrioridade={(prio) => setSelectedPrioridades(prio === 'Todas' ? [] : [prio])}
@@ -338,14 +340,14 @@ export default function HomePage() {
           onResetFilters={resetFilters}
         />
 
-        {/* Lista de Apontamentos */}
+        {/* Lista de Apontamentos em Grade de 2 Colunas */}
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
             <p className="text-xs text-slate-500 font-medium">Carregando apontamentos...</p>
           </div>
         ) : filteredApontamentos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {filteredApontamentos.map((item) => (
               <ApontamentoCard
                 key={item.id}

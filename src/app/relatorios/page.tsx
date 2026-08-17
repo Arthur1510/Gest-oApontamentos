@@ -270,60 +270,64 @@ export default function RelatoriosPage() {
 
             {/* AREA IMPRIMÍVEL (REACT-TO-PRINT) */}
             <div ref={contentRef} className="print-area space-y-8 flex flex-col items-center">
-              {/* PAGINA 1: CAPA INSTITUCIONAL WCC */}
-              <div className="a4-page bg-white text-slate-900 shadow-2xl p-10 flex flex-col justify-between border border-slate-300 print:border-none print:shadow-none relative overflow-hidden">
+              {/* PAGINA 1: CAPA INSTITUCIONAL WCC (FOLHA A4 PADRÃO) */}
+              <div
+                style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
+                className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans relative overflow-hidden"
+              >
                 {/* Faixa decorativa topo */}
-                <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
 
                 {/* Topo da Capa */}
-                <div className="flex items-center justify-between border-b border-slate-200 pb-3 text-xs text-slate-500 font-sans">
-                  <span className="font-extrabold text-[#00A3C4] uppercase">{projetoSelecionadoNome}</span>
+                <div className="flex items-center justify-between border-b border-slate-300 pb-2 text-[11px] text-slate-600 font-sans shrink-0">
+                  <span className="font-bold text-[#072B3B] uppercase">WCC PARTICIPAÇÕES • RELATÓRIO TÉCNICO</span>
+                  <span className="font-extrabold text-[#00A3C4] uppercase truncate max-w-[220px]">{projetoSelecionadoNome}</span>
                   <span>{dataAtualFormatada}</span>
                 </div>
 
                 {/* Centro da Capa: Logo WCC & Titulos */}
-                <div className="my-auto text-center space-y-6 flex flex-col items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <div className="px-5 py-2 rounded-2xl bg-[#072B3B] text-white flex items-center justify-center shadow-xl border border-[#00A3C4]/30">
-                      <span className="text-3xl font-black tracking-widest">WCC</span>
+                <div className="my-auto text-center space-y-5 flex flex-col items-center justify-center py-8">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="px-4 py-1.5 rounded-xl bg-[#072B3B] text-white flex items-center justify-center shadow-md border border-[#00A3C4]/30">
+                      <span className="text-2xl font-black tracking-widest">WCC</span>
                     </div>
-                    <div className="text-sm font-black tracking-[0.3em] text-[#072B3B] uppercase">
+                    <div className="text-[11px] font-black tracking-[0.25em] text-[#072B3B] uppercase">
                       PARTICIPAÇÕES
                     </div>
                   </div>
 
-                  <div className="space-y-2 py-2">
-                    <h2 className="text-4xl font-black tracking-tight text-[#072B3B] uppercase">
-                      RELATÓRIO TÉCNICO
+                  <div className="space-y-1.5 py-1">
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] uppercase">
+                      RELATÓRIO TÉCNICO DE COMPATIBILIZAÇÃO
                     </h2>
-                    <div className="w-28 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
-                    <p className="text-xl font-extrabold text-[#008EA9] uppercase tracking-wide pt-1">
+                    <div className="w-24 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
+                    <p className="text-base sm:text-lg font-bold text-[#00A3C4] uppercase tracking-wide pt-1">
                       {projetoSelecionadoNome}
                     </p>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      COMPATIBILIZAÇÃO TÉCNICA E GESTÃO DE PROJETOS BIM
+                    <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                      GESTÃO E CONTROLE DE APONTAMENTOS BIM 2026
                     </p>
                   </div>
 
                   {/* Resumo e Filtros da Capa */}
-                  <div className="max-w-lg mx-auto bg-slate-50 p-6 rounded-xl border border-slate-200 text-xs space-y-3 font-sans">
-                    <div className="font-black text-sm text-[#072B3B] border-b border-slate-200 pb-2 flex items-center justify-between">
-                      <span>Total de Apontamentos:</span>
-                      <span className="text-[#00A3C4] font-black text-base">{filteredApontamentos.length}</span>
+                  <div className="max-w-md w-full mx-auto bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs space-y-2 font-sans">
+                    <div className="font-bold text-xs text-[#072B3B] border-b border-slate-200 pb-1.5 flex items-center justify-between">
+                      <span>Total de Apontamentos Selecionados:</span>
+                      <span className="text-[#00A3C4] font-black text-sm">{filteredApontamentos.length}</span>
                     </div>
 
-                    <div className="space-y-1 text-slate-600 text-left">
-                      <p className="font-bold text-[#072B3B]">Filtros Aplicados no Relatório:</p>
-                      <p>• <strong>Tipo de Apontamento:</strong> {selectedTiposConflito.length > 0 ? selectedTiposConflito.join(', ') : 'Todos os Tipos'}</p>
+                    <div className="space-y-1 text-slate-600 text-left text-[11px]">
+                      <p className="font-bold text-[#072B3B]">Filtros Aplicados no Documento:</p>
+                      <p>• <strong>Projetos:</strong> {selectedProjetos.length > 0 ? projetosList.filter(p => selectedProjetos.includes(p.id)).map(p => p.nome).join(', ') : 'Todos os Projetos'}</p>
                       <p>• <strong>Status:</strong> {selectedStatus.length > 0 ? selectedStatus.join(', ') : 'Todos os Status'}</p>
-                      <p>• <strong>Disciplina:</strong> {selectedDisciplinas.length > 0 ? selectedDisciplinas.join(', ') : 'Todas as Disciplinas'}</p>
-                      <p>• <strong>Ordenação:</strong> Data de Criação (#)</p>
+                      <p>• <strong>Disciplinas:</strong> {selectedDisciplinas.length > 0 ? selectedDisciplinas.join(', ') : 'Todas as Disciplinas'}</p>
+                      <p>• <strong>Tipo de Apontamento:</strong> {selectedTiposConflito.length > 0 ? selectedTiposConflito.join(', ') : 'Todos os Tipos'}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Rodapé da Capa */}
-                <div className="flex items-center justify-between border-t border-slate-300 pt-2 text-[10px] text-slate-500 font-sans">
+                <div className="flex items-center justify-between border-t border-slate-300 pt-2 text-[10px] text-slate-600 font-sans shrink-0">
                   <span className="font-mono">www.wccparticipacoes.com.br</span>
                   <span className="font-bold text-[#072B3B]">Pág 1 de {totalPaginasPDF}</span>
                 </div>
@@ -352,7 +356,7 @@ export default function RelatoriosPage() {
                   <div
                     key={`rel-page-${apontamento.id}`}
                     style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
-                    className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans"
+                    className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-7 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans"
                   >
                     {/* Header Fixo do Topo da Prancha A4 */}
                     <div className="border-b border-slate-400 pb-2 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
@@ -363,225 +367,169 @@ export default function RelatoriosPage() {
                       <span>{dataAtualFormatada}</span>
                     </div>
 
-                    {/* Conteudo Principal do Apontamento com Flex-1 para Adaptação Dinâmica */}
-                    <div className="space-y-3 my-auto py-2 flex-1 flex flex-col justify-center">
-                      {/* Titulo do Apontamento */}
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2 shrink-0">
-                        <h2 className="text-base sm:text-lg font-black text-[#072B3B]">
-                          Apontamento #{index + 1} - <span className={apontamento.status === 'Resolvido' ? 'text-[#047857]' : 'text-amber-700'}>{apontamento.status}</span>
-                        </h2>
-                        <span className="text-xs font-mono font-semibold text-slate-500">
-                          ID: #{apontamento.id.slice(0, 8)}
+                    {/* Conteudo Principal do Apontamento com Fluxo Contínuo e Espaçamento Natural */}
+                    <div className="space-y-2.5 py-2 flex-1 flex flex-col justify-start">
+                      {/* 1. Titulo do Apontamento (Quebra de Linha Natural + Status) */}
+                      <div className="flex items-start justify-between gap-3 border-b border-slate-300 pb-2 shrink-0">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                          <span className="px-2 py-0.5 rounded bg-[#072B3B] text-white text-[11px] font-black shrink-0 mt-0.5">
+                            #{index + 1}
+                          </span>
+                          <h2 className="text-[13.5px] sm:text-sm font-black text-[#072B3B] leading-snug break-words whitespace-normal">
+                            {apontamento.titulo}
+                          </h2>
+                        </div>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 mt-0.5 ${
+                            apontamento.status === 'Resolvido'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                              : 'bg-amber-100 text-amber-800 border border-amber-300'
+                          }`}
+                        >
+                          {apontamento.status === 'Resolvido' ? (
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3 text-amber-600" />
+                          )}
+                          {apontamento.status}
                         </span>
                       </div>
 
-                      {/* Layout Dividido Lado a Lado: Galeria Fotográfica do Conflito (Esquerda) + Metadados (Direita) */}
-                      <div className="grid grid-cols-12 gap-4 items-start shrink-0">
-                        {/* LADO ESQUERDO: SISTEMA DE GALERIA INTELIGENTE DE FOTOS DO APONTAMENTO */}
-                        <div className="col-span-7 space-y-1">
-                          {listImagensApt.length === 0 ? (
-                            <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-4 text-center ${
-                              isLongText ? 'h-[56mm]' : 'h-[72mm]'
-                            }`}>
-                              <ImageIcon className="h-8 w-8 text-slate-400 opacity-60" />
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
-                                Sem Imagem Anexada
-                              </p>
-                            </div>
-                          ) : listImagensApt.length === 1 ? (
-                            /* 1 Imagem: Destaque Executivo Amplo */
-                            <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative ${
-                              isLongText ? 'h-[56mm]' : 'h-[72mm]'
-                            }`}>
-                              <div className="absolute top-1.5 left-1.5 bg-[#072B3B]/90 text-white text-[8px] font-mono px-2 py-0.5 rounded border border-[#00A3C4]/40 z-10">
-                                📸 Vista Principal (#1)
-                              </div>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={listImagensApt[0]}
-                                alt={apontamento.titulo}
-                                crossOrigin="anonymous"
-                                className="w-full h-full object-contain mx-auto"
-                              />
-                            </div>
-                          ) : listImagensApt.length === 2 ? (
-                            /* 2 Imagens: Grid Lado a Lado 2 Colunas */
-                            <div className={`grid grid-cols-2 gap-1.5 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
-                              {listImagensApt.slice(0, 2).map((imgUrl, imgIdx) => (
-                                <div
-                                  key={`pdf-grid-2-${imgIdx}`}
-                                  className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1 shadow-sm relative h-full"
-                                >
-                                  <div className="absolute top-1 left-1 bg-[#072B3B]/90 text-[#00C4EB] text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#00A3C4]/40 z-10">
-                                    {imgIdx === 0 ? '📸 #1 Principal' : '📸 #2 Detalhe'}
-                                  </div>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={imgUrl}
-                                    alt={`Foto ${imgIdx + 1}`}
-                                    crossOrigin="anonymous"
-                                    className="w-full h-full object-contain mx-auto"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          ) : listImagensApt.length === 3 ? (
-                            /* 3 Imagens: 1 Destaque Superior + 2 Inferiores */
-                            <div className={`space-y-1 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
-                              <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 shadow-sm relative ${
-                                isLongText ? 'h-[34mm]' : 'h-[46mm]'
-                              }`}>
-                                <div className="absolute top-1 left-1 bg-[#072B3B]/90 text-white text-[8px] font-mono px-1.5 py-0.5 rounded border border-[#00A3C4]/40 z-10">
-                                  📸 #1 Vista Principal
-                                </div>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={listImagensApt[0]}
-                                  alt={apontamento.titulo}
-                                  crossOrigin="anonymous"
-                                  className="w-full h-full object-contain mx-auto"
-                                />
-                              </div>
-                              <div className={`grid grid-cols-2 gap-1 ${isLongText ? 'h-[21mm]' : 'h-[25mm]'}`}>
-                                {listImagensApt.slice(1, 3).map((imgUrl, imgIdx) => (
-                                  <div
-                                    key={`pdf-grid-3-${imgIdx}`}
-                                    className="border border-[#00A3C4]/30 rounded-md overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 relative h-full"
-                                  >
-                                    <div className="absolute top-0.5 left-0.5 bg-[#072B3B]/90 text-[#00C4EB] text-[7px] font-mono px-1 rounded z-10">
-                                      #{imgIdx + 2}
-                                    </div>
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={imgUrl}
-                                      alt={`Foto ${imgIdx + 2}`}
-                                      crossOrigin="anonymous"
-                                      className="w-full h-full object-contain mx-auto"
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            /* 4 ou mais Imagens: Grid Simétrico 2x2 */
-                            <div className={`grid grid-cols-2 gap-1 ${isLongText ? 'h-[56mm]' : 'h-[72mm]'}`}>
-                              {listImagensApt.slice(0, 4).map((imgUrl, imgIdx) => (
-                                <div
-                                  key={`pdf-grid-4-${imgIdx}`}
-                                  className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-0.5 shadow-sm relative h-full"
-                                >
-                                  <div className="absolute top-0.5 left-0.5 bg-[#072B3B]/90 text-[#00C4EB] text-[7px] font-mono px-1 rounded border border-[#00A3C4]/40 z-10 flex items-center gap-1">
-                                    <span>📸 #{imgIdx + 1}</span>
-                                    {imgIdx === 3 && listImagensApt.length > 4 && (
-                                      <span className="text-amber-300 font-bold">+{listImagensApt.length - 4}</span>
-                                    )}
-                                  </div>
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={imgUrl}
-                                    alt={`Foto ${imgIdx + 1}`}
-                                    crossOrigin="anonymous"
-                                    className="w-full h-full object-contain mx-auto"
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* LADO DIREITO: METADADOS ORGANIZADOS */}
-                        <div className="col-span-5 space-y-1.5 text-xs">
-                          {/* Prioridade & Data */}
-                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200 grid grid-cols-2 gap-1">
-                            <div>
-                              <span className="text-[9px] text-slate-500 font-bold uppercase block">Prioridade</span>
-                              <span
-                                className={`font-bold px-2 py-0.5 rounded text-[10px] inline-block mt-0.5 ${
-                                  apontamento.prioridade === 'Alta'
-                                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
-                                    : apontamento.prioridade === 'Média'
-                                    ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                    : 'bg-[#00A3C4]/15 text-[#008EA9] border border-[#00A3C4]/30'
-                                }`}
-                              >
-                                {apontamento.prioridade}
-                              </span>
-                            </div>
-
-                            <div>
-                              <span className="text-[9px] text-slate-500 font-bold uppercase block">Data Criação</span>
-                              <span className="font-semibold text-slate-800 text-[10px] block mt-0.5">{formatDate(apontamento.created_at)}</span>
-                            </div>
+                      {/* 2. Metadados e Tags em 2 Linhas no Topo (Largura Total 100%) */}
+                      <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1.5 text-xs shrink-0">
+                        {/* Linha 1 de Metadados: Prioridade | Tipo de Conflito | Disciplina Origem -> Destino */}
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          {/* Prioridade */}
+                          <div className="col-span-3 flex items-center gap-1.5">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase">Prioridade:</span>
+                            <span
+                              className={`font-bold px-2 py-0.2 rounded text-[10px] inline-block ${
+                                apontamento.prioridade === 'Alta'
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  : apontamento.prioridade === 'Média'
+                                  ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                  : 'bg-[#00A3C4]/15 text-[#008EA9] border border-[#00A3C4]/30'
+                              }`}
+                            >
+                              {apontamento.prioridade}
+                            </span>
                           </div>
 
                           {/* Tipo de Apontamento */}
-                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Tipo de Apontamento</span>
-                            <span className="font-bold text-amber-900 block mt-0.5 text-[11px] flex items-center gap-1">
+                          <div className="col-span-4 flex items-center gap-1 truncate">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Tipo:</span>
+                            <span className="font-bold text-amber-900 text-[10.5px] truncate flex items-center gap-1">
                               <ShieldAlert className="h-3 w-3 text-amber-600 shrink-0" />
                               <span className="truncate">{apontamento.tipo_conflito || 'Conflito Físico'}</span>
                             </span>
                           </div>
 
-                          {/* Disciplina Principal (Origem) */}
-                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Origem</span>
-                            <span className="font-extrabold text-[#008EA9] block mt-0.5 text-[11px] truncate">{apontamento.disciplina_origem}</span>
+                          {/* Disciplinas Origem -> Destino */}
+                          <div className="col-span-5 flex items-center gap-1.5 justify-end truncate">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Disciplinas:</span>
+                            <span className="font-extrabold text-[#008EA9] text-[10.5px] truncate">{apontamento.disciplina_origem}</span>
+                            <span className="text-slate-400 font-bold">➔</span>
+                            <span className="font-extrabold text-rose-900 text-[10.5px] truncate">{apontamento.disciplina_destino}</span>
                           </div>
+                        </div>
 
-                          {/* Disciplinas Envolvidas (Destino) */}
-                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Disciplina Destino</span>
-                            <span className="font-extrabold text-rose-900 block mt-0.5 text-[11px] truncate">{apontamento.disciplina_destino}</span>
-                          </div>
-
-                          {/* Edificacao / Pavimento */}
-                          <div className="bg-slate-50 p-2 rounded-md border border-slate-200">
-                            <span className="text-[9px] text-slate-500 font-bold uppercase block">Localização / Pavimento</span>
-                            <span className="font-extrabold text-[#072B3B] block mt-0.5 text-[11px] truncate" title={[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ')}>
-                              {[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ') || 'Não especificado / Geral'}
+                        {/* Linha 2 de Metadados: Localização / Pavimento | Data */}
+                        <div className="flex items-center justify-between border-t border-slate-200/80 pt-1 text-[10.5px]">
+                          <div className="flex items-center gap-1.5 truncate max-w-[500px]">
+                            <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Localização / Pavimento:</span>
+                            <span className="font-extrabold text-[#072B3B] truncate" title={[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ')}>
+                              {[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ') || 'Geral / Não especificado'}
                             </span>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-slate-500 shrink-0 text-[10px]">
+                            <span className="font-bold uppercase text-[9px]">Data:</span>
+                            <span className="font-semibold text-slate-800">{formatDate(apontamento.created_at)}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Descricao Detalhada */}
-                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-300 space-y-1">
-                        <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                          <span className="text-[10px] font-bold text-slate-900 uppercase truncate max-w-[400px]">
-                            Título: {apontamento.titulo}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 ${
-                              apontamento.status === 'Resolvido'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : 'bg-amber-100 text-amber-800 border border-amber-300'
-                            }`}
-                          >
-                            {apontamento.status === 'Resolvido' ? (
-                              <CheckCircle2 className="h-3 w-3 text-emerald-600" />
-                            ) : (
-                              <AlertCircle className="h-3 w-3 text-amber-600" />
-                            )}
-                            {apontamento.status}
-                          </span>
-                        </div>
+                      {/* 3. Galeria Padronizada com as Duas Primeiras Imagens em Largura Total (100%) */}
+                      <div className="w-full shrink-0">
+                        {listImagensApt.length === 0 ? (
+                          <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-4 text-center ${
+                            isLongText ? 'h-[58mm]' : 'h-[78mm]'
+                          }`}>
+                            <ImageIcon className="h-8 w-8 text-slate-400 opacity-60" />
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                              Sem Imagem Anexada
+                            </p>
+                          </div>
+                        ) : listImagensApt.length === 1 ? (
+                          /* 1 Imagem: Visualização Ampla e Imponente em Largura Total */
+                          <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative w-full ${
+                            isLongText ? 'h-[60mm]' : 'h-[80mm]'
+                          }`}>
+                            <div className="absolute top-2 left-2 bg-[#072B3B]/90 text-white text-[9px] font-mono px-2 py-0.5 rounded border border-[#00A3C4]/40 z-10">
+                              📸 Foto Principal (#1)
+                            </div>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={listImagensApt[0]}
+                              alt={apontamento.titulo}
+                              crossOrigin="anonymous"
+                              className="w-full h-full object-contain mx-auto"
+                            />
+                          </div>
+                        ) : (
+                          /* 2 Imagens: Grid Lado a Lado de 2 Colunas Amplas com Fotos #1 e #2 */
+                          <div className={`grid grid-cols-2 gap-3 w-full ${isLongText ? 'h-[60mm]' : 'h-[80mm]'}`}>
+                            {/* Foto 1 */}
+                            <div className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full">
+                              <div className="absolute top-1.5 left-1.5 bg-[#072B3B]/90 text-[#00C4EB] text-[8.5px] font-mono px-2 py-0.5 rounded border border-[#00A3C4]/40 z-10">
+                                📸 #1 Principal
+                              </div>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={listImagensApt[0]}
+                                alt="Foto 1 Principal"
+                                crossOrigin="anonymous"
+                                className="w-full h-full object-contain mx-auto"
+                              />
+                            </div>
 
-                        <span className="text-[9px] text-slate-500 font-bold uppercase block">Descrição Técnica:</span>
+                            {/* Foto 2 */}
+                            <div className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full">
+                              <div className="absolute top-1.5 left-1.5 bg-[#072B3B]/90 text-[#00C4EB] text-[8.5px] font-mono px-2 py-0.5 rounded border border-[#00A3C4]/40 z-10 flex items-center gap-1">
+                                <span>📸 #2 Detalhe</span>
+                                {listImagensApt.length > 2 && (
+                                  <span className="text-amber-300 font-bold">(+{listImagensApt.length - 2} fotos)</span>
+                                )}
+                              </div>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={listImagensApt[1]}
+                                alt="Foto 2 Detalhe"
+                                crossOrigin="anonymous"
+                                className="w-full h-full object-contain mx-auto"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 4. Descrição Técnica do Conflito */}
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-300 space-y-1 shrink-0">
+                        <span className="text-[9.5px] text-slate-600 font-bold uppercase block">Descrição Técnica do Conflito:</span>
                         <p className="text-[10.5px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
                           {apontamento.descricao}
                         </p>
                       </div>
 
-                      {/* GUIA SOLUÇÃO / BLOCO DE SOLUÇÃO PROPOSTA COM GALERIA */}
-                      <div className="bg-emerald-50/90 p-2.5 rounded-lg border border-emerald-300 space-y-1.5">
+                      {/* 5. Guia / Diretriz de Solução Técnica com Galeria */}
+                      <div className="bg-emerald-50/90 p-2.5 rounded-lg border border-emerald-300 space-y-1.5 shrink-0">
                         <div className="flex items-center justify-between border-b border-emerald-200 pb-1">
                           <span className="text-[10px] font-bold text-[#047857] uppercase flex items-center gap-1">
                             <Lightbulb className="h-3.5 w-3.5 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
                           </span>
                           {listImagensSol.length > 0 && (
                             <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300">
-                              💡 {listImagensSol.length} Foto(s)
+                              💡 {listImagensSol.length} Foto(s) de Solução
                             </span>
                           )}
                         </div>
@@ -608,7 +556,7 @@ export default function RelatoriosPage() {
                                     className="w-full h-full object-contain mx-auto"
                                   />
                                 </div>
-                              ) : listImagensSol.length === 2 ? (
+                              ) : (
                                 <div className="grid grid-cols-2 gap-1.5 h-20">
                                   {listImagensSol.slice(0, 2).map((solUrl, solIdx) => (
                                     <div
@@ -617,26 +565,6 @@ export default function RelatoriosPage() {
                                     >
                                       <div className="absolute top-0.5 left-0.5 bg-[#041A24]/90 text-emerald-400 text-[7px] font-mono px-1 rounded z-10">
                                         💡 #{solIdx + 1}
-                                      </div>
-                                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                                      <img
-                                        src={solUrl}
-                                        alt={`Solução ${solIdx + 1}`}
-                                        crossOrigin="anonymous"
-                                        className="w-full h-full object-contain mx-auto"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-3 gap-1 h-20">
-                                  {listImagensSol.slice(0, 3).map((solUrl, solIdx) => (
-                                    <div
-                                      key={`pdf-sol-grid3-${solIdx}`}
-                                      className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] relative flex items-center justify-center p-0.5 shadow-sm h-full"
-                                    >
-                                      <div className="absolute top-0.5 left-0.5 bg-[#041A24]/90 text-emerald-400 text-[7px] font-mono px-1 rounded z-10">
-                                        #{solIdx + 1}
                                       </div>
                                       {/* eslint-disable-next-line @next/next/no-img-element */}
                                       <img

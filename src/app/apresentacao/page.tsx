@@ -159,13 +159,24 @@ export default function ResumoExecutivoPage() {
   const taxaResolucao = totalApontamentos > 0 ? Math.round((totalResolvidos / totalApontamentos) * 100) : 0;
   const totalAltaPrioridade = filteredApontamentos.filter((a) => a.prioridade === 'Alta').length;
 
+  // Título dinâmico do projeto selecionado
+  const projetoTituloExibicao =
+    selectedProjetos.length === 1
+      ? projetosList.find((p) => p.id === selectedProjetos[0])?.nome || 'Empreendimento'
+      : selectedProjetos.length > 1
+      ? projetosList
+          .filter((p) => selectedProjetos.includes(p.id))
+          .map((p) => p.nome)
+          .join(' • ')
+      : 'Todos os Projetos';
+
   return (
     <main className="h-screen w-screen bg-slate-50 dark:bg-[#072B3B] text-[#072B3B] dark:text-slate-100 flex flex-col justify-between select-none overflow-hidden font-sans transition-colors duration-300">
       {/* BARRA SUPERIOR DE CONTROLE DO RESUMO EXECUTIVO */}
       <header className="no-print bg-white/95 dark:bg-[#041A24]/90 border-b border-slate-200 dark:border-[#0B384D] px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4 backdrop-blur-md shrink-0 z-50">
         <div className="flex items-center gap-3">
           <Link href="/">
-            <Button variant="ghost" size="sm" className="text-xs text-slate-600 dark:text-slate-300 hover:text-[#072B3B] dark:hover:text-white gap-1.5 h-8">
+            <Button variant="ghost" size="sm" className="text-xs text-slate-600 dark:text-slate-300 hover:text-[#072B3B] dark:hover:text-white gap-1.5 h-8 cursor-pointer">
               <Home className="h-4 w-4" /> Voltar ao Painel
             </Button>
           </Link>
@@ -175,11 +186,11 @@ export default function ResumoExecutivoPage() {
               WCC
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-xs text-[#072B3B] dark:text-white tracking-wide leading-tight">
-                APRESENTAÇÃO EXECUTIVA
+              <span className="font-extrabold text-xs text-[#072B3B] dark:text-white tracking-wide leading-tight truncate max-w-[220px] sm:max-w-[320px]" title={projetoTituloExibicao}>
+                {projetoTituloExibicao}
               </span>
               <span className="text-[9px] font-bold text-[#00A3C4] tracking-widest leading-tight">
-                WCC PARTICIPAÇÕES • 2026
+                RESUMO EXECUTIVO BIM
               </span>
             </div>
           </div>
@@ -231,7 +242,7 @@ export default function ResumoExecutivoPage() {
             size="icon"
             onClick={toggleFullscreen}
             title="Modo Tela Cheia"
-            className="h-8 w-8 text-slate-500 dark:text-slate-300 hover:text-[#072B3B] dark:hover:text-white"
+            className="h-8 w-8 text-slate-500 dark:text-slate-300 hover:text-[#072B3B] dark:hover:text-white cursor-pointer"
           >
             {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </Button>
@@ -239,22 +250,18 @@ export default function ResumoExecutivoPage() {
       </header>
 
       {/* ÁREA CENTRAL FIXA DO SLIDE */}
-      <section className="flex-1 flex flex-col justify-center p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-y-auto">
+      <section className="flex-1 flex flex-col justify-center p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full overflow-hidden">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <Loader2 className="h-10 w-10 animate-spin text-[#00A3C4]" />
-            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Carregando apresentação WCC 2026...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Carregando resumo executivo...</p>
           </div>
         ) : currentSlideIdx === 0 ? (
-          /* SLIDE 1: CAPA OFICIAL WCC 2026 COM BASE NO MODELO DE PPT */
-          <div className="space-y-6 sm:space-y-7 animate-in fade-in-0 duration-300 my-auto">
-            {/* Header da Capa com Pílula 2026 e Logotipo WCC */}
-            <div className="space-y-3 max-w-3xl mx-auto text-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00A3C4] text-white text-xs font-extrabold uppercase tracking-widest shadow-md">
-                <span>2026</span>
-              </div>
-
-              <div className="flex flex-col items-center justify-center pt-1">
+          /* SLIDE 1: CAPA OFICIAL COM FOCO TOTAL NO PROJETO */
+          <div className="space-y-6 sm:space-y-8 animate-in fade-in-0 duration-300 my-auto max-w-3xl mx-auto w-full">
+            {/* Header da Capa com Logotipo WCC e Nome Dinâmico do Projeto */}
+            <div className="space-y-3 text-center">
+              <div className="flex flex-col items-center justify-center">
                 <div className="text-3xl sm:text-4xl font-black tracking-widest text-[#072B3B] dark:text-white">
                   WCC
                 </div>
@@ -263,39 +270,38 @@ export default function ResumoExecutivoPage() {
                 </div>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-[#072B3B] dark:text-white uppercase leading-tight pt-2">
-                MODELO DE APRESENTAÇÃO
-                <span className="block text-[#00A3C4] dark:text-[#00C4EB]">2026</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#072B3B] dark:text-white uppercase leading-tight pt-1">
+                {projetoTituloExibicao}
               </h1>
 
               {/* Linha Assinatura Gradiente WCC */}
-              <div className="w-32 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
-
-              <p className="text-xs sm:text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider max-w-xl mx-auto pt-1">
-                Relatório Executivo de Compatibilização & Apontamentos BIM
-              </p>
+              <div className="w-28 h-1 mx-auto rounded-full bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
             </div>
 
-            {/* Grid de KPIs Executivos */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Grid de KPIs Executivos em Duas Linhas (2x2) */}
+            <div className="grid grid-cols-2 gap-4 sm:gap-5 max-w-2xl mx-auto w-full">
+              {/* Linha 1 - Card 1: Total */}
               <div className="bg-white dark:bg-[#0B384D] border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
                 <span className="text-xs text-slate-500 dark:text-slate-300 font-bold uppercase tracking-wider">Total Apontamentos</span>
                 <p className="text-3xl sm:text-4xl font-black text-[#072B3B] dark:text-white">{totalApontamentos}</p>
                 <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Cadastrados no sistema</span>
               </div>
 
+              {/* Linha 1 - Card 2: Resolvidos */}
               <div className="bg-white dark:bg-[#0B384D] border border-emerald-200 dark:border-[#10B981]/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
                 <span className="text-xs text-[#047857] dark:text-[#34D399] font-bold uppercase tracking-wider">Resolvidos / Solucionados</span>
                 <p className="text-3xl sm:text-4xl font-black text-[#10B981]">{totalResolvidos}</p>
                 <span className="text-[11px] text-[#047857] dark:text-[#34D399] block font-semibold">{taxaResolucao}% de taxa de solução</span>
               </div>
 
+              {/* Linha 2 - Card 3: Pendentes em Aberto */}
               <div className="bg-white dark:bg-[#0B384D] border border-amber-200 dark:border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
                 <span className="text-xs text-amber-800 dark:text-amber-300 font-bold uppercase tracking-wider">Pendentes em Aberto</span>
                 <p className="text-3xl sm:text-4xl font-black text-amber-600 dark:text-amber-400">{totalAbertos}</p>
                 <span className="text-[11px] text-amber-700 dark:text-amber-300/80 block">Em análise técnica</span>
               </div>
 
+              {/* Linha 2 - Card 4: Alta Severidade */}
               <div className="bg-white dark:bg-[#0B384D] border border-rose-200 dark:border-rose-500/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
                 <span className="text-xs text-rose-800 dark:text-rose-300 font-bold uppercase tracking-wider">Alta Severidade</span>
                 <p className="text-3xl sm:text-4xl font-black text-rose-600 dark:text-rose-400">{totalAltaPrioridade}</p>
@@ -320,7 +326,7 @@ export default function ResumoExecutivoPage() {
             </div>
           </div>
         ) : (
-          /* SLIDES 2 A N: APONTAMENTOS INDIVIDUAIS COM ESTRUTURA OFICIAL DO PPT */
+          /* SLIDES 2 A N: APONTAMENTOS INDIVIDUAIS COM ESTRUTURA EXECUTIVA ROBUSTA */
           (() => {
             const currentApontamento = filteredApontamentos[currentSlideIdx - 1];
             if (!currentApontamento) return null;
@@ -341,10 +347,11 @@ export default function ResumoExecutivoPage() {
             const currentDisplayImage = activeList[activeImageIdx] || listImagensApt[0];
 
             return (
-              <div key={currentApontamento.id} className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch my-auto animate-in fade-in-0 duration-300 min-h-[460px]">
-                {/* COLUNA ESQUERDA: VISUALIZADOR DE IMAGENS EM ALTURA E POSIÇÃO FIXAS */}
-                <div className="lg:col-span-7 flex flex-col justify-between space-y-3">
-                  <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] shadow-xl h-[380px] sm:h-[400px] flex items-center justify-center group shrink-0">
+              <div key={currentApontamento.id} className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start my-auto animate-in fade-in-0 duration-300 w-full h-full max-h-[calc(100vh-140px)]">
+                {/* COLUNA ESQUERDA: VISUALIZADOR DE IMAGENS */}
+                <div className="lg:col-span-7 flex flex-col justify-between space-y-3 h-full max-h-[calc(100vh-160px)]">
+                  {/* Moldura da Foto */}
+                  <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] shadow-xl flex-1 min-h-[300px] max-h-[480px] flex items-center justify-center group">
                     {currentDisplayImage ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
@@ -358,13 +365,9 @@ export default function ResumoExecutivoPage() {
                         <span className="text-xs uppercase font-semibold">Sem Imagem Anexada</span>
                       </div>
                     )}
-
-                    <div className="absolute top-3 left-3 bg-[#072B3B]/90 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-mono font-bold text-[#00C4EB] border border-[#00A3C4]/40 shadow-md">
-                      {activeImageTab === 'solucao' ? 'FOTO DA SOLUÇÃO' : 'FOTO DO APONTAMENTO'}
-                    </div>
                   </div>
 
-                  {/* Seletor de Galeria entre Problema e Solução */}
+                  {/* Seletor de Galeria entre Problema e Solução + Miniaturas */}
                   <div className="flex items-center justify-between bg-white dark:bg-[#0B384D] p-2 rounded-xl border border-slate-200 dark:border-[#0B384D] shadow-2xs shrink-0">
                     <div className="flex items-center gap-2">
                       <button
@@ -402,13 +405,13 @@ export default function ResumoExecutivoPage() {
 
                     {/* Miniaturas da lista ativa */}
                     {activeList.length > 1 && (
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 overflow-x-auto max-w-[200px] py-0.5">
                         {activeList.map((imgUrl, idx) => (
                           <button
                             key={`slide-thumb-${idx}`}
                             type="button"
                             onClick={() => setActiveImageIdx(idx)}
-                            className={`w-9 h-9 rounded-md overflow-hidden border-2 transition-all cursor-pointer ${
+                            className={`w-9 h-9 rounded-md overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
                               activeImageIdx === idx
                                 ? 'border-[#00A3C4] scale-105'
                                 : 'border-slate-200 dark:border-slate-700 opacity-50 hover:opacity-100'
@@ -423,20 +426,10 @@ export default function ResumoExecutivoPage() {
                   </div>
                 </div>
 
-                {/* COLUNA DIREITA: RESUMO EXECUTIVO DO APONTAMENTO */}
-                <div className="lg:col-span-5 flex flex-col justify-between space-y-3">
+                {/* COLUNA DIREITA: RESUMO EXECUTIVO COM SCROLL CONTROLADO */}
+                <div className="lg:col-span-5 flex flex-col justify-between space-y-3 h-full max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
                   <div className="space-y-3">
-                    {/* Header do Slide com Pílula WCC */}
-                    <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#072B3B] dark:bg-white text-white dark:text-[#072B3B] text-[10px] font-bold uppercase tracking-wider">
-                        Apresentação WCC
-                      </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#00A3C4]/15 text-[#00A3C4] dark:text-[#00C4EB] border border-[#00A3C4]/30 font-mono">
-                        2026
-                      </span>
-                    </div>
-
-                    {/* Badges de Status e Prioridade */}
+                    {/* Badges de Status, Prioridade e Tipo */}
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={currentApontamento.status === 'Resolvido' ? 'resolvido' : 'aberto'}>
                         {currentApontamento.status}
@@ -458,20 +451,20 @@ export default function ResumoExecutivoPage() {
                       </Badge>
                     </div>
 
-                    {/* Título Executivo com Linha Gradiente Oficial */}
+                    {/* Título Executivo */}
                     <div>
-                      <h2 className="text-xl sm:text-2xl font-black text-[#072B3B] dark:text-white leading-snug">
+                      <h2 className="text-lg sm:text-xl font-black text-[#072B3B] dark:text-white leading-snug">
                         {currentApontamento.titulo}
                       </h2>
-                      <div className="wcc-gradient-bar mt-2 w-24" />
+                      <div className="wcc-gradient-bar mt-1.5 w-20" />
                     </div>
 
-                    {/* Projeto e Disciplinas */}
+                    {/* Projeto, Disciplinas e Localização */}
                     <div className="flex flex-col gap-1.5 bg-white dark:bg-[#0B384D] p-3 rounded-xl border border-slate-200 dark:border-white/10 text-xs shadow-2xs">
                       {currentApontamento.projetos?.nome && (
                         <div className="flex items-center gap-1.5 font-bold text-[#008EA9] dark:text-[#00C4EB]">
                           <FolderKanban className="h-4 w-4" />
-                          <span>{currentApontamento.projetos.nome}</span>
+                          <span className="truncate">{currentApontamento.projetos.nome}</span>
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium pt-1 border-t border-slate-100 dark:border-white/10">
@@ -479,34 +472,48 @@ export default function ResumoExecutivoPage() {
                         <ArrowRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                         <span className="text-rose-600 dark:text-rose-400 font-extrabold">{currentApontamento.disciplina_destino}</span>
                       </div>
+                      {(currentApontamento.pavimento || currentApontamento.localizacao) && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300 pt-1 border-t border-slate-100 dark:border-white/10 truncate">
+                          <Layers className="h-3.5 w-3.5 text-[#00A3C4] shrink-0" />
+                          <span className="truncate">
+                            {[currentApontamento.pavimento, currentApontamento.localizacao].filter(Boolean).join(' • ')}
+                          </span>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Descrição do Problema */}
+                    {/* Descrição do Problema (Adapta-se ao tamanho sem quebrar o layout) */}
                     <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider block">Descrição do Conflito</span>
-                      <p className="text-slate-800 dark:text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap bg-white/90 dark:bg-[#0B384D]/60 p-3 rounded-xl border border-slate-200 dark:border-white/10 max-h-32 overflow-y-auto">
-                        {currentApontamento.descricao}
-                      </p>
+                      <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider block">
+                        Descrição Técnica do Conflito
+                      </span>
+                      <div className="bg-white/95 dark:bg-[#0B384D]/70 p-3.5 rounded-xl border border-slate-200 dark:border-white/10 max-h-48 overflow-y-auto shadow-2xs">
+                        <p className="text-slate-800 dark:text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
+                          {currentApontamento.descricao}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Guia / Diretriz de Solução Técnica */}
-                    <div className="space-y-1 bg-emerald-50/90 dark:bg-emerald-950/40 p-3 rounded-xl border border-emerald-200 dark:border-[#10B981]/50">
+                    <div className="space-y-1 bg-emerald-50/90 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200 dark:border-[#10B981]/50 shadow-2xs">
                       <span className="text-[10px] font-bold text-[#047857] dark:text-[#34D399] uppercase tracking-wider flex items-center gap-1.5">
                         <Lightbulb className="h-3.5 w-3.5 text-[#10B981]" /> Diretriz Técnica / Solução Recomendada
                       </span>
-                      <p className="text-emerald-950 dark:text-emerald-100 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-normal max-h-32 overflow-y-auto">
-                        {currentApontamento.solucao || 'Em fase de definição técnica pelos projetistas.'}
-                      </p>
+                      <div className="max-h-36 overflow-y-auto">
+                        <p className="text-emerald-950 dark:text-emerald-100 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap font-normal">
+                          {currentApontamento.solucao || 'Em fase de definição técnica pelos projetistas.'}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Botão de Ação Rápida no Slide */}
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-[#0B384D] shrink-0">
+                  <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-[#0B384D] shrink-0 mt-2">
                     <Button
                       variant={currentApontamento.status === 'Aberto' ? 'emerald' : 'outline'}
                       size="sm"
                       onClick={() => handleToggleStatus(currentApontamento)}
-                      className="text-xs gap-1.5 font-bold h-8"
+                      className="text-xs gap-1.5 font-bold h-8 cursor-pointer"
                     >
                       {currentApontamento.status === 'Aberto' ? (
                         <>
@@ -518,12 +525,6 @@ export default function ResumoExecutivoPage() {
                         </>
                       )}
                     </Button>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] text-slate-400 dark:text-slate-400 font-mono">
-                        {formatDate(currentApontamento.created_at)}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>

@@ -3,13 +3,15 @@
 import React from 'react';
 import { Plus, ClipboardList, AlertCircle, CheckCircle2, Flame, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Apontamento } from '@/types/apontamento';
+import { Apontamento, Projeto } from '@/types/apontamento';
 
 interface ApontamentosHeaderProps {
   apontamentos: Apontamento[];
   totalRawCount?: number;
   selectedStatus?: string;
   selectedPrioridade?: string;
+  selectedProjetos?: string[];
+  projetosList?: Projeto[];
   onOpenNewModal: () => void;
   onFilterStatus?: (status: string) => void;
   onFilterPrioridade?: (prioridade: string) => void;
@@ -20,6 +22,8 @@ export function ApontamentosHeader({
   totalRawCount,
   selectedStatus = 'Todos',
   selectedPrioridade = 'Todas',
+  selectedProjetos = [],
+  projetosList = [],
   onOpenNewModal,
   onFilterStatus,
   onFilterPrioridade,
@@ -34,19 +38,31 @@ export function ApontamentosHeader({
   const isResolvidosActive = selectedStatus === 'Resolvido';
   const isAltaActive = selectedPrioridade === 'Alta';
 
+  // Título dinâmico do projeto
+  let textoProjetoDinamico = 'Todos os Projetos';
+  if (selectedProjetos && selectedProjetos.length === 1 && projetosList) {
+    const proj = projetosList.find((p) => p.id === selectedProjetos[0]);
+    if (proj) textoProjetoDinamico = proj.nome;
+  } else if (selectedProjetos && selectedProjetos.length > 1 && projetosList) {
+    const nomes = projetosList
+      .filter((p) => selectedProjetos.includes(p.id))
+      .map((p) => p.nome);
+    textoProjetoDinamico = nomes.length <= 2 ? nomes.join(' • ') : `${nomes.length} Projetos Selecionados`;
+  }
+
   return (
     <div className="space-y-6">
-      {/* Top Title Bar */}
+      {/* Top Title Bar com Nome Dinâmico do Projeto */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
         <div>
           <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-bold text-xs uppercase tracking-wider">
-            <Layers className="h-4 w-4" /> WCC Participações • Compatibilização BIM 2026
+            <Layers className="h-4 w-4" /> WCC Participações
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#072B3B] dark:text-white mt-1">
-            Gestão de Apontamentos
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] dark:text-white mt-1">
+            {textoProjetoDinamico}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Controle integrado de interferências multidisciplinares, revisões de projetos e diretrizes técnicas.
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-wide">
+            {selectedProjetos && selectedProjetos.length > 0 ? 'Gestão de Apontamentos do Empreendimento' : 'Gestão de Apontamentos • Todos os Empreendimentos'}
           </p>
         </div>
 
@@ -54,7 +70,7 @@ export function ApontamentosHeader({
           onClick={onOpenNewModal}
           variant="wcc"
           size="lg"
-          className="shadow-lg shadow-[#00A3C4]/25 hover:scale-[1.02] active:scale-[0.98] transition-all gap-2 self-start sm:self-auto shrink-0 font-bold"
+          className="shadow-lg shadow-[#00A3C4]/25 hover:scale-[1.02] active:scale-[0.98] transition-all gap-2 self-start sm:self-auto shrink-0 font-bold cursor-pointer"
         >
           <Plus className="h-5 w-5" /> Novo Apontamento
         </Button>
