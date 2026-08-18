@@ -631,9 +631,9 @@ export function ApontamentoFormModal({
                 value={prioridade}
                 onChange={(e) => setPrioridade(e.target.value as PrioridadeApontamento)}
               >
-                <option value="Baixa">Baixa (Menor Urgência)</option>
-                <option value="Média">Média (Acompanhamento Regular)</option>
-                <option value="Alta">Alta (Crítico / Bloqueia Obra)</option>
+                <option value="Baixa">Baixo</option>
+                <option value="Média">Médio</option>
+                <option value="Alta">Alto</option>
               </SelectNative>
             </div>
           </div>

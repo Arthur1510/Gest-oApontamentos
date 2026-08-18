@@ -411,7 +411,7 @@ export default function RelatoriosPage() {
                                   : 'bg-[#00A3C4]/15 text-[#008EA9] border border-[#00A3C4]/30'
                               }`}
                             >
-                              {apontamento.prioridade}
+                              {apontamento.prioridade === 'Alta' ? 'Alto' : apontamento.prioridade === 'Média' ? 'Médio' : 'Baixo'}
                             </span>
                           </div>
 

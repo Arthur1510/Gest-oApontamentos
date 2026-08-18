@@ -200,7 +200,7 @@ export function ApontamentoDetailModal({
                     : 'baixa'
                 }
               >
-                Prioridade {apontamento.prioridade}
+                {apontamento.prioridade === 'Alta' ? 'Alto' : apontamento.prioridade === 'Média' ? 'Médio' : 'Baixo'}
               </Badge>
 
               {/* Badge Tipo de Apontamento */}

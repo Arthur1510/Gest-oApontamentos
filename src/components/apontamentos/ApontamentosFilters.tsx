@@ -64,9 +64,9 @@ export function ApontamentosFilters({
   ];
 
   const prioridadeOptions: MultiSelectOption[] = [
-    { value: 'Alta', label: 'Alta' },
-    { value: 'Média', label: 'Média' },
-    { value: 'Baixa', label: 'Baixa' },
+    { value: 'Alta', label: 'Alto' },
+    { value: 'Média', label: 'Médio' },
+    { value: 'Baixa', label: 'Baixo' },
   ];
 
   const disciplinaOptions: MultiSelectOption[] = DISCIPLINAS_OPCOES.map((d) => ({

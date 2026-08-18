@@ -183,7 +183,7 @@ export function ApontamentosHeader({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
-              Alta Prioridade
+              Alto
             </span>
             <div className="p-2 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 group-hover:bg-rose-500/20 transition-colors">
               <Flame className="h-4 w-4" />

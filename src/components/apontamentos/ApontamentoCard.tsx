@@ -97,7 +97,7 @@ export function ApontamentoCard({
                     : 'baixa'
                 }
               >
-                {apontamento.prioridade} Prioridade
+                {apontamento.prioridade === 'Alta' ? 'Alto' : apontamento.prioridade === 'Média' ? 'Médio' : 'Baixo'}
               </Badge>
             </div>
           )}
@@ -133,7 +133,7 @@ export function ApontamentoCard({
                 }
                 className="shrink-0"
               >
-                {apontamento.prioridade}
+                {apontamento.prioridade === 'Alta' ? 'Alto' : apontamento.prioridade === 'Média' ? 'Médio' : 'Baixo'}
               </Badge>
             )}
           </div>

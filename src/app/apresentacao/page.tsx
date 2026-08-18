@@ -216,9 +216,9 @@ export default function ResumoExecutivoPage() {
             label="Prioridade"
             placeholder="Todas"
             options={[
-              { value: 'Alta', label: 'Alta Severidade' },
-              { value: 'Média', label: 'Média Severidade' },
-              { value: 'Baixa', label: 'Baixa Severidade' },
+              { value: 'Alta', label: 'Alto' },
+              { value: 'Média', label: 'Médio' },
+              { value: 'Baixa', label: 'Baixo' },
             ]}
             selectedValues={selectedPrioridades}
             onChange={(values) => {
@@ -301,9 +301,9 @@ export default function ResumoExecutivoPage() {
                 <span className="text-[11px] text-amber-700 dark:text-amber-300/80 block">Em análise técnica</span>
               </div>
 
-              {/* Linha 2 - Card 4: Alta Severidade */}
+              {/* Linha 2 - Card 4: Alto */}
               <div className="bg-white dark:bg-[#0B384D] border border-rose-200 dark:border-rose-500/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
-                <span className="text-xs text-rose-800 dark:text-rose-300 font-bold uppercase tracking-wider">Alta Severidade</span>
+                <span className="text-xs text-rose-800 dark:text-rose-300 font-bold uppercase tracking-wider">Alto</span>
                 <p className="text-3xl sm:text-4xl font-black text-rose-600 dark:text-rose-400">{totalAltaPrioridade}</p>
                 <span className="text-[11px] text-rose-700 dark:text-rose-300/80 block">Críticos / Bloqueio</span>
               </div>
@@ -443,7 +443,7 @@ export default function ResumoExecutivoPage() {
                             : 'baixa'
                         }
                       >
-                        Prioridade {currentApontamento.prioridade}
+                        {currentApontamento.prioridade === 'Alta' ? 'Alto' : currentApontamento.prioridade === 'Média' ? 'Médio' : 'Baixo'}
                       </Badge>
                       <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800 flex items-center gap-1">
                         <ShieldAlert className="h-3 w-3" />
