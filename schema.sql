@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
     disciplina_destino VARCHAR(100) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'Aberto' CHECK (status IN ('Aberto', 'Resolvido')),
     prioridade VARCHAR(20) NOT NULL DEFAULT 'Média' CHECK (prioridade IN ('Baixa', 'Média', 'Alta')),
-    tipo_conflito VARCHAR(50) NOT NULL DEFAULT 'Conflito Físico' CHECK (tipo_conflito IN ('Conflito Físico', 'Concepção Técnica', 'Inconsistência Normativa', 'Definição de Produto', 'Informação Incompleta')),
+    tipo_conflito VARCHAR(50) NOT NULL DEFAULT 'Conflito Físico' CHECK (tipo_conflito IN ('Conflito Físico', 'Concepção Técnica', 'Inconsistência Normativa', 'Definição de Produto', 'Informação')),
     solucao TEXT,
     url_imagem TEXT,
     url_imagem_solucao TEXT,

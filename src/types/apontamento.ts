@@ -7,14 +7,14 @@ export type TipoConflito =
   | 'Concepção Técnica'
   | 'Inconsistência Normativa'
   | 'Definição de Produto'
-  | 'Informação Incompleta';
+  | 'Informação';
 
 export const TIPOS_CONFLITO_OPCOES: TipoConflito[] = [
   'Conflito Físico',
   'Concepção Técnica',
   'Inconsistência Normativa',
   'Definição de Produto',
-  'Informação Incompleta',
+  'Informação',
 ];
 
 export interface Projeto {
