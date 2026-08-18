@@ -11,6 +11,7 @@ import { ApontamentoCard } from '@/components/apontamentos/ApontamentoCard';
 import { ApontamentoFormModal } from '@/components/apontamentos/ApontamentoFormModal';
 import { ApontamentoDetailModal } from '@/components/apontamentos/ApontamentoDetailModal';
 import { Button } from '@/components/ui/button';
+import { SortCriteria, sortApontamentos } from '@/lib/sorting';
 
 export default function HomePage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
@@ -28,13 +29,14 @@ export default function HomePage() {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Filtros com suporte a multi-seleção
+  // Filtros com suporte a multi-seleção e ordenação
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
   const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
   const [selectedTiposConflito, setSelectedTiposConflito] = useState<string[]>([]);
   const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
+  const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
 
   // Carregar Apontamentos e Projetos do Supabase ou Mock
   const fetchApontamentos = useCallback(async () => {
@@ -286,11 +288,11 @@ export default function HomePage() {
     }
   };
 
-  // Filtragem dinâmica e reativa dos itens exibidos com suporte a multi-seleção
+  // Filtragem dinâmica e reativa dos itens exibidos com suporte a multi-seleção e ordenação
   const filteredApontamentos = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
 
-    return apontamentos.filter((item) => {
+    const filtered = apontamentos.filter((item) => {
       // 1. Busca textual resiliente (título, descrição, projeto, disciplinas ou tipo de conflito)
       const matchesSearch =
         !term ||
@@ -334,6 +336,8 @@ export default function HomePage() {
         matchesProjeto
       );
     });
+
+    return sortApontamentos(filtered, sortCriteria);
   }, [
     apontamentos,
     searchTerm,
@@ -342,6 +346,7 @@ export default function HomePage() {
     selectedDisciplinas,
     selectedTiposConflito,
     selectedProjetos,
+    sortCriteria,
   ]);
 
   const resetFilters = () => {
@@ -380,7 +385,7 @@ export default function HomePage() {
           onFilterPrioridade={(prio) => setSelectedPrioridades(prio === 'Todas' ? [] : [prio])}
         />
 
-        {/* Filtros com Suporte a Múltiplas Seleções Simultâneas */}
+        {/* Filtros com Suporte a Múltiplas Seleções Simultâneas e Ordenação */}
         <ApontamentosFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -396,6 +401,8 @@ export default function HomePage() {
           onProjetosChange={setSelectedProjetos}
           projetosList={projetosList}
           onResetFilters={resetFilters}
+          sortCriteria={sortCriteria}
+          onSortCriteriaChange={setSortCriteria}
         />
 
         {/* Lista de Apontamentos em Grade de 2 Colunas */}

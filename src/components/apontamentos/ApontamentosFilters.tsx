@@ -5,7 +5,9 @@ import { Search, Filter, RefreshCw, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MultiSelectFilter, MultiSelectOption } from '@/components/ui/multi-select-filter';
+import { SelectNative } from '@/components/ui/select-native';
 import { DISCIPLINAS_OPCOES, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
+import { SortCriteria, SORT_OPTIONS } from '@/lib/sorting';
 
 interface ApontamentosFiltersProps {
   searchTerm: string;
@@ -22,6 +24,8 @@ interface ApontamentosFiltersProps {
   onProjetosChange: (projetosIds: string[]) => void;
   projetosList: Projeto[];
   onResetFilters: () => void;
+  sortCriteria?: SortCriteria;
+  onSortCriteriaChange?: (criteria: SortCriteria) => void;
 }
 
 export function ApontamentosFilters({
@@ -39,6 +43,8 @@ export function ApontamentosFilters({
   onProjetosChange,
   projetosList,
   onResetFilters,
+  sortCriteria = 'data_desc',
+  onSortCriteriaChange,
 }: ApontamentosFiltersProps) {
   const hasActiveFilters =
     Boolean(searchTerm) ||
@@ -77,20 +83,45 @@ export function ApontamentosFilters({
   return (
     <div className="bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3.5">
       {/* Cabeçalho do Bloco de Filtros */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 text-xs font-extrabold text-[#072B3B] dark:text-slate-100 uppercase tracking-wider">
           <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> Filtros Dinâmicos (Multi-Seleção)
         </div>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onResetFilters}
-            className="text-xs font-semibold text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 h-7 gap-1"
-          >
-            <RefreshCw className="h-3 w-3" /> Limpar Todos os Filtros
-          </Button>
-        )}
+
+        <div className="flex items-center gap-2.5 self-end sm:self-auto">
+          {onSortCriteriaChange && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <label htmlFor="filter-sort" className="font-bold text-slate-500 text-[10.5px] uppercase tracking-wider shrink-0">
+                Ordenar:
+              </label>
+              <div className="w-48 sm:w-56">
+                <SelectNative
+                  id="filter-sort"
+                  value={sortCriteria}
+                  onChange={(e) => onSortCriteriaChange(e.target.value as SortCriteria)}
+                  className="h-8 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-[#041A24] border-slate-200 dark:border-[#0B384D]"
+                >
+                  {SORT_OPTIONS.filter((o) => o.value !== 'manual').map((opt) => (
+                    <option key={`opt-filter-${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </SelectNative>
+              </div>
+            </div>
+          )}
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onResetFilters}
+              className="text-xs font-semibold text-slate-500 hover:text-rose-500 dark:text-slate-400 dark:hover:text-rose-400 h-8 gap-1 shrink-0"
+            >
+              <RefreshCw className="h-3 w-3" /> Limpar Filtros
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Grid de Controles Multi-Select */}
