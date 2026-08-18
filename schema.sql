@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS public.projetos (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo'))
+    status VARCHAR(20) NOT NULL DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
+    pavimentos TEXT[] DEFAULT '{}'
 );
 
 -- 2. Habilitar RLS na tabela projetos
@@ -26,7 +27,7 @@ CREATE POLICY "Permitir inserção pública em projetos" ON public.projetos FOR 
 CREATE POLICY "Permitir atualização pública em projetos" ON public.projetos FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública em projetos" ON public.projetos FOR DELETE USING (true);
 
--- 4. Criar Tabela 'apontamentos' com tipo_conflito, solucao, url_imagem_solucao e galerias de imagens
+-- 4. Criar Tabela 'apontamentos' com tipo_conflito, solucao, url_imagem_solucao, galerias de imagens, pavimento e localizacao
 CREATE TABLE IF NOT EXISTS public.apontamentos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -42,12 +43,24 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
     url_imagem_solucao TEXT,
     imagens_apontamento TEXT[] DEFAULT '{}',
     imagens_solucao TEXT[] DEFAULT '{}',
+    pavimento TEXT,
+    localizacao TEXT,
     projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE
 );
 
 -- Garantir adição das colunas em tabelas já existentes
 DO $$ 
 BEGIN 
+    -- Projetos
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'projetos' AND column_name = 'pavimentos'
+    ) THEN
+        ALTER TABLE public.projetos 
+        ADD COLUMN pavimentos TEXT[] DEFAULT '{}';
+    END IF;
+
+    -- Apontamentos
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'apontamentos' AND column_name = 'projeto_id'
@@ -94,6 +107,22 @@ BEGIN
     ) THEN
         ALTER TABLE public.apontamentos 
         ADD COLUMN imagens_solucao TEXT[] DEFAULT '{}';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'pavimento'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN pavimento TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'localizacao'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN localizacao TEXT;
     END IF;
 END $$;
 

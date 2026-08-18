@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS public.projetos (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     nome VARCHAR(255) NOT NULL,
     descricao TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo'))
+    status VARCHAR(20) NOT NULL DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
+    pavimentos TEXT[] DEFAULT '{}'
 );
 
 CREATE TABLE IF NOT EXISTS public.apontamentos (
@@ -30,9 +31,29 @@ CREATE TABLE IF NOT EXISTS public.apontamentos (
     disciplina_destino VARCHAR(100) NOT NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'Aberto' CHECK (status IN ('Aberto', 'Resolvido')),
     prioridade VARCHAR(20) NOT NULL DEFAULT 'Média' CHECK (prioridade IN ('Baixa', 'Média', 'Alta')),
+    tipo_conflito VARCHAR(50) NOT NULL DEFAULT 'Conflito Físico',
+    solucao TEXT,
     url_imagem TEXT,
+    url_imagem_solucao TEXT,
+    imagens_apontamento TEXT[] DEFAULT '{}',
+    imagens_solucao TEXT[] DEFAULT '{}',
+    pavimento TEXT,
+    localizacao TEXT,
     projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE
-);`;
+);
+
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'projetos' AND column_name = 'pavimentos') THEN
+        ALTER TABLE public.projetos ADD COLUMN pavimentos TEXT[] DEFAULT '{}';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'apontamentos' AND column_name = 'pavimento') THEN
+        ALTER TABLE public.apontamentos ADD COLUMN pavimento TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'apontamentos' AND column_name = 'localizacao') THEN
+        ALTER TABLE public.apontamentos ADD COLUMN localizacao TEXT;
+    END IF;
+END $$;`;
 
     navigator.clipboard.writeText(sql);
     setCopied(true);

@@ -3,9 +3,19 @@
 -- Adiciona apontamentos com múltiplas imagens e textos longos
 -- =========================================================
 
--- 1. Garante que as colunas de galerias de imagens existam
+-- 1. Garante que as colunas existam
 DO $$ 
 BEGIN 
+    -- Projetos
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'projetos' AND column_name = 'pavimentos'
+    ) THEN
+        ALTER TABLE public.projetos 
+        ADD COLUMN pavimentos TEXT[] DEFAULT '{}';
+    END IF;
+
+    -- Apontamentos
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'apontamentos' AND column_name = 'tipo_conflito'
@@ -44,6 +54,22 @@ BEGIN
     ) THEN
         ALTER TABLE public.apontamentos 
         ADD COLUMN imagens_solucao TEXT[] DEFAULT '{}';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'pavimento'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN pavimento TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos' AND column_name = 'localizacao'
+    ) THEN
+        ALTER TABLE public.apontamentos 
+        ADD COLUMN localizacao TEXT;
     END IF;
 END $$;
 

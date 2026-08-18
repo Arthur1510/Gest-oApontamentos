@@ -95,18 +95,47 @@ export default function HomePage() {
   // Handler: Inserir novo Apontamento
   const handleCreateApontamento = async (novoData: NovoApontamento) => {
     if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase
+      let result = await supabase
         .from('apontamentos')
         .insert([novoData])
         .select('*, projetos(nome)');
 
-      if (error) {
-        throw new Error(error.message);
+      let usedFallback = false;
+
+      // Se falhar por divergência de schema (ex: coluna pavimento ou localizacao ainda não criada no Supabase)
+      if (
+        result.error &&
+        (result.error.message.includes('column') ||
+          result.error.message.includes('schema cache') ||
+          result.error.code === 'PGRST204' ||
+          result.error.code === '42703')
+      ) {
+        console.warn('Tentativa com payload simplificado devido a colunas pendentes no banco Supabase:', result.error);
+        const { pavimento, localizacao, ...fallbackData } = novoData;
+        result = await supabase
+          .from('apontamentos')
+          .insert([fallbackData])
+          .select('*, projetos(nome)');
+        usedFallback = true;
       }
 
-      if (data && data[0]) {
-        setApontamentos((prev) => [data[0] as Apontamento, ...prev]);
-        triggerToast('Apontamento registrado com sucesso no Supabase! ✨');
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      if (result.data && result.data[0]) {
+        const createdItem = {
+          ...result.data[0],
+          pavimento: result.data[0].pavimento ?? novoData.pavimento,
+          localizacao: result.data[0].localizacao ?? novoData.localizacao,
+        } as Apontamento;
+
+        setApontamentos((prev) => [createdItem, ...prev]);
+        if (usedFallback) {
+          triggerToast('Apontamento salvo! Execute o script schema.sql no Supabase para habilitar Pavimento e Localização.');
+        } else {
+          triggerToast('Apontamento registrado com sucesso no Supabase! ✨');
+        }
       }
     } else {
       const projEncontrado = projetosList.find((p) => p.id === novoData.projeto_id);
@@ -124,25 +153,54 @@ export default function HomePage() {
   // Handler: Atualizar Apontamento existente
   const handleUpdateApontamento = async (id: string, updatedData: NovoApontamento) => {
     if (isSupabaseConfigured() && supabase) {
-      const { data, error } = await supabase
+      let result = await supabase
         .from('apontamentos')
         .update(updatedData)
         .eq('id', id)
         .select('*, projetos(nome)');
 
-      if (error) {
-        throw new Error(error.message);
+      let usedFallback = false;
+
+      // Fallback caso colunas não existam no Supabase
+      if (
+        result.error &&
+        (result.error.message.includes('column') ||
+          result.error.message.includes('schema cache') ||
+          result.error.code === 'PGRST204' ||
+          result.error.code === '42703')
+      ) {
+        console.warn('Tentativa de update com payload simplificado:', result.error);
+        const { pavimento, localizacao, ...fallbackData } = updatedData;
+        result = await supabase
+          .from('apontamentos')
+          .update(fallbackData)
+          .eq('id', id)
+          .select('*, projetos(nome)');
+        usedFallback = true;
       }
 
-      if (data && data[0]) {
-        const updatedItem = data[0] as Apontamento;
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      if (result.data && result.data[0]) {
+        const updatedItem = {
+          ...result.data[0],
+          pavimento: result.data[0].pavimento ?? updatedData.pavimento,
+          localizacao: result.data[0].localizacao ?? updatedData.localizacao,
+        } as Apontamento;
+
         setApontamentos((prev) =>
           prev.map((item) => (item.id === id ? updatedItem : item))
         );
         if (selectedApontamento?.id === id) {
           setSelectedApontamento(updatedItem);
         }
-        triggerToast('Apontamento atualizado com sucesso no Supabase! ✏️');
+        if (usedFallback) {
+          triggerToast('Apontamento atualizado! Execute o schema.sql no Supabase para persistir Pavimento e Localização.');
+        } else {
+          triggerToast('Apontamento atualizado com sucesso no Supabase! ✏️');
+        }
       }
     } else {
       const projEncontrado = projetosList.find((p) => p.id === updatedData.projeto_id);

@@ -100,14 +100,32 @@ export default function ProjetosPage() {
       };
 
       if (isSupabaseConfigured() && supabase) {
-        const { data, error } = await supabase
+        let result = await supabase
           .from('projetos')
           .insert([novoData])
           .select();
 
-        if (error) throw new Error(error.message);
-        if (data && data[0]) {
-          setProjetos((prev) => [data[0] as Projeto, ...prev]);
+        if (
+          result.error &&
+          (result.error.message.includes('column') ||
+            result.error.message.includes('schema cache') ||
+            result.error.code === 'PGRST204' ||
+            result.error.code === '42703')
+        ) {
+          const { pavimentos: _, ...fallbackData } = novoData;
+          result = await supabase
+            .from('projetos')
+            .insert([fallbackData])
+            .select();
+        }
+
+        if (result.error) throw new Error(result.error.message);
+        if (result.data && result.data[0]) {
+          const createdProj = {
+            ...result.data[0],
+            pavimentos: result.data[0].pavimentos ?? novoData.pavimentos,
+          } as Projeto;
+          setProjetos((prev) => [createdProj, ...prev]);
         }
       } else {
         const novoItem: Projeto = {
