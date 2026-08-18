@@ -394,11 +394,11 @@ export default function RelatoriosPage() {
             </div>
 
             {/* AREA IMPRIMÍVEL (REACT-TO-PRINT) */}
-            <div ref={contentRef} className="print-area space-y-8 flex flex-col items-center">
+            <div ref={contentRef} className="print-area space-y-8 print:space-y-0 print:m-0 print:p-0 flex flex-col items-center">
               {/* PAGINA 1: CAPA INSTITUCIONAL WCC (FOLHA A4 PADRÃO) */}
               <div
-                style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
-                className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans relative overflow-hidden"
+                style={{ color: '#072b3b', backgroundColor: '#ffffff' }}
+                className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans relative overflow-hidden shrink-0"
               >
                 {/* Faixa decorativa topo */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
@@ -411,7 +411,7 @@ export default function RelatoriosPage() {
                 </div>
 
                 {/* Centro da Capa: Logo WCC & Titulos */}
-                <div className="my-auto text-center space-y-5 flex flex-col items-center justify-center py-8">
+                <div className="my-auto text-center space-y-4 flex flex-col items-center justify-center py-6">
                   <div className="flex flex-col items-center gap-1">
                     <div className="px-4 py-1.5 rounded-xl bg-[#072B3B] text-white flex items-center justify-center shadow-md border border-[#00A3C4]/30">
                       <span className="text-2xl font-black tracking-widest">WCC</span>
@@ -477,10 +477,12 @@ export default function RelatoriosPage() {
                   ? [apontamento.url_imagem_solucao]
                   : [];
 
-                const isLongText = (apontamento.descricao?.length || 0) + (apontamento.solucao?.length || 0) > 400;
+                const isLongText =
+                  (apontamento.descricao?.length || 0) + (apontamento.solucao?.length || 0) > 220 ||
+                  listImagensSol.length > 0;
 
                 return (
-                  <div key={`rel-page-container-${apontamento.id}`} className="w-full flex flex-col items-center group">
+                  <div key={`rel-page-container-${apontamento.id}`} className="w-full flex flex-col items-center group print:block print:w-[210mm] print:m-0 print:p-0">
                     {/* Barra de Ação Rápida de Posição da Prancha (no-print) */}
                     <div className="no-print w-[210mm] flex items-center justify-between mb-2 px-3 py-1.5 bg-white/95 dark:bg-[#072B3B]/95 backdrop-blur-xs rounded-xl border border-slate-200/90 dark:border-[#0B384D] text-xs shadow-2xs">
                       <div className="flex items-center gap-2">
@@ -541,11 +543,11 @@ export default function RelatoriosPage() {
                     </div>
 
                     <div
-                      style={{ pageBreakAfter: 'always', color: '#072b3b', backgroundColor: '#ffffff' }}
-                      className="w-[210mm] min-h-[297mm] h-auto p-6 sm:p-7 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans"
+                      style={{ color: '#072b3b', backgroundColor: '#ffffff' }}
+                      className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-5 sm:p-6 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans overflow-hidden shrink-0"
                     >
                       {/* Header Fixo do Topo da Prancha A4 */}
-                      <div className="border-b border-slate-400 pb-2 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
+                      <div className="border-b border-slate-400 pb-1.5 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
                         <span className="font-bold text-[#072B3B] uppercase">RELATÓRIO DE COMPATIBILIZAÇÃO TÉCNICA</span>
                         <span className="font-black text-[#00A3C4] uppercase truncate max-w-[200px]">
                           {nomeProjetoItem}
@@ -554,19 +556,19 @@ export default function RelatoriosPage() {
                       </div>
 
                       {/* Conteudo Principal do Apontamento com Fluxo Contínuo e Espaçamento Natural */}
-                      <div className="space-y-2.5 py-2 flex-1 flex flex-col justify-start">
+                      <div className="space-y-2 py-1.5 flex-1 flex flex-col justify-start overflow-hidden">
                         {/* 1. Titulo do Apontamento (Quebra de Linha Natural + Status) */}
-                        <div className="flex items-center justify-between gap-3 border-b border-slate-300 pb-2 shrink-0">
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3 border-b border-slate-300 pb-1.5 shrink-0">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
                             <span className="inline-flex items-center justify-center px-2 py-0.5 rounded bg-[#072B3B] text-white text-[11px] font-black shrink-0 leading-normal">
                               #{index + 1}
                             </span>
-                            <h2 className="text-[14px] sm:text-[15px] font-black text-[#072B3B] leading-tight break-words whitespace-normal">
+                            <h2 className="text-[13.5px] sm:text-[14.5px] font-black text-[#072B3B] leading-tight break-words whitespace-normal">
                               {apontamento.titulo}
                             </h2>
                           </div>
                           <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 ${
+                            className={`text-[9.5px] font-bold px-2 py-0.5 rounded flex items-center gap-1 shrink-0 ${
                               apontamento.status === 'Resolvido'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                                 : 'bg-amber-100 text-amber-800 border border-amber-300'
@@ -582,14 +584,14 @@ export default function RelatoriosPage() {
                         </div>
 
                         {/* 2. Metadados e Tags em 2 Linhas no Topo (Largura Total 100%) */}
-                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1.5 text-xs shrink-0">
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1 text-xs shrink-0">
                           {/* Linha 1 de Metadados: Prioridade | Tipo de Conflito | Disciplina Origem -> Destino */}
                           <div className="grid grid-cols-12 gap-2 items-center">
                             {/* Prioridade */}
                             <div className="col-span-3 flex items-center gap-1.5">
                               <span className="text-[9px] text-slate-500 font-bold uppercase">Prioridade:</span>
                               <span
-                                className={`font-bold px-2 py-0.2 rounded text-[10px] inline-block ${
+                                className={`font-bold px-1.5 py-0.2 rounded text-[9.5px] inline-block ${
                                   apontamento.prioridade === 'Alta'
                                     ? 'bg-rose-100 text-rose-800 border border-rose-300'
                                     : apontamento.prioridade === 'Média'
@@ -604,7 +606,7 @@ export default function RelatoriosPage() {
                             {/* Tipo de Apontamento */}
                             <div className="col-span-4 flex items-center gap-1 truncate">
                               <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Tipo:</span>
-                              <span className="font-bold text-amber-900 text-[10.5px] truncate flex items-center gap-1">
+                              <span className="font-bold text-amber-900 text-[10px] truncate flex items-center gap-1">
                                 <ShieldAlert className="h-3 w-3 text-amber-600 shrink-0" />
                                 <span className="truncate">{apontamento.tipo_conflito || 'Conflito Físico'}</span>
                               </span>
@@ -613,22 +615,22 @@ export default function RelatoriosPage() {
                             {/* Disciplinas Origem -> Destino */}
                             <div className="col-span-5 flex items-center gap-1.5 justify-end truncate">
                               <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Disciplinas:</span>
-                              <span className="font-extrabold text-[#008EA9] text-[10.5px] truncate">{apontamento.disciplina_origem}</span>
+                              <span className="font-extrabold text-[#008EA9] text-[10px] truncate">{apontamento.disciplina_origem}</span>
                               <span className="text-slate-400 font-bold">➔</span>
-                              <span className="font-extrabold text-rose-900 text-[10.5px] truncate">{apontamento.disciplina_destino}</span>
+                              <span className="font-extrabold text-rose-900 text-[10px] truncate">{apontamento.disciplina_destino}</span>
                             </div>
                           </div>
 
                           {/* Linha 2 de Metadados: Localização / Pavimento | Data */}
-                          <div className="flex items-center justify-between border-t border-slate-200/80 pt-1 text-[10.5px]">
-                            <div className="flex items-center gap-1.5 truncate max-w-[500px]">
+                          <div className="flex items-center justify-between border-t border-slate-200/80 pt-1 text-[10px]">
+                            <div className="flex items-center gap-1.5 truncate max-w-[480px]">
                               <span className="text-[9px] text-slate-500 font-bold uppercase shrink-0">Localização / Pavimento:</span>
                               <span className="font-extrabold text-[#072B3B] truncate" title={[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ')}>
                                 {[apontamento.pavimento, apontamento.localizacao].filter(Boolean).join(' • ') || 'Geral / Não especificado'}
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-1 text-slate-500 shrink-0 text-[10px]">
+                            <div className="flex items-center gap-1 text-slate-500 shrink-0 text-[9.5px]">
                               <span className="font-bold uppercase text-[9px]">Data:</span>
                               <span className="font-semibold text-slate-800">{formatDate(apontamento.created_at)}</span>
                             </div>
@@ -638,18 +640,18 @@ export default function RelatoriosPage() {
                         {/* 3. Galeria Padronizada com as Duas Primeiras Imagens em Largura Total (100%) */}
                         <div className="w-full shrink-0">
                           {listImagensApt.length === 0 ? (
-                            <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-4 text-center ${
-                              isLongText ? 'h-[58mm]' : 'h-[78mm]'
+                            <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-3 text-center ${
+                              isLongText ? 'h-[44mm]' : 'h-[60mm]'
                             }`}>
-                              <ImageIcon className="h-8 w-8 text-slate-400 opacity-60" />
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                              <ImageIcon className="h-7 w-7 text-slate-400 opacity-60" />
+                              <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 mt-1">
                                 Sem Imagem Anexada
                               </p>
                             </div>
                           ) : listImagensApt.length === 1 ? (
                             /* 1 Imagem: Visualização Ampla e Imponente em Largura Total */
                             <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative w-full ${
-                              isLongText ? 'h-[60mm]' : 'h-[80mm]'
+                              isLongText ? 'h-[48mm]' : 'h-[65mm]'
                             }`}>
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
@@ -661,7 +663,7 @@ export default function RelatoriosPage() {
                             </div>
                           ) : (
                             /* 2 Imagens: Grid Lado a Lado de 2 Colunas Amplas com Fotos #1 e #2 */
-                            <div className={`grid grid-cols-2 gap-3 w-full ${isLongText ? 'h-[60mm]' : 'h-[80mm]'}`}>
+                            <div className={`grid grid-cols-2 gap-2.5 w-full ${isLongText ? 'h-[48mm]' : 'h-[65mm]'}`}>
                               {/* Foto 1 */}
                               <div className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -688,31 +690,31 @@ export default function RelatoriosPage() {
                         </div>
 
                         {/* 4. Descrição Técnica do Conflito */}
-                        <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-300 space-y-1 shrink-0">
-                          <span className="text-[10.5px] text-slate-700 font-bold uppercase block tracking-wider">
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-300 space-y-0.5 shrink-0">
+                          <span className="text-[10px] text-slate-700 font-bold uppercase block tracking-wider">
                             Descrição Técnica do Conflito:
                           </span>
-                          <p className="text-[12px] sm:text-[12.5px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                          <p className="text-[11.5px] text-slate-800 leading-relaxed font-normal whitespace-pre-wrap break-words">
                             {apontamento.descricao}
                           </p>
                         </div>
 
                         {/* 5. Guia / Diretriz de Solução Técnica com Galeria */}
-                        <div className="bg-emerald-50/90 p-2.5 rounded-lg border border-emerald-300 space-y-1.5 shrink-0">
-                          <div className="flex items-center justify-between border-b border-emerald-200 pb-1">
-                            <span className="text-[11px] font-bold text-[#047857] uppercase flex items-center gap-1 tracking-wider">
-                              <Lightbulb className="h-3.5 w-3.5 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
+                        <div className="bg-emerald-50/90 p-2 rounded-lg border border-emerald-300 space-y-1 shrink-0">
+                          <div className="flex items-center justify-between border-b border-emerald-200 pb-0.5">
+                            <span className="text-[10.5px] font-bold text-[#047857] uppercase flex items-center gap-1 tracking-wider">
+                              <Lightbulb className="h-3 w-3 text-[#10B981] shrink-0" /> Guia / Solução Proposta & Diretriz Técnica:
                             </span>
                             {listImagensSol.length > 0 && (
-                              <span className="text-[9.5px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300">
+                              <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 px-1.5 py-0.2 rounded border border-emerald-300">
                                 💡 {listImagensSol.length} Foto(s) de Solução
                               </span>
                             )}
                           </div>
 
-                          <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-3 items-start" : ""}>
+                          <div className={listImagensSol.length > 0 ? "grid grid-cols-12 gap-2.5 items-start" : ""}>
                             <div className={listImagensSol.length > 0 ? "col-span-7" : ""}>
-                              <p className="text-[12px] sm:text-[12.5px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
+                              <p className="text-[11.5px] text-emerald-950 leading-relaxed font-normal whitespace-pre-wrap break-words">
                                 {apontamento.solucao || 'Aguardando definição técnica de solução pelos projetistas envolvidos.'}
                               </p>
                             </div>
@@ -720,7 +722,7 @@ export default function RelatoriosPage() {
                             {listImagensSol.length > 0 && (
                               <div className="col-span-5">
                                 {listImagensSol.length === 1 ? (
-                                  <div className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] h-20 relative flex items-center justify-center p-0.5 shadow-sm">
+                                  <div className="border-2 border-emerald-400/60 rounded-lg overflow-hidden bg-[#041A24] h-16 relative flex items-center justify-center p-0.5 shadow-sm">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
                                       src={listImagensSol[0]}
@@ -730,7 +732,7 @@ export default function RelatoriosPage() {
                                     />
                                   </div>
                                 ) : (
-                                  <div className="grid grid-cols-2 gap-1.5 h-20">
+                                  <div className="grid grid-cols-2 gap-1.5 h-16">
                                     {listImagensSol.slice(0, 2).map((solUrl, solIdx) => (
                                       <div
                                         key={`pdf-sol-grid2-${solIdx}`}
@@ -754,7 +756,7 @@ export default function RelatoriosPage() {
                       </div>
 
                       {/* Rodape Fixo da Folha A4 */}
-                      <div className="border-t border-slate-400 pt-2 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
+                      <div className="border-t border-slate-400 pt-1.5 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
                         <span className="font-semibold text-slate-600 uppercase">{nomeProjetoItem}</span>
                         <span className="font-bold text-[#072B3B]">Pág {numPaginaAtual} de {totalPaginasPDF}</span>
                       </div>

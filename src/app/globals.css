@@ -64,17 +64,66 @@ select option {
 }
 
 @media print {
-  body {
-    background-color: white !important;
-    color: black !important;
+  html, body {
+    width: 210mm !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #072b3b !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+
   header, nav, .no-print {
     display: none !important;
   }
+
+  .print-area {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  .print-area > * {
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+  }
+
+  /* Folha A4 Padrão com altura e quebra de página estritas */
+  .wcc-a4-page {
+    width: 210mm !important;
+    height: 296.8mm !important;
+    max-height: 296.8mm !important;
+    min-height: 296.8mm !important;
+    margin: 0 !important;
+    padding: 14mm 16mm !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    overflow: hidden !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #072b3b !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Não forçar quebra de página após a última folha para evitar página em branco no final */
+  .wcc-a4-page:last-child,
+  .print-area > div:last-child .wcc-a4-page {
+    page-break-after: auto !important;
+    break-after: auto !important;
+  }
+
   @page {
     size: A4 portrait;
-    margin: 0;
+    margin: 0mm;
   }
 }
