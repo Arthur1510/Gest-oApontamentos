@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Maximize2,
@@ -15,18 +15,22 @@ import {
   ShieldAlert,
   Lightbulb,
   Images,
-  Sparkles,
   Loader2,
   Layers,
-  Filter,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ListOrdered,
 } from 'lucide-react';
-import { Apontamento, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
+import { Apontamento, Projeto } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { SelectNative } from '@/components/ui/select-native';
+import { ReorderApontamentosModal } from '@/components/apontamentos/ReorderApontamentosModal';
+import { SortCriteria, SORT_OPTIONS, sortApontamentos } from '@/lib/sorting';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { formatDate } from '@/lib/utils';
 
 export default function ResumoExecutivoPage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
@@ -36,6 +40,11 @@ export default function ResumoExecutivoPage() {
   // Filtros de Resumo com multi-seleção
   const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
+
+  // Organização & Sequência dos Apontamentos / Conflitos
+  const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
+  const [manualOrderedIds, setManualOrderedIds] = useState<string[]>([]);
+  const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
 
   // Controle de Slides (0 = Capa Resumo Executivo, 1..N = Apontamentos)
   const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
@@ -48,7 +57,7 @@ export default function ResumoExecutivoPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Carregar dados
-  const fetchData = useCallback(async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
 
     if (isSupabaseConfigured() && supabase) {
@@ -58,11 +67,7 @@ export default function ResumoExecutivoPage() {
           .select('*')
           .order('nome', { ascending: true });
 
-        if (projData) {
-          setProjetosList(projData as Projeto[]);
-        } else {
-          setProjetosList(MOCK_PROJETOS);
-        }
+        setProjetosList(projData ? (projData as Projeto[]) : MOCK_PROJETOS);
 
         const { data, error } = await supabase
           .from('apontamentos')
@@ -88,45 +93,97 @@ export default function ResumoExecutivoPage() {
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    const init = async () => {
+      await loadData();
+    };
+    init();
+  }, [loadData]);
 
-  // Lista Filtrada para Resumo com multi-seleção
-  const filteredApontamentos = apontamentos.filter((item) => {
-    const matchesProjeto =
-      selectedProjetos.length === 0 ||
-      (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
-    const matchesPrioridade =
-      selectedPrioridades.length === 0 || selectedPrioridades.includes(item.prioridade);
-    return matchesProjeto && matchesPrioridade;
-  });
+  // Lista Ordenada e Filtrada com suporte a critérios automáticos e ajustes manuais
+  const orderedApontamentos = useMemo(() => {
+    const filtered = apontamentos.filter((item) => {
+      const matchesProjeto =
+        selectedProjetos.length === 0 ||
+        (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
+      const matchesPrioridade =
+        selectedPrioridades.length === 0 || selectedPrioridades.includes(item.prioridade);
+      return matchesProjeto && matchesPrioridade;
+    });
 
-  const totalSlides = filteredApontamentos.length + 1; // 1 Capa + N Apontamentos
+    if (sortCriteria === 'manual' && manualOrderedIds.length > 0) {
+      const map = new Map(filtered.map((item) => [item.id, item]));
+      const result: Apontamento[] = [];
+      for (const id of manualOrderedIds) {
+        const item = map.get(id);
+        if (item) {
+          result.push(item);
+          map.delete(id);
+        }
+      }
+      for (const item of map.values()) {
+        result.push(item);
+      }
+      return result;
+    }
 
-  // Reset de imagem ativa ao trocar de slide
-  useEffect(() => {
-    setActiveImageTab('apontamento');
-    setActiveImageIdx(0);
-  }, [currentSlideIdx]);
+    return sortApontamentos(filtered, sortCriteria);
+  }, [apontamentos, selectedProjetos, selectedPrioridades, sortCriteria, manualOrderedIds]);
+
+  const totalSlides = orderedApontamentos.length + 1; // 1 Capa + N Apontamentos
+
+  // Transição de Slide com reset de aba de imagem
+  const goToSlide = useCallback((newIdx: number | ((prev: number) => number)) => {
+    setCurrentSlideIdx((prev) => {
+      const resolved = typeof newIdx === 'function' ? newIdx(prev) : newIdx;
+      const clamped = Math.max(0, Math.min(resolved, totalSlides - 1));
+      if (clamped !== prev) {
+        setActiveImageTab('apontamento');
+        setActiveImageIdx(0);
+      }
+      return clamped;
+    });
+  }, [totalSlides]);
+
+  // Reordenação manual a partir do modal
+  const handleApplyOrderFromModal = (newOrderedList: Apontamento[], criteria: SortCriteria) => {
+    setManualOrderedIds(newOrderedList.map((item) => item.id));
+    setSortCriteria(criteria);
+  };
+
+  // Reordenação direta do slide ativo
+  const handleMoveCurrentSlide = (direction: 'up' | 'down') => {
+    if (currentSlideIdx === 0) return;
+    const currentAptIndex = currentSlideIdx - 1;
+    const targetAptIndex = direction === 'up' ? currentAptIndex - 1 : currentAptIndex + 1;
+    if (targetAptIndex < 0 || targetAptIndex >= orderedApontamentos.length) return;
+
+    const list = [...orderedApontamentos];
+    const [moved] = list.splice(currentAptIndex, 1);
+    list.splice(targetAptIndex, 0, moved);
+
+    setManualOrderedIds(list.map((item) => item.id));
+    setSortCriteria('manual');
+    goToSlide(targetAptIndex + 1);
+  };
 
   // Navegação por teclado (Setas Esquerda/Direita, Espaço)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault();
-        setCurrentSlideIdx((prev) => (prev < totalSlides - 1 ? prev + 1 : prev));
+        goToSlide((prev) => (prev < totalSlides - 1 ? prev + 1 : prev));
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
-        setCurrentSlideIdx((prev) => (prev > 0 ? prev - 1 : 0));
+        goToSlide((prev) => (prev > 0 ? prev - 1 : 0));
       } else if (e.key === 'Home') {
         e.preventDefault();
-        setCurrentSlideIdx(0);
+        goToSlide(0);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [totalSlides]);
+  }, [totalSlides, goToSlide]);
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -153,11 +210,11 @@ export default function ResumoExecutivoPage() {
   };
 
   // KPIs Executivos para a Capa
-  const totalApontamentos = filteredApontamentos.length;
-  const totalResolvidos = filteredApontamentos.filter((a) => a.status === 'Resolvido').length;
+  const totalApontamentos = orderedApontamentos.length;
+  const totalResolvidos = orderedApontamentos.filter((a) => a.status === 'Resolvido').length;
   const totalAbertos = totalApontamentos - totalResolvidos;
   const taxaResolucao = totalApontamentos > 0 ? Math.round((totalResolvidos / totalApontamentos) * 100) : 0;
-  const totalAltaPrioridade = filteredApontamentos.filter((a) => a.prioridade === 'Alta').length;
+  const totalAltaPrioridade = orderedApontamentos.filter((a) => a.prioridade === 'Alta').length;
 
   // Título dinâmico do projeto selecionado
   const projetoTituloExibicao =
@@ -186,7 +243,7 @@ export default function ResumoExecutivoPage() {
               WCC
             </div>
             <div className="flex flex-col">
-              <span className="font-extrabold text-xs text-[#072B3B] dark:text-white tracking-wide leading-tight truncate max-w-[220px] sm:max-w-[320px]" title={projetoTituloExibicao}>
+              <span className="font-extrabold text-xs text-[#072B3B] dark:text-white tracking-wide leading-tight truncate max-w-[200px] sm:max-w-[280px]" title={projetoTituloExibicao}>
                 {projetoTituloExibicao}
               </span>
               <span className="text-[9px] font-bold text-[#00A3C4] tracking-widest leading-tight">
@@ -196,8 +253,8 @@ export default function ResumoExecutivoPage() {
           </div>
         </div>
 
-        {/* Filtros Rápido no Topo */}
-        <div className="hidden md:flex items-center gap-3">
+        {/* Filtros e Ordenação no Topo */}
+        <div className="hidden md:flex items-center gap-2.5">
           <MultiSelectFilter
             label="Projetos"
             placeholder="Todos"
@@ -205,11 +262,11 @@ export default function ResumoExecutivoPage() {
             selectedValues={selectedProjetos}
             onChange={(values) => {
               setSelectedProjetos(values);
-              setCurrentSlideIdx(0);
+              goToSlide(0);
             }}
             variant="wcc"
             searchable
-            className="w-48"
+            className="w-36 lg:w-44"
           />
 
           <MultiSelectFilter
@@ -223,11 +280,43 @@ export default function ResumoExecutivoPage() {
             selectedValues={selectedPrioridades}
             onChange={(values) => {
               setSelectedPrioridades(values);
-              setCurrentSlideIdx(0);
+              goToSlide(0);
             }}
             variant="default"
-            className="w-44"
+            className="w-32 lg:w-36"
           />
+
+          {/* Ordenação dos Conflitos */}
+          <div className="flex items-center gap-1.5 pl-1.5 border-l border-slate-200 dark:border-[#0B384D]">
+            <div className="w-44 lg:w-52">
+              <SelectNative
+                id="sort-criteria-resumo"
+                value={sortCriteria}
+                onChange={(e) => {
+                  setSortCriteria(e.target.value as SortCriteria);
+                }}
+                className="h-8 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-[#041A24] border-slate-200 dark:border-[#0B384D]"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </SelectNative>
+            </div>
+
+            <Button
+              type="button"
+              variant="wcc"
+              size="sm"
+              onClick={() => setIsReorderModalOpen(true)}
+              title="Personalizar Ordem dos Conflitos"
+              className="text-xs h-8 px-2.5 gap-1 font-bold cursor-pointer shrink-0 shadow-xs"
+            >
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              <span className="hidden xl:inline">Organizar</span>
+            </Button>
+          </div>
         </div>
 
         {/* Toggle Tema, Contador de Slides e Fullscreen */}
@@ -258,9 +347,9 @@ export default function ResumoExecutivoPage() {
           </div>
         ) : currentSlideIdx === 0 ? (
           /* SLIDE 1: CAPA OFICIAL COM FOCO TOTAL NO PROJETO */
-          <div className="space-y-6 sm:space-y-8 animate-in fade-in-0 duration-300 my-auto max-w-3xl mx-auto w-full">
+          <div className="space-y-4 sm:space-y-6 animate-in fade-in-0 duration-300 my-auto max-w-3xl mx-auto w-full">
             {/* Header da Capa com Logotipo WCC e Nome Dinâmico do Projeto */}
-            <div className="space-y-3 text-center">
+            <div className="space-y-2 text-center">
               <div className="flex flex-col items-center justify-center">
                 <div className="text-3xl sm:text-4xl font-black tracking-widest text-[#072B3B] dark:text-white">
                   WCC
@@ -270,7 +359,7 @@ export default function ResumoExecutivoPage() {
                 </div>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#072B3B] dark:text-white uppercase leading-tight pt-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-[#072B3B] dark:text-white uppercase leading-tight pt-1">
                 {projetoTituloExibicao}
               </h1>
 
@@ -279,44 +368,94 @@ export default function ResumoExecutivoPage() {
             </div>
 
             {/* Grid de KPIs Executivos em Duas Linhas (2x2) */}
-            <div className="grid grid-cols-2 gap-4 sm:gap-5 max-w-2xl mx-auto w-full">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto w-full">
               {/* Linha 1 - Card 1: Total */}
-              <div className="bg-white dark:bg-[#0B384D] border border-slate-200 dark:border-white/10 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
+              <div className="bg-white dark:bg-[#0B384D] border border-slate-200 dark:border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-0.5 shadow-2xs">
                 <span className="text-xs text-slate-500 dark:text-slate-300 font-bold uppercase tracking-wider">Total Apontamentos</span>
-                <p className="text-3xl sm:text-4xl font-black text-[#072B3B] dark:text-white">{totalApontamentos}</p>
+                <p className="text-2xl sm:text-3xl font-black text-[#072B3B] dark:text-white">{totalApontamentos}</p>
                 <span className="text-[11px] text-slate-400 dark:text-slate-400 block">Cadastrados no sistema</span>
               </div>
 
               {/* Linha 1 - Card 2: Resolvidos */}
-              <div className="bg-white dark:bg-[#0B384D] border border-emerald-200 dark:border-[#10B981]/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
+              <div className="bg-white dark:bg-[#0B384D] border border-emerald-200 dark:border-[#10B981]/40 rounded-2xl p-3.5 sm:p-4 space-y-0.5 shadow-2xs">
                 <span className="text-xs text-[#047857] dark:text-[#34D399] font-bold uppercase tracking-wider">Resolvidos / Solucionados</span>
-                <p className="text-3xl sm:text-4xl font-black text-[#10B981]">{totalResolvidos}</p>
+                <p className="text-2xl sm:text-3xl font-black text-[#10B981]">{totalResolvidos}</p>
                 <span className="text-[11px] text-[#047857] dark:text-[#34D399] block font-semibold">{taxaResolucao}% de taxa de solução</span>
               </div>
 
               {/* Linha 2 - Card 3: Pendentes em Aberto */}
-              <div className="bg-white dark:bg-[#0B384D] border border-amber-200 dark:border-amber-500/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
+              <div className="bg-white dark:bg-[#0B384D] border border-amber-200 dark:border-amber-500/40 rounded-2xl p-3.5 sm:p-4 space-y-0.5 shadow-2xs">
                 <span className="text-xs text-amber-800 dark:text-amber-300 font-bold uppercase tracking-wider">Pendentes em Aberto</span>
-                <p className="text-3xl sm:text-4xl font-black text-amber-600 dark:text-amber-400">{totalAbertos}</p>
+                <p className="text-2xl sm:text-3xl font-black text-amber-600 dark:text-amber-400">{totalAbertos}</p>
                 <span className="text-[11px] text-amber-700 dark:text-amber-300/80 block">Em análise técnica</span>
               </div>
 
               {/* Linha 2 - Card 4: Alto */}
-              <div className="bg-white dark:bg-[#0B384D] border border-rose-200 dark:border-rose-500/40 rounded-2xl p-4 sm:p-5 space-y-1 shadow-2xs">
+              <div className="bg-white dark:bg-[#0B384D] border border-rose-200 dark:border-rose-500/40 rounded-2xl p-3.5 sm:p-4 space-y-0.5 shadow-2xs">
                 <span className="text-xs text-rose-800 dark:text-rose-300 font-bold uppercase tracking-wider">Alto</span>
-                <p className="text-3xl sm:text-4xl font-black text-rose-600 dark:text-rose-400">{totalAltaPrioridade}</p>
+                <p className="text-2xl sm:text-3xl font-black text-rose-600 dark:text-rose-400">{totalAltaPrioridade}</p>
                 <span className="text-[11px] text-rose-700 dark:text-rose-300/80 block">Críticos / Bloqueio</span>
               </div>
             </div>
 
+            {/* Box de Configuração da Sequência / Ordem dos Conflitos na Capa */}
+            <div className="bg-white dark:bg-[#0B384D] border border-slate-200 dark:border-white/10 rounded-2xl p-3.5 sm:p-4 shadow-2xs space-y-2.5 max-w-2xl mx-auto w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] shrink-0 border border-[#00A3C4]/20">
+                    <ListOrdered className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-black text-[#072B3B] dark:text-white uppercase tracking-wider flex items-center gap-2">
+                      Ordem dos Conflitos ({orderedApontamentos.length} Slides)
+                      {sortCriteria === 'manual' && (
+                        <span className="text-[10px] bg-cyan-100 dark:bg-[#00A3C4]/30 text-[#008EA9] dark:text-[#00C4EB] px-2 py-0.2 rounded-full font-bold">
+                          Manual
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-300">
+                      Critério de sequência para a apresentação
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-48 sm:w-56">
+                    <SelectNative
+                      value={sortCriteria}
+                      onChange={(e) => setSortCriteria(e.target.value as SortCriteria)}
+                      className="h-8 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-[#041A24] border-slate-200 dark:border-[#0B384D]"
+                    >
+                      {SORT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </SelectNative>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="wcc"
+                    size="sm"
+                    onClick={() => setIsReorderModalOpen(true)}
+                    className="text-xs h-8 gap-1 font-bold cursor-pointer shadow-xs shrink-0"
+                  >
+                    <ArrowUpDown className="h-3.5 w-3.5" /> Organizar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* CTA para Iniciar Resumo */}
-            <div className="flex flex-col items-center justify-center pt-2 gap-3">
+            <div className="flex flex-col items-center justify-center pt-1 gap-2">
               <Button
                 variant="wcc-gradient"
                 size="lg"
-                onClick={() => setCurrentSlideIdx(1)}
-                disabled={filteredApontamentos.length === 0}
-                className="h-12 px-8 rounded-xl font-extrabold text-sm shadow-xl shadow-[#00A3C4]/20 gap-2 hover:scale-105 transition-transform cursor-pointer"
+                onClick={() => goToSlide(1)}
+                disabled={orderedApontamentos.length === 0}
+                className="h-11 px-8 rounded-xl font-extrabold text-sm shadow-xl shadow-[#00A3C4]/20 gap-2 hover:scale-105 transition-transform cursor-pointer"
               >
                 Iniciar Apresentação do Resumo <ChevronRight className="h-5 w-5" />
               </Button>
@@ -328,7 +467,7 @@ export default function ResumoExecutivoPage() {
         ) : (
           /* SLIDES 2 A N: APONTAMENTOS INDIVIDUAIS COM ESTRUTURA EXECUTIVA ROBUSTA */
           (() => {
-            const currentApontamento = filteredApontamentos[currentSlideIdx - 1];
+            const currentApontamento = orderedApontamentos[currentSlideIdx - 1];
             if (!currentApontamento) return null;
 
             const listImagensApt = currentApontamento.imagens_apontamento && currentApontamento.imagens_apontamento.length > 0
@@ -507,8 +646,8 @@ export default function ResumoExecutivoPage() {
                     </div>
                   </div>
 
-                  {/* Botão de Ação Rápida no Slide */}
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-200 dark:border-[#0B384D] shrink-0 mt-2">
+                  {/* Botões de Ação e Reordenação Rápida no Slide */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 dark:border-[#0B384D] shrink-0 mt-2">
                     <Button
                       variant={currentApontamento.status === 'Aberto' ? 'emerald' : 'outline'}
                       size="sm"
@@ -525,6 +664,45 @@ export default function ResumoExecutivoPage() {
                         </>
                       )}
                     </Button>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                        #{currentSlideIdx} de {orderedApontamentos.length}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMoveCurrentSlide('up')}
+                        disabled={currentSlideIdx <= 1}
+                        title="Mover este conflito para antes (Slide anterior)"
+                        className="h-8 w-8 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-30 cursor-pointer"
+                      >
+                        <ArrowUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleMoveCurrentSlide('down')}
+                        disabled={currentSlideIdx >= orderedApontamentos.length}
+                        title="Mover este conflito para depois (Próximo slide)"
+                        className="h-8 w-8 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-30 cursor-pointer"
+                      >
+                        <ArrowDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsReorderModalOpen(true)}
+                        title="Organizar sequência dos conflitos"
+                        className="text-xs h-8 px-2 gap-1 text-slate-600 dark:text-slate-300 hover:border-[#00A3C4] hover:text-[#00A3C4] cursor-pointer"
+                      >
+                        <ArrowUpDown className="h-3 w-3" />
+                        <span className="hidden sm:inline">Ordem</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -539,7 +717,7 @@ export default function ResumoExecutivoPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCurrentSlideIdx((prev) => (prev > 0 ? prev - 1 : 0))}
+            onClick={() => goToSlide((prev) => (prev > 0 ? prev - 1 : 0))}
             disabled={currentSlideIdx === 0}
             className="text-xs h-8 gap-1"
           >
@@ -557,7 +735,7 @@ export default function ResumoExecutivoPage() {
             <button
               key={`dot-${idx}`}
               type="button"
-              onClick={() => setCurrentSlideIdx(idx)}
+              onClick={() => goToSlide(idx)}
               className={`h-2 rounded-full transition-all cursor-pointer ${
                 currentSlideIdx === idx
                   ? 'w-6 bg-[#00A3C4]'
@@ -575,7 +753,7 @@ export default function ResumoExecutivoPage() {
           <Button
             variant="wcc"
             size="sm"
-            onClick={() => setCurrentSlideIdx((prev) => (prev < totalSlides - 1 ? prev + 1 : prev))}
+            onClick={() => goToSlide((prev) => (prev < totalSlides - 1 ? prev + 1 : prev))}
             disabled={currentSlideIdx === totalSlides - 1}
             className="text-xs h-8 gap-1 font-bold shadow-xs"
           >
@@ -583,6 +761,18 @@ export default function ResumoExecutivoPage() {
           </Button>
         </div>
       </footer>
+
+      {/* Modal de Reordenação e Sequenciamento dos Conflitos */}
+      <ReorderApontamentosModal
+        isOpen={isReorderModalOpen}
+        onClose={() => setIsReorderModalOpen(false)}
+        apontamentos={orderedApontamentos}
+        onApplyOrder={handleApplyOrderFromModal}
+        currentCriteria={sortCriteria}
+        title="Organizar Sequência da Apresentação"
+        description="Ajuste a ordem dos conflitos para a apresentação e reunião técnica. Use os botões rápidos ou reordene individualmente."
+        confirmLabel="Aplicar à Apresentação"
+      />
     </main>
   );
 }

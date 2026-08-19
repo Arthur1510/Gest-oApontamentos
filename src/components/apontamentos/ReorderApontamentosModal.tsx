@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
   ChevronsUp,
   ChevronsDown,
   Sparkles,
-  RotateCcw,
   Check,
   Layers,
   ShieldAlert,
@@ -28,6 +26,9 @@ interface ReorderApontamentosModalProps {
   apontamentos: Apontamento[];
   onApplyOrder: (newOrderedList: Apontamento[], criteria: SortCriteria) => void;
   currentCriteria?: SortCriteria;
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
 }
 
 export function ReorderApontamentosModal({
@@ -36,6 +37,9 @@ export function ReorderApontamentosModal({
   apontamentos,
   onApplyOrder,
   currentCriteria = 'data_desc',
+  title = 'Organizar Sequência dos Apontamentos',
+  description = 'Ajuste a ordem em que os apontamentos aparecem no relatório e na apresentação. Use os botões rápidos ou reordene individualmente.',
+  confirmLabel = 'Aplicar Sequência',
 }: ReorderApontamentosModalProps) {
   const [items, setItems] = useState<Apontamento[]>([]);
   const [activeCriteria, setActiveCriteria] = useState<SortCriteria>(currentCriteria);
@@ -93,10 +97,10 @@ export function ReorderApontamentosModal({
             <ListOrdered className="h-4 w-4" /> Gestão de Sequência • Relatório & Apresentação
           </div>
           <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white">
-            Organizar Sequência das Pranchas ({items.length} Apontamentos)
+            {title} ({items.length} Apontamentos)
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Ajuste a ordem em que os apontamentos aparecem no relatório e na paginação A4. Use os botões rápidos ou reordene individualmente.
+            {description}
           </DialogDescription>
 
           {/* Barra de Ordenação Automática Rápida */}
@@ -279,7 +283,7 @@ export function ReorderApontamentosModal({
               onClick={handleConfirm}
               className="text-xs font-bold gap-1.5 cursor-pointer shadow-md"
             >
-              <Check className="h-3.5 w-3.5" /> Aplicar Ordem ao Relatório
+              <Check className="h-3.5 w-3.5" /> {confirmLabel}
             </Button>
           </div>
         </DialogFooter>
