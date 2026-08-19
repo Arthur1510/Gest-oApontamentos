@@ -8,14 +8,10 @@ import {
   Loader2,
   Filter,
   RefreshCw,
-  FolderKanban,
-  ArrowRight,
   Sparkles,
   Image as ImageIcon,
   CheckCircle2,
   AlertCircle,
-  Calendar,
-  Layers,
   ShieldAlert,
   Lightbulb,
   ArrowUpDown,
@@ -24,6 +20,13 @@ import {
   ChevronsUp,
   ChevronsDown,
   ListOrdered,
+  Images,
+  ChevronLeft,
+  ChevronRight,
+  Grid2X2,
+  Columns,
+  RotateCcw,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { Apontamento, Projeto, DISCIPLINAS_OPCOES, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
@@ -34,6 +37,92 @@ import { SelectNative } from '@/components/ui/select-native';
 import { ReorderApontamentosModal } from '@/components/apontamentos/ReorderApontamentosModal';
 import { SortCriteria, SORT_OPTIONS, sortApontamentos } from '@/lib/sorting';
 import { formatDate } from '@/lib/utils';
+
+export type ImageSizePreset = 'P' | 'M' | 'G' | 'XG';
+
+export const IMAGE_SIZE_OPTIONS: { value: ImageSizePreset; label: string; desc: string }[] = [
+  { value: 'P', label: 'Compacto (P)', desc: 'Menor altura (~50mm), ideal para textos longos' },
+  { value: 'M', label: 'Médio / Padrão (M)', desc: 'Tamanho equilibrado (~68mm)' },
+  { value: 'G', label: 'Grande (G)', desc: 'Maior destaque (~85mm)' },
+  { value: 'XG', label: 'Máximo (XG)', desc: 'Altura máxima (~100mm)' },
+];
+
+/**
+ * Calcula a classe de altura da galeria de fotos dinamicamente com base no tamanho escolhido,
+ * quantidade de imagens, modo de layout e se o apontamento possui textos longos.
+ */
+function getImageContainerHeight(
+  size: ImageSizePreset,
+  count: number,
+  layout: 'cols' | 'grid2x2',
+  isLongText: boolean
+): string {
+  if (count === 0) return 'h-0 hidden';
+
+  if (count === 1 || count === 2) {
+    switch (size) {
+      case 'P':
+        return isLongText ? 'h-[44mm]' : 'h-[54mm]';
+      case 'M':
+        return isLongText ? 'h-[52mm]' : 'h-[68mm]';
+      case 'G':
+        return isLongText ? 'h-[64mm]' : 'h-[85mm]';
+      case 'XG':
+        return isLongText ? 'h-[76mm]' : 'h-[100mm]';
+    }
+  }
+
+  if (count === 3) {
+    switch (size) {
+      case 'P':
+        return isLongText ? 'h-[40mm]' : 'h-[50mm]';
+      case 'M':
+        return isLongText ? 'h-[48mm]' : 'h-[62mm]';
+      case 'G':
+        return isLongText ? 'h-[58mm]' : 'h-[75mm]';
+      case 'XG':
+        return isLongText ? 'h-[68mm]' : 'h-[88mm]';
+    }
+  }
+
+  if (count === 4 && layout === 'grid2x2') {
+    switch (size) {
+      case 'P':
+        return isLongText ? 'h-[58mm]' : 'h-[72mm]';
+      case 'M':
+        return isLongText ? 'h-[68mm]' : 'h-[84mm]';
+      case 'G':
+        return isLongText ? 'h-[80mm]' : 'h-[98mm]';
+      case 'XG':
+        return isLongText ? 'h-[92mm]' : 'h-[110mm]';
+    }
+  }
+
+  if (count === 4 && layout === 'cols') {
+    switch (size) {
+      case 'P':
+        return isLongText ? 'h-[36mm]' : 'h-[45mm]';
+      case 'M':
+        return isLongText ? 'h-[44mm]' : 'h-[55mm]';
+      case 'G':
+        return isLongText ? 'h-[54mm]' : 'h-[66mm]';
+      case 'XG':
+        return isLongText ? 'h-[64mm]' : 'h-[78mm]';
+    }
+  }
+
+  // 5 ou mais imagens
+  switch (size) {
+    case 'P':
+      return isLongText ? 'h-[56mm]' : 'h-[70mm]';
+    case 'M':
+      return isLongText ? 'h-[66mm]' : 'h-[82mm]';
+    case 'G':
+      return isLongText ? 'h-[78mm]' : 'h-[96mm]';
+    case 'XG':
+      return isLongText ? 'h-[90mm]' : 'h-[108mm]';
+  }
+}
 
 export default function RelatoriosPage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
@@ -50,6 +139,16 @@ export default function RelatoriosPage() {
   const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
   const [manualOrderedIds, setManualOrderedIds] = useState<string[]>([]);
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
+
+  // Configurações Globais e Dinâmicas do Quadro de Fotos
+  const [globalDefaultImageCount, setGlobalDefaultImageCount] = useState<string>('2'); // '1', '2', '3', '4', 'all', '0'
+  const [globalImageSize, setGlobalImageSize] = useState<ImageSizePreset>('M'); // 'P', 'M', 'G', 'XG'
+
+  // Overrides individuais por Apontamento
+  const [imageCountByApontamento, setImageCountByApontamento] = useState<Record<string, number>>({});
+  const [imageSizeByApontamento, setImageSizeByApontamento] = useState<Record<string, ImageSizePreset>>({});
+  const [imageOrderByApontamento, setImageOrderByApontamento] = useState<Record<string, string[]>>({});
+  const [imageLayoutByApontamento, setImageLayoutByApontamento] = useState<Record<string, 'cols' | 'grid2x2'>>({});
 
   // Referência para impressão react-to-print
   const contentRef = useRef<HTMLDivElement>(null);
@@ -90,7 +189,7 @@ export default function RelatoriosPage() {
       } catch (err) {
         console.error('Falha de conexão:', err);
         setApontamentos(MOCK_APONTAMENTOS);
-        setProjetosList(MOCK_PROJETOS);
+        setProjetosList(MOCK_PROMOTES_FALLBACK(MOCK_PROJETOS));
       }
     } else {
       setApontamentos(MOCK_APONTAMENTOS);
@@ -100,8 +199,15 @@ export default function RelatoriosPage() {
     setIsLoading(false);
   }, []);
 
+  function MOCK_PROMOTES_FALLBACK(mock: Projeto[]) {
+    return mock;
+  }
+
   useEffect(() => {
-    fetchData();
+    const init = async () => {
+      await fetchData();
+    };
+    init();
   }, [fetchData]);
 
   // Lista Ordenada e Filtrada com suporte a critérios automáticos e ajustes manuais
@@ -186,6 +292,78 @@ export default function RelatoriosPage() {
     setSortCriteria(criteria);
   };
 
+  // Obter lista de imagens (respeitando ordem customizada se houver)
+  const getApontamentoImages = useCallback((apontamento: Apontamento): string[] => {
+    const defaultList = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
+      ? apontamento.imagens_apontamento
+      : apontamento.url_imagem
+      ? [apontamento.url_imagem]
+      : [];
+
+    const customOrder = imageOrderByApontamento[apontamento.id];
+    if (customOrder && customOrder.length > 0) {
+      const validCustom = customOrder.filter((url) => defaultList.includes(url));
+      const missing = defaultList.filter((url) => !validCustom.includes(url));
+      return [...validCustom, ...missing];
+    }
+    return defaultList;
+  }, [imageOrderByApontamento]);
+
+  // Alterar a quantidade de imagens visíveis para um apontamento específico
+  const handleSetImageCount = (apontamentoId: string, count: number) => {
+    setImageCountByApontamento((prev) => ({
+      ...prev,
+      [apontamentoId]: count,
+    }));
+  };
+
+  // Alterar o tamanho da imagem para um apontamento específico
+  const handleSetImageSize = (apontamentoId: string, size: ImageSizePreset) => {
+    setImageSizeByApontamento((prev) => ({
+      ...prev,
+      [apontamentoId]: size,
+    }));
+  };
+
+  // Reordenar posição de uma imagem (mover para esquerda / direita)
+  const handleMoveImage = (apontamentoId: string, fromIndex: number, direction: 'left' | 'right') => {
+    const currentItem = apontamentos.find((a) => a.id === apontamentoId);
+    if (!currentItem) return;
+
+    const currentList = [...getApontamentoImages(currentItem)];
+    const toIndex = direction === 'left' ? fromIndex - 1 : fromIndex + 1;
+
+    if (toIndex < 0 || toIndex >= currentList.length) return;
+
+    const [moved] = currentList.splice(fromIndex, 1);
+    currentList.splice(toIndex, 0, moved);
+
+    setImageOrderByApontamento((prev) => ({
+      ...prev,
+      [apontamentoId]: currentList,
+    }));
+  };
+
+  // Restaurar ordem padrão de fotos de um apontamento
+  const handleResetImageOrder = (apontamentoId: string) => {
+    setImageOrderByApontamento((prev) => {
+      const copy = { ...prev };
+      delete copy[apontamentoId];
+      return copy;
+    });
+  };
+
+  // Alternar layout entre grade 2x2 e colunas
+  const handleToggleImageLayout = (apontamentoId: string) => {
+    setImageLayoutByApontamento((prev) => {
+      const current = prev[apontamentoId] || 'grid2x2';
+      return {
+        ...prev,
+        [apontamentoId]: current === 'grid2x2' ? 'cols' : 'grid2x2',
+      };
+    });
+  };
+
   // Nome do projeto selecionado para a Capa
   const projetoSelecionadoNome =
     selectedProjetos.length === 0
@@ -198,7 +376,7 @@ export default function RelatoriosPage() {
   const totalPaginasPDF = orderedApontamentos.length + 1; // 1 Capa + N Páginas
 
   return (
-    <main className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 py-8 px-3 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Banner de status Supabase (no-print) */}
         <div className="no-print">
@@ -230,7 +408,7 @@ export default function RelatoriosPage() {
           </Button>
         </div>
 
-        {/* Painel de Filtros (no-print) */}
+        {/* 1. Painel de Filtros (no-print) */}
         <div className="no-print bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[#072B3B] dark:text-slate-100 uppercase tracking-wider">
@@ -309,15 +487,15 @@ export default function RelatoriosPage() {
           </div>
         </div>
 
-        {/* Painel de Organização & Sequência das Pranchas (no-print) */}
-        <div className="no-print bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* 2. Painel de Organização, Sequência, Tamanho e Quantidade de Fotos (no-print) */}
+        <div className="no-print bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs flex flex-col xl:flex-row xl:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] shrink-0 border border-[#00A3C4]/20 shadow-2xs">
               <ListOrdered className="h-5 w-5" />
             </div>
             <div>
               <div className="text-xs font-black text-[#072B3B] dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
-                2. Organização da Sequência ({orderedApontamentos.length} Pranchas)
+                2. Configurações de Imagens & Sequência ({orderedApontamentos.length} Pranchas)
                 {sortCriteria === 'manual' && (
                   <span className="text-[10px] bg-cyan-100 dark:bg-[#00A3C4]/30 text-[#008EA9] dark:text-[#00C4EB] px-2 py-0.2 rounded-full font-bold">
                     Ordem Manual
@@ -325,17 +503,65 @@ export default function RelatoriosPage() {
                 )}
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Escolha o critério de ordenação automática das pranchas ou personalize a ordem com setas e arrastar.
+                Defina o padrão global de quantidade e tamanho das imagens no A4 ou personalize prancha por prancha.
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 self-end md:self-auto shrink-0">
-            <div className="flex items-center gap-2">
-              <label htmlFor="sort-criteria" className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider shrink-0">
-                Ordenar por:
+          <div className="flex flex-wrap items-center gap-3 self-end xl:self-auto shrink-0">
+            {/* Seletor Global de Fotos Padrão no Quadro */}
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="global-photo-count" className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <Images className="h-3.5 w-3.5 text-[#00A3C4]" /> Fotos:
               </label>
-              <div className="w-56 sm:w-64">
+              <div className="w-44 sm:w-48">
+                <SelectNative
+                  id="global-photo-count"
+                  value={globalDefaultImageCount}
+                  onChange={(e) => {
+                    setGlobalDefaultImageCount(e.target.value);
+                  }}
+                  className="h-9 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-[#041A24] border-slate-200 dark:border-[#0B384D]"
+                >
+                  <option value="2">2 Fotos (Padrão)</option>
+                  <option value="1">1 Foto (Foco Único)</option>
+                  <option value="3">3 Fotos (3 Colunas)</option>
+                  <option value="4">4 Fotos (Grade 2x2)</option>
+                  <option value="all">Todas as Fotos</option>
+                  <option value="0">Ocultar Fotos</option>
+                </SelectNative>
+              </div>
+            </div>
+
+            {/* Seletor Global de Tamanho das Imagens */}
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="global-photo-size" className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <SlidersHorizontal className="h-3.5 w-3.5 text-[#10B981]" /> Tamanho:
+              </label>
+              <div className="w-40 sm:w-44">
+                <SelectNative
+                  id="global-photo-size"
+                  value={globalImageSize}
+                  onChange={(e) => {
+                    setGlobalImageSize(e.target.value as ImageSizePreset);
+                  }}
+                  className="h-9 text-xs font-semibold rounded-xl bg-slate-50 dark:bg-[#041A24] border-slate-200 dark:border-[#0B384D]"
+                >
+                  {IMAGE_SIZE_OPTIONS.map((opt) => (
+                    <option key={`opt-size-${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </SelectNative>
+              </div>
+            </div>
+
+            {/* Seletor de Ordenação */}
+            <div className="flex items-center gap-1.5">
+              <label htmlFor="sort-criteria" className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider shrink-0">
+                Ordem:
+              </label>
+              <div className="w-44 sm:w-48">
                 <SelectNative
                   id="sort-criteria"
                   value={sortCriteria}
@@ -361,7 +587,7 @@ export default function RelatoriosPage() {
               onClick={() => setIsReorderModalOpen(true)}
               className="text-xs h-9 gap-1.5 font-bold cursor-pointer shadow-sm shrink-0"
             >
-              <ArrowUpDown className="h-3.5 w-3.5" /> Organizar Sequência
+              <ArrowUpDown className="h-3.5 w-3.5" /> Reordenar
             </Button>
           </div>
         </div>
@@ -384,12 +610,12 @@ export default function RelatoriosPage() {
         ) : (
           /* CONTEUDO DO RELATORIO PARA VISUALIZAR E IMPRIMIR */
           <div className="space-y-4">
-            <div className="flex items-center justify-between no-print px-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 no-print px-1">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
                 Visualização do Documento A4 ({orderedApontamentos.length} apontamentos • {totalPaginasPDF} páginas)
               </span>
-              <span className="text-[11px] text-[#00A3C4] font-semibold">
-                Relatório Técnico de Compatibilização
+              <span className="text-[11px] text-[#00A3C4] font-semibold flex items-center gap-1.5">
+                <Sparkles className="h-3.5 w-3.5 shrink-0" /> Por padrão 2 fotos preenchem a largura da folha. Ajuste quantidade (1, 2, 3, 4, Todas) e tamanho (P, M, G, XG) individualmente.
               </span>
             </div>
 
@@ -398,7 +624,7 @@ export default function RelatoriosPage() {
               {/* PAGINA 1: CAPA INSTITUCIONAL WCC (FOLHA A4 PADRÃO) */}
               <div
                 style={{ color: '#072b3b', backgroundColor: '#ffffff' }}
-                className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-6 sm:p-8 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans relative overflow-hidden shrink-0"
+                className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-5 sm:p-6 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans relative overflow-hidden shrink-0"
               >
                 {/* Faixa decorativa topo */}
                 <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#00A3C4] to-[#10B981]" />
@@ -465,11 +691,27 @@ export default function RelatoriosPage() {
                 const isFirst = index === 0;
                 const isLast = index === orderedApontamentos.length - 1;
 
-                const listImagensApt = apontamento.imagens_apontamento && apontamento.imagens_apontamento.length > 0
-                  ? apontamento.imagens_apontamento
-                  : apontamento.url_imagem
-                  ? [apontamento.url_imagem]
-                  : [];
+                // Todas as fotos de apontamento ordenadas
+                const allImagesApt = getApontamentoImages(apontamento);
+                const totalAvailablePhotos = allImagesApt.length;
+
+                // Quantidade calculada a exibir nesta prancha
+                const countToShow = (() => {
+                  if (imageCountByApontamento[apontamento.id] !== undefined) {
+                    return Math.min(imageCountByApontamento[apontamento.id], totalAvailablePhotos);
+                  }
+                  if (globalDefaultImageCount === 'all') return totalAvailablePhotos;
+                  if (globalDefaultImageCount === '0') return 0;
+                  const num = parseInt(globalDefaultImageCount, 10) || 2;
+                  return Math.min(num, totalAvailablePhotos);
+                })();
+
+                // Tamanho calculado para esta prancha
+                const currentSize: ImageSizePreset =
+                  imageSizeByApontamento[apontamento.id] || globalImageSize || 'M';
+
+                const displayedImages = allImagesApt.slice(0, countToShow);
+                const layoutMode = imageLayoutByApontamento[apontamento.id] || (countToShow === 4 ? 'grid2x2' : 'cols');
 
                 const listImagensSol = apontamento.imagens_solucao && apontamento.imagens_solucao.length > 0
                   ? apontamento.imagens_solucao
@@ -481,70 +723,240 @@ export default function RelatoriosPage() {
                   (apontamento.descricao?.length || 0) + (apontamento.solucao?.length || 0) > 220 ||
                   listImagensSol.length > 0;
 
+                const imageContainerHeightClass = getImageContainerHeight(
+                  currentSize,
+                  displayedImages.length,
+                  layoutMode,
+                  isLongText
+                );
+
                 return (
                   <div key={`rel-page-container-${apontamento.id}`} className="w-full flex flex-col items-center group print:block print:w-[210mm] print:m-0 print:p-0">
-                    {/* Barra de Ação Rápida de Posição da Prancha (no-print) */}
-                    <div className="no-print w-[210mm] flex items-center justify-between mb-2 px-3 py-1.5 bg-white/95 dark:bg-[#072B3B]/95 backdrop-blur-xs rounded-xl border border-slate-200/90 dark:border-[#0B384D] text-xs shadow-2xs">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-[#072B3B] text-[#00C4EB] text-[10.5px] font-black font-mono">
+                    {/* Barra Superior de Controle e Customização da Prancha (no-print) */}
+                    <div className="no-print w-[210mm] flex flex-wrap items-center justify-between gap-2 mb-2 px-3 py-2 bg-white/95 dark:bg-[#072B3B]/95 backdrop-blur-xs rounded-xl border border-slate-200/90 dark:border-[#0B384D] text-xs shadow-2xs">
+                      {/* Identificação da Prancha */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-2 py-0.5 rounded-md bg-[#072B3B] text-[#00C4EB] text-[10.5px] font-black font-mono shrink-0">
                           Prancha #{index + 1}
                         </span>
-                        <span className="font-bold text-[#072B3B] dark:text-slate-200 text-xs truncate max-w-[340px]">
+                        <span className="font-bold text-[#072B3B] dark:text-slate-200 text-xs truncate max-w-[180px] sm:max-w-[240px]">
                           {apontamento.titulo}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMoveItemToExtreme(index, 'top')}
-                          disabled={isFirst}
-                          title="Mover para a primeira posição (Topo)"
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
-                        >
-                          <ChevronsUp className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMoveItem(index, 'up')}
-                          disabled={isFirst}
-                          title="Subir uma posição"
-                          className="h-7 text-xs px-2 gap-1 font-semibold border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4] hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" /> Subir
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleMoveItem(index, 'down')}
-                          disabled={isLast}
-                          title="Descer uma posição"
-                          className="h-7 text-xs px-2 gap-1 font-semibold border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4] hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" /> Descer
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMoveItemToExtreme(index, 'bottom')}
-                          disabled={isLast}
-                          title="Mover para a última posição (Fim)"
-                          className="h-7 w-7 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
-                        >
-                          <ChevronsDown className="h-3.5 w-3.5" />
-                        </Button>
+                      {/* Controles Dinâmicos da Prancha (Fotos, Tamanho, Reordenação) */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* 1. Controle de Quantidade de Fotos */}
+                        {totalAvailablePhotos > 0 && (
+                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#041A24] p-1 rounded-lg border border-slate-200 dark:border-[#0B384D]">
+                            <span className="text-[10.5px] font-bold text-slate-600 dark:text-slate-300 px-1 flex items-center gap-1 shrink-0">
+                              <Images className="h-3.5 w-3.5 text-[#00A3C4]" />
+                              <span>{countToShow}/{totalAvailablePhotos} fotos</span>
+                            </span>
+
+                            <div className="flex items-center gap-0.5 pl-1 border-l border-slate-200 dark:border-[#0B384D]">
+                              {/* Botão 1 Foto */}
+                              <Button
+                                type="button"
+                                variant={countToShow === 1 ? 'wcc' : 'ghost'}
+                                size="sm"
+                                onClick={() => handleSetImageCount(apontamento.id, 1)}
+                                title="Exibir 1 foto principal"
+                                className="h-6 text-[10px] px-1.5 py-0 font-bold"
+                              >
+                                1
+                              </Button>
+
+                              {/* Botão 2 Fotos (Padrão) */}
+                              {totalAvailablePhotos >= 2 && (
+                                <Button
+                                  type="button"
+                                  variant={countToShow === 2 ? 'wcc' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleSetImageCount(apontamento.id, 2)}
+                                  title="Exibir 2 fotos (Padrão lado a lado)"
+                                  className="h-6 text-[10px] px-1.5 py-0 font-bold"
+                                >
+                                  2 (Padrão)
+                                </Button>
+                              )}
+
+                              {/* Botão 3 Fotos */}
+                              {totalAvailablePhotos >= 3 && (
+                                <Button
+                                  type="button"
+                                  variant={countToShow === 3 ? 'wcc' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleSetImageCount(apontamento.id, 3)}
+                                  title="Exibir 3 fotos (3 Colunas)"
+                                  className="h-6 text-[10px] px-1.5 py-0 font-bold"
+                                >
+                                  3
+                                </Button>
+                              )}
+
+                              {/* Botão 4 Fotos */}
+                              {totalAvailablePhotos >= 4 && (
+                                <Button
+                                  type="button"
+                                  variant={countToShow === 4 ? 'wcc' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleSetImageCount(apontamento.id, 4)}
+                                  title="Exibir 4 fotos"
+                                  className="h-6 text-[10px] px-1.5 py-0 font-bold"
+                                >
+                                  4
+                                </Button>
+                              )}
+
+                              {/* Botão Todas as Fotos */}
+                              {totalAvailablePhotos > 2 && (
+                                <Button
+                                  type="button"
+                                  variant={countToShow === totalAvailablePhotos ? 'wcc' : 'ghost'}
+                                  size="sm"
+                                  onClick={() => handleSetImageCount(apontamento.id, totalAvailablePhotos)}
+                                  title={`Adicionar todas as ${totalAvailablePhotos} fotos no relatório`}
+                                  className="h-6 text-[10px] px-1.5 py-0 font-bold"
+                                >
+                                  Todas ({totalAvailablePhotos})
+                                </Button>
+                              )}
+
+                              {/* Botão Ocultar Fotos (0) */}
+                              {countToShow > 0 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleSetImageCount(apontamento.id, 0)}
+                                  title="Ocultar fotos nesta prancha"
+                                  className="h-6 text-[10px] px-1 py-0 text-slate-400 hover:text-rose-500"
+                                >
+                                  0
+                                </Button>
+                              )}
+
+                              {/* Toggle Grade 2x2 vs 4 Colunas quando 4 fotos */}
+                              {countToShow === 4 && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleToggleImageLayout(apontamento.id)}
+                                  title={layoutMode === 'grid2x2' ? 'Mudar para 4 colunas em linha' : 'Mudar para Grade 2x2'}
+                                  className="h-6 text-[10px] px-1.5 py-0 gap-1 border-slate-300 dark:border-[#0B384D]"
+                                >
+                                  {layoutMode === 'grid2x2' ? (
+                                    <>
+                                      <Grid2X2 className="h-3 w-3 text-[#00A3C4]" /> 2x2
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Columns className="h-3 w-3 text-[#00A3C4]" /> 4 Col
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Restaurar Ordem Original de Fotos */}
+                            {imageOrderByApontamento[apontamento.id] && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleResetImageOrder(apontamento.id)}
+                                title="Restaurar ordem original das fotos"
+                                className="h-6 text-[10px] px-1 py-0 text-slate-500 hover:text-rose-500"
+                              >
+                                <RotateCcw className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* 2. Controle de Tamanho das Fotos na Prancha (P, M, G, XG) */}
+                        {countToShow > 0 && (
+                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-[#041A24] p-1 rounded-lg border border-slate-200 dark:border-[#0B384D]">
+                            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 px-1 uppercase tracking-wider shrink-0">
+                              Tam:
+                            </span>
+                            <div className="flex items-center gap-0.5">
+                              {(['P', 'M', 'G', 'XG'] as ImageSizePreset[]).map((sizeKey) => {
+                                const isSelected = currentSize === sizeKey;
+                                return (
+                                  <Button
+                                    key={`size-btn-${apontamento.id}-${sizeKey}`}
+                                    type="button"
+                                    variant={isSelected ? 'wcc' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => handleSetImageSize(apontamento.id, sizeKey)}
+                                    title={`Tamanho ${IMAGE_SIZE_OPTIONS.find(o => o.value === sizeKey)?.label}`}
+                                    className="h-6 text-[10px] px-1.5 py-0 font-extrabold min-w-[20px]"
+                                  >
+                                    {sizeKey}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 3. Botões de Posição da Prancha no Relatório */}
+                        <div className="flex items-center gap-0.5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveItemToExtreme(index, 'top')}
+                            disabled={isFirst}
+                            title="Mover para a primeira posição (Topo)"
+                            className="h-7 w-7 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
+                          >
+                            <ChevronsUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMoveItem(index, 'up')}
+                            disabled={isFirst}
+                            title="Subir uma posição"
+                            className="h-7 text-xs px-2 gap-1 font-semibold border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4] hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
+                          >
+                            <ArrowUp className="h-3.5 w-3.5" /> Subir
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleMoveItem(index, 'down')}
+                            disabled={isLast}
+                            title="Descer uma posição"
+                            className="h-7 text-xs px-2 gap-1 font-semibold border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4] hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
+                          >
+                            <ArrowDown className="h-3.5 w-3.5" /> Descer
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleMoveItemToExtreme(index, 'bottom')}
+                            disabled={isLast}
+                            title="Mover para a última posição (Fim)"
+                            className="h-7 w-7 p-0 text-slate-500 hover:text-[#00A3C4] disabled:opacity-20 cursor-pointer"
+                          >
+                            <ChevronsDown className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
 
+                    {/* PRANCHA A4 (PÁGINA DO APONTAMENTO) */}
                     <div
                       style={{ color: '#072b3b', backgroundColor: '#ffffff' }}
-                      className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-5 sm:p-6 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans overflow-hidden shrink-0"
+                      className="wcc-a4-page w-[210mm] min-h-[296mm] max-h-[296.8mm] h-[296.8mm] p-4 sm:p-5 bg-white text-[#072B3B] mx-auto flex flex-col justify-between border border-slate-300 shadow-xl print:shadow-none print:border-none print:m-0 box-border rounded-none dark:bg-white dark:text-[#072B3B] break-after-page font-sans overflow-hidden shrink-0"
                     >
                       {/* Header Fixo do Topo da Prancha A4 */}
                       <div className="border-b border-slate-400 pb-1.5 flex items-center justify-between text-[11px] text-slate-700 shrink-0">
@@ -637,57 +1049,124 @@ export default function RelatoriosPage() {
                           </div>
                         </div>
 
-                        {/* 3. Galeria Padronizada com as Duas Primeiras Imagens em Largura Total (100%) */}
-                        <div className="w-full shrink-0">
-                          {listImagensApt.length === 0 ? (
-                            <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-3 text-center ${
-                              isLongText ? 'h-[44mm]' : 'h-[60mm]'
-                            }`}>
-                              <ImageIcon className="h-7 w-7 text-slate-400 opacity-60" />
-                              <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 mt-1">
-                                Sem Imagem Anexada
-                              </p>
-                            </div>
-                          ) : listImagensApt.length === 1 ? (
-                            /* 1 Imagem: Visualização Ampla e Imponente em Largura Total */
-                            <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative w-full ${
-                              isLongText ? 'h-[48mm]' : 'h-[65mm]'
-                            }`}>
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={listImagensApt[0]}
-                                alt={apontamento.titulo}
-                                crossOrigin="anonymous"
-                                className="w-full h-full object-contain mx-auto"
-                              />
-                            </div>
-                          ) : (
-                            /* 2 Imagens: Grid Lado a Lado de 2 Colunas Amplas com Fotos #1 e #2 */
-                            <div className={`grid grid-cols-2 gap-2.5 w-full ${isLongText ? 'h-[48mm]' : 'h-[65mm]'}`}>
-                              {/* Foto 1 */}
-                              <div className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={listImagensApt[0]}
-                                  alt="Foto 1"
-                                  crossOrigin="anonymous"
-                                  className="w-full h-full object-contain mx-auto"
-                                />
+                        {/* 3. Galeria Padronizada com Quantidade Dinâmica de Fotos e Reordenação Interativa */}
+                        {countToShow > 0 && (
+                          <div className="w-full shrink-0">
+                            {displayedImages.length === 0 ? (
+                              <div className={`border-2 border-dashed border-slate-300 rounded-lg overflow-hidden bg-slate-50 flex flex-col items-center justify-center p-3 text-center ${
+                                isLongText ? 'h-[40mm]' : 'h-[50mm]'
+                              }`}>
+                                <ImageIcon className="h-7 w-7 text-slate-400 opacity-60" />
+                                <p className="text-[9.5px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                                  Sem Imagem Anexada
+                                </p>
                               </div>
+                            ) : displayedImages.length === 1 ? (
+                              /* 1 Imagem: Ampla com barra de reposicionamento se houver mais */
+                              <div className={`border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative w-full group ${imageContainerHeightClass}`}>
+                                {allImagesApt.length > 1 && (
+                                  <div className="no-print absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between z-20 pointer-events-auto bg-[#072B3B]/90 backdrop-blur-xs rounded px-2 py-0.5 border border-white/15 opacity-80 group-hover:opacity-100 transition-opacity">
+                                    <span className="text-[9px] font-black text-[#00C4EB] font-mono">
+                                      Foto #1 (de {allImagesApt.length} disponíveis)
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleMoveImage(apontamento.id, 0, 'right');
+                                      }}
+                                      title="Alternar para a próxima foto"
+                                      className="px-1.5 py-0.5 rounded text-white hover:text-[#00C4EB] hover:bg-white/10 text-[9px] font-bold flex items-center gap-0.5 cursor-pointer"
+                                    >
+                                      Próxima Foto <ChevronRight className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
 
-                              {/* Foto 2 */}
-                              <div className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={listImagensApt[1]}
-                                  alt="Foto 2"
+                                  src={displayedImages[0]}
+                                  alt={apontamento.titulo}
                                   crossOrigin="anonymous"
                                   className="w-full h-full object-contain mx-auto"
                                 />
                               </div>
-                            </div>
-                          )}
-                        </div>
+                            ) : (
+                              /* 2 ou Mais Imagens: Grid Dinâmico com Reordenação e Preenchimento Completo da Largura */
+                              <div
+                                className={`w-full ${
+                                  displayedImages.length === 2
+                                    ? `grid grid-cols-2 gap-3 ${imageContainerHeightClass}`
+                                    : displayedImages.length === 3
+                                    ? `grid grid-cols-3 gap-2 ${imageContainerHeightClass}`
+                                    : displayedImages.length === 4 && layoutMode === 'grid2x2'
+                                    ? `grid grid-cols-2 grid-rows-2 gap-2 ${imageContainerHeightClass}`
+                                    : displayedImages.length === 4
+                                    ? `grid grid-cols-4 gap-1.5 ${imageContainerHeightClass}`
+                                    : `grid grid-cols-3 gap-2 ${imageContainerHeightClass}`
+                                }`}
+                              >
+                                {displayedImages.map((imgUrl, imgIdx) => {
+                                  const isFirstImg = imgIdx === 0;
+                                  const isLastImg = imgIdx === allImagesApt.length - 1;
+
+                                  return (
+                                    <div
+                                      key={`pdf-apt-grid-img-${apontamento.id}-${imgIdx}`}
+                                      className="border-2 border-[#00A3C4]/40 rounded-lg overflow-hidden bg-[#041A24] flex items-center justify-center p-1.5 shadow-sm relative h-full w-full group"
+                                    >
+                                      {/* Barra de Reordenação e Posição (no-print) */}
+                                      <div className="no-print absolute top-1 left-1 right-1 flex items-center justify-between z-20 pointer-events-auto bg-[#072B3B]/90 backdrop-blur-xs rounded px-1.5 py-0.5 border border-white/15 opacity-85 group-hover:opacity-100 transition-opacity">
+                                        <span className="text-[8.5px] font-black text-[#00C4EB] font-mono">
+                                          #{imgIdx + 1}
+                                        </span>
+                                        <div className="flex items-center gap-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveImage(apontamento.id, imgIdx, 'left');
+                                            }}
+                                            disabled={isFirstImg}
+                                            title="Mover foto para a esquerda"
+                                            className="p-0.5 rounded text-white hover:text-[#00C4EB] disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
+                                          >
+                                            <ChevronLeft className="h-3 w-3" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleMoveImage(apontamento.id, imgIdx, 'right');
+                                            }}
+                                            disabled={isLastImg}
+                                            title="Mover foto para a direita"
+                                            className="p-0.5 rounded text-white hover:text-[#00C4EB] disabled:opacity-20 hover:bg-white/10 transition-colors cursor-pointer"
+                                          >
+                                            <ChevronRight className="h-3 w-3" />
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      {/* Tag da Foto para Impressão */}
+                                      <div className="absolute bottom-1 right-1 px-1.5 py-0.2 rounded bg-[#072B3B]/80 text-[#00C4EB] text-[8px] font-black font-mono print:opacity-75 z-10">
+                                        Foto {imgIdx + 1}
+                                      </div>
+
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={imgUrl}
+                                        alt={`Foto ${imgIdx + 1}`}
+                                        crossOrigin="anonymous"
+                                        className="w-full h-full object-contain mx-auto"
+                                      />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         {/* 4. Descrição Técnica do Conflito */}
                         <div className="bg-slate-50 p-2 rounded-lg border border-slate-300 space-y-0.5 shrink-0">
