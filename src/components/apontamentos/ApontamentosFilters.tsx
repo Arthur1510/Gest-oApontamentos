@@ -5,9 +5,11 @@ import { Search, Filter, RefreshCw, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { MultiSelectFilter, MultiSelectOption } from '@/components/ui/multi-select-filter';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { SelectNative } from '@/components/ui/select-native';
 import { DISCIPLINAS_OPCOES, Projeto, TIPOS_CONFLITO_OPCOES } from '@/types/apontamento';
 import { SortCriteria, SORT_OPTIONS } from '@/lib/sorting';
+import { formatDateShort } from '@/lib/utils';
 
 interface ApontamentosFiltersProps {
   searchTerm: string;
@@ -22,6 +24,9 @@ interface ApontamentosFiltersProps {
   onTiposConflitoChange: (tipos: string[]) => void;
   selectedProjetos: string[];
   onProjetosChange: (projetosIds: string[]) => void;
+  dataInicio?: string;
+  dataFim?: string;
+  onDateRangeChange?: (inicio: string, fim: string) => void;
   projetosList: Projeto[];
   onResetFilters: () => void;
   sortCriteria?: SortCriteria;
@@ -41,6 +46,9 @@ export function ApontamentosFilters({
   onTiposConflitoChange,
   selectedProjetos,
   onProjetosChange,
+  dataInicio = '',
+  dataFim = '',
+  onDateRangeChange,
   projetosList,
   onResetFilters,
   sortCriteria = 'data_desc',
@@ -52,7 +60,8 @@ export function ApontamentosFilters({
     selectedPrioridades.length > 0 ||
     selectedDisciplinas.length > 0 ||
     selectedTiposConflito.length > 0 ||
-    selectedProjetos.length > 0;
+    selectedProjetos.length > 0 ||
+    Boolean(dataInicio || dataFim);
 
   const projetoOptions: MultiSelectOption[] = projetosList.map((p) => ({
     value: p.id,
@@ -124,8 +133,8 @@ export function ApontamentosFilters({
         </div>
       </div>
 
-      {/* Grid de Controles Multi-Select */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+      {/* Grid de Controles Multi-Select e Data */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-2.5">
         {/* Campo de Busca Textual */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -188,6 +197,16 @@ export function ApontamentosFilters({
           onChange={onDisciplinasChange}
           variant="default"
           searchable
+        />
+
+        {/* Filtro de Intervalo de Datas */}
+        <DateRangeFilter
+          label="Data"
+          placeholder="Todas"
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onChange={onDateRangeChange || (() => {})}
+          variant="wcc"
         />
       </div>
 
@@ -252,6 +271,15 @@ export function ApontamentosFilters({
               </button>
             </span>
           ))}
+
+          {(dataInicio || dataFim) && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-slate-200 text-[11px] font-bold border border-slate-200 dark:border-slate-700">
+              Data: {dataInicio && dataFim ? (dataInicio === dataFim ? formatDateShort(dataInicio) : `${formatDateShort(dataInicio)} a ${formatDateShort(dataFim)}`) : dataInicio ? `A partir de ${formatDateShort(dataInicio)}` : `Até ${formatDateShort(dataFim)}`}
+              <button type="button" onClick={() => onDateRangeChange?.('', '')} className="hover:text-rose-500">
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          )}
         </div>
       )}
     </div>

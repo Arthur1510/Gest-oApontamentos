@@ -33,10 +33,11 @@ import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { Button } from '@/components/ui/button';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { SelectNative } from '@/components/ui/select-native';
 import { ReorderApontamentosModal } from '@/components/apontamentos/ReorderApontamentosModal';
 import { SortCriteria, SORT_OPTIONS, sortApontamentos } from '@/lib/sorting';
-import { formatDate } from '@/lib/utils';
+import { formatDate, matchesDateRange, formatDateDisplay } from '@/lib/utils';
 
 export type ImageSizePreset = 'P' | 'M' | 'G' | 'XG';
 
@@ -129,11 +130,13 @@ export default function RelatoriosPage() {
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filtros de Relatório com multi-seleção
+  // Filtros de Relatório com multi-seleção e data
   const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
   const [selectedTiposConflito, setSelectedTiposConflito] = useState<string[]>([]);
+  const [dataInicio, setDataInicio] = useState<string>('');
+  const [dataFim, setDataFim] = useState<string>('');
 
   // Organização & Sequência dos Apontamentos
   const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
@@ -229,7 +232,9 @@ export default function RelatoriosPage() {
       const matchesTipoConflito =
         selectedTiposConflito.length === 0 || selectedTiposConflito.includes(itemTipo);
 
-      return matchesProjeto && matchesStatus && matchesDisciplina && matchesTipoConflito;
+      const matchesData = matchesDateRange(item.created_at, dataInicio, dataFim);
+
+      return matchesProjeto && matchesStatus && matchesDisciplina && matchesTipoConflito && matchesData;
     });
 
     if (sortCriteria === 'manual' && manualOrderedIds.length > 0) {
@@ -249,13 +254,15 @@ export default function RelatoriosPage() {
     }
 
     return sortApontamentos(filtered, sortCriteria);
-  }, [apontamentos, selectedProjetos, selectedStatus, selectedDisciplinas, selectedTiposConflito, sortCriteria, manualOrderedIds]);
+  }, [apontamentos, selectedProjetos, selectedStatus, selectedDisciplinas, selectedTiposConflito, dataInicio, dataFim, sortCriteria, manualOrderedIds]);
 
   const resetFilters = () => {
     setSelectedProjetos([]);
     setSelectedStatus([]);
     setSelectedDisciplinas([]);
     setSelectedTiposConflito([]);
+    setDataInicio('');
+    setDataFim('');
   };
 
   // Reordenação manual direta na folha do relatório
@@ -412,9 +419,9 @@ export default function RelatoriosPage() {
         <div className="no-print bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[#072B3B] dark:text-slate-100 uppercase tracking-wider">
-              <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> 1. Filtrar Conteúdo do Relatório (Multi-Seleção)
+              <Filter className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" /> 1. Filtrar Conteúdo do Relatório (Multi-Seleção & Data)
             </div>
-            {(selectedProjetos.length > 0 || selectedStatus.length > 0 || selectedDisciplinas.length > 0 || selectedTiposConflito.length > 0) && (
+            {(selectedProjetos.length > 0 || selectedStatus.length > 0 || selectedDisciplinas.length > 0 || selectedTiposConflito.length > 0 || Boolean(dataInicio || dataFim)) && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -426,7 +433,7 @@ export default function RelatoriosPage() {
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             {/* Multi-Select de Projeto */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Projetos:</label>
@@ -482,6 +489,22 @@ export default function RelatoriosPage() {
                 onChange={setSelectedDisciplinas}
                 variant="default"
                 searchable
+              />
+            </div>
+
+            {/* Filtro de Intervalo de Datas */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider">Período / Data:</label>
+              <DateRangeFilter
+                label="Data"
+                placeholder="Todas"
+                dataInicio={dataInicio}
+                dataFim={dataFim}
+                onChange={(inicio, fim) => {
+                  setDataInicio(inicio);
+                  setDataFim(fim);
+                }}
+                variant="wcc"
               />
             </div>
           </div>
@@ -673,6 +696,7 @@ export default function RelatoriosPage() {
                       <p>• <strong>Status:</strong> {selectedStatus.length > 0 ? selectedStatus.join(', ') : 'Todos os Status'}</p>
                       <p>• <strong>Disciplinas:</strong> {selectedDisciplinas.length > 0 ? selectedDisciplinas.join(', ') : 'Todas as Disciplinas'}</p>
                       <p>• <strong>Tipo de Apontamento:</strong> {selectedTiposConflito.length > 0 ? selectedTiposConflito.join(', ') : 'Todos os Tipos'}</p>
+                      <p>• <strong>Período:</strong> {dataInicio || dataFim ? (dataInicio && dataFim ? (dataInicio === dataFim ? formatDateDisplay(dataInicio) : `${formatDateDisplay(dataInicio)} até ${formatDateDisplay(dataFim)}`) : dataInicio ? `A partir de ${formatDateDisplay(dataInicio)}` : `Até ${formatDateDisplay(dataFim)}`) : 'Todas as Datas'}</p>
                     </div>
                   </div>
                 </div>

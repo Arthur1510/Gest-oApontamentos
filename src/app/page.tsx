@@ -12,6 +12,7 @@ import { ApontamentoFormModal } from '@/components/apontamentos/ApontamentoFormM
 import { ApontamentoDetailModal } from '@/components/apontamentos/ApontamentoDetailModal';
 import { Button } from '@/components/ui/button';
 import { SortCriteria, sortApontamentos } from '@/lib/sorting';
+import { matchesDateRange } from '@/lib/utils';
 
 export default function HomePage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
@@ -29,13 +30,15 @@ export default function HomePage() {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Filtros com suporte a multi-seleção e ordenação
+  // Filtros com suporte a multi-seleção, período de datas e ordenação
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
   const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
   const [selectedTiposConflito, setSelectedTiposConflito] = useState<string[]>([]);
   const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
+  const [dataInicio, setDataInicio] = useState<string>('');
+  const [dataFim, setDataFim] = useState<string>('');
   const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
 
   // Carregar Apontamentos e Projetos do Supabase ou Mock
@@ -327,13 +330,17 @@ export default function HomePage() {
         selectedProjetos.length === 0 ||
         (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
 
+      // 7. Filtro de Período / Data de Criação
+      const matchesData = matchesDateRange(item.created_at, dataInicio, dataFim);
+
       return (
         matchesSearch &&
         matchesStatus &&
         matchesPrioridade &&
         matchesDisciplina &&
         matchesTipoConflito &&
-        matchesProjeto
+        matchesProjeto &&
+        matchesData
       );
     });
 
@@ -346,6 +353,8 @@ export default function HomePage() {
     selectedDisciplinas,
     selectedTiposConflito,
     selectedProjetos,
+    dataInicio,
+    dataFim,
     sortCriteria,
   ]);
 
@@ -356,6 +365,8 @@ export default function HomePage() {
     setSelectedDisciplinas([]);
     setSelectedTiposConflito([]);
     setSelectedProjetos([]);
+    setDataInicio('');
+    setDataFim('');
   };
 
   return (
@@ -385,7 +396,7 @@ export default function HomePage() {
           onFilterPrioridade={(prio) => setSelectedPrioridades(prio === 'Todas' ? [] : [prio])}
         />
 
-        {/* Filtros com Suporte a Múltiplas Seleções Simultâneas e Ordenação */}
+        {/* Filtros com Suporte a Múltiplas Seleções Simultâneas, Data e Ordenação */}
         <ApontamentosFilters
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -399,6 +410,12 @@ export default function HomePage() {
           onTiposConflitoChange={setSelectedTiposConflito}
           selectedProjetos={selectedProjetos}
           onProjetosChange={setSelectedProjetos}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          onDateRangeChange={(inicio, fim) => {
+            setDataInicio(inicio);
+            setDataFim(fim);
+          }}
           projetosList={projetosList}
           onResetFilters={resetFilters}
           sortCriteria={sortCriteria}

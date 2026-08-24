@@ -22,24 +22,29 @@ import {
   ArrowDown,
   ListOrdered,
 } from 'lucide-react';
-import { Apontamento, Projeto } from '@/types/apontamento';
+import { Apontamento, Projeto, DISCIPLINAS_OPCOES } from '@/types/apontamento';
 import { supabase, isSupabaseConfigured, MOCK_APONTAMENTOS, MOCK_PROJETOS } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { DateRangeFilter } from '@/components/ui/date-range-filter';
 import { SelectNative } from '@/components/ui/select-native';
 import { ReorderApontamentosModal } from '@/components/apontamentos/ReorderApontamentosModal';
 import { SortCriteria, SORT_OPTIONS, sortApontamentos } from '@/lib/sorting';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { matchesDateRange } from '@/lib/utils';
 
 export default function ResumoExecutivoPage() {
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
   const [projetosList, setProjetosList] = useState<Projeto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filtros de Resumo com multi-seleção
+  // Filtros de Resumo com multi-seleção e data
   const [selectedProjetos, setSelectedProjetos] = useState<string[]>([]);
+  const [selectedDisciplinas, setSelectedDisciplinas] = useState<string[]>([]);
   const [selectedPrioridades, setSelectedPrioridades] = useState<string[]>([]);
+  const [dataInicio, setDataInicio] = useState<string>('');
+  const [dataFim, setDataFim] = useState<string>('');
 
   // Organização & Sequência dos Apontamentos / Conflitos
   const [sortCriteria, setSortCriteria] = useState<SortCriteria>('data_desc');
@@ -107,7 +112,13 @@ export default function ResumoExecutivoPage() {
         (Boolean(item.projeto_id) && selectedProjetos.includes(item.projeto_id!));
       const matchesPrioridade =
         selectedPrioridades.length === 0 || selectedPrioridades.includes(item.prioridade);
-      return matchesProjeto && matchesPrioridade;
+      const matchesDisciplina =
+        selectedDisciplinas.length === 0 ||
+        selectedDisciplinas.includes(item.disciplina_origem) ||
+        selectedDisciplinas.includes(item.disciplina_destino);
+      const matchesData = matchesDateRange(item.created_at, dataInicio, dataFim);
+
+      return matchesProjeto && matchesPrioridade && matchesDisciplina && matchesData;
     });
 
     if (sortCriteria === 'manual' && manualOrderedIds.length > 0) {
@@ -127,7 +138,7 @@ export default function ResumoExecutivoPage() {
     }
 
     return sortApontamentos(filtered, sortCriteria);
-  }, [apontamentos, selectedProjetos, selectedPrioridades, sortCriteria, manualOrderedIds]);
+  }, [apontamentos, selectedProjetos, selectedPrioridades, selectedDisciplinas, dataInicio, dataFim, sortCriteria, manualOrderedIds]);
 
   const totalSlides = orderedApontamentos.length + 1; // 1 Capa + N Apontamentos
 
@@ -254,7 +265,7 @@ export default function ResumoExecutivoPage() {
         </div>
 
         {/* Filtros e Ordenação no Topo */}
-        <div className="hidden md:flex items-center gap-2.5">
+        <div className="hidden md:flex items-center gap-2">
           <MultiSelectFilter
             label="Projetos"
             placeholder="Todos"
@@ -266,7 +277,21 @@ export default function ResumoExecutivoPage() {
             }}
             variant="wcc"
             searchable
-            className="w-36 lg:w-44"
+            className="w-32 lg:w-36"
+          />
+
+          <MultiSelectFilter
+            label="Disciplina"
+            placeholder="Todas"
+            options={DISCIPLINAS_OPCOES.map((d) => ({ value: d, label: d }))}
+            selectedValues={selectedDisciplinas}
+            onChange={(values) => {
+              setSelectedDisciplinas(values);
+              goToSlide(0);
+            }}
+            variant="default"
+            searchable
+            className="w-32 lg:w-36"
           />
 
           <MultiSelectFilter
@@ -283,7 +308,21 @@ export default function ResumoExecutivoPage() {
               goToSlide(0);
             }}
             variant="default"
-            className="w-32 lg:w-36"
+            className="w-28 lg:w-32"
+          />
+
+          <DateRangeFilter
+            label="Data"
+            placeholder="Todas"
+            dataInicio={dataInicio}
+            dataFim={dataFim}
+            onChange={(inicio, fim) => {
+              setDataInicio(inicio);
+              setDataFim(fim);
+              goToSlide(0);
+            }}
+            variant="wcc"
+            className="w-32 lg:w-40"
           />
 
           {/* Ordenação dos Conflitos */}
