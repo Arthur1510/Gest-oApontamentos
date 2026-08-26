@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { Apontamento, Projeto } from '@/types/apontamento';
+import { ConflitoArcis } from '@/types/arcis';
 import { compressImage } from '@/lib/image-compression';
 
 // Configuração do Supabase Client usando variáveis de ambiente do Next.js
@@ -11,8 +12,8 @@ export const isSupabaseConfigured = (): boolean => {
   return Boolean(
     supabaseUrl &&
       supabaseAnonKey &&
-      supabaseUrl !== 'https://your-supabase-url.supabase.co' &&
-      supabaseAnonKey !== 'your-anon-key'
+    supabaseUrl !== 'https://your-supabase-url.supabase.co' &&
+    supabaseAnonKey !== 'your-anon-key'
   );
 };
 
@@ -115,6 +116,22 @@ export const MOCK_PROJETOS: Projeto[] = [
       'Galpão Principal - Ala Sul',
       'Bloco Administrativo (Mezanino)',
       'Subestação / Casa de Bombas',
+    ],
+  },
+  {
+    id: 'proj-4',
+    created_at: new Date(Date.now() - 3600000 * 24 * 10).toISOString(),
+    nome: 'ALTAMIRA 47',
+    descricao: 'Empreendimento Residencial WCC - Compatibilização externa por Grupo ARCIS (RSC).',
+    status: 'Ativo',
+    pavimentos: [
+      'Térreo',
+      '1º PAV - Lazer e Vagas',
+      '2º ao 14º Pavimento Tipo',
+      '15º PAV - Penthouse',
+      'Ático',
+      'Cobertura',
+      'Reservatório',
     ],
   },
 ];
@@ -233,3 +250,227 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
     },
   },
 ];
+
+// Mock data de Conflitos do Grupo ARCIS (RSC) extraídos fielmente de ALTAMIRA 47
+export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
+  {
+    id: 'arcis-mock-1',
+    created_at: new Date(Date.now() - 3600000 * 24 * 60).toISOString(),
+    projeto_id: 'proj-4',
+    codigo_conflito: 1,
+    status_arcis: 'Aguardando Solução',
+    prioridade: 'Normal',
+    tipo_conflito: 'Conflito Normativo',
+    disciplina_principal: 'ARQUITETURA LEGAL',
+    disciplinas_envolvidas: ['INCÊNDIO'],
+    edificacao: 'TORRE',
+    pavimentos: ['ÁTICO', 'TÉRREO'],
+    local_edificacao: null,
+    localizacao: 'ÁTRIO',
+    descricao:
+      'IT 08, ITEM 5.11.1.1 – A DESCARGA, PARTE DA SAÍDA DE EMERGÊNCIA DE UMA EDIFICAÇÃO, QUE FICA ENTRE A ESCADA E A VIA PÚBLICA OU ÁREA EXTERNA EM COMUNICAÇÃO COM A VIA PÚBLICA, DEVE SER FEITA POR MEIO DE ÁTRIO ENCLAUSURADO.\n\nDESSA FORMA, O AMBIENTE DE DESCARGA DEVERÁ SER COMPARTIMENTADO EM RELAÇÃO AO ESTACIONAMENTO, POR MEIO DE ELEMENTOS CONSTRUTIVOS COM RESISTÊNCIA AO FOGO COMPATÍVEL COM A EXIGIDA PARA A ESCADA, CONFORME PREVISTO NA IT 08 E IT 06.\n\nNOS ACESSOS ENTRE O ÁTRIO DE DESCARGA E OS COMPARTIMENTOS ADJACENTES, DEVERÃO SER PREVISTAS PORTAS CORTA-FOGO COM RESISTÊNCIA MÍNIMA DE 60 MINUTOS, CONFORME ITEM 5.11.1.2, ALÍNEA "C", DA IT 08.\n\nPARA ATENDIMENTO A ESSE REQUISITO, AS PORTAS DE COMUNICAÇÃO COM O ESTACIONAMENTO DEVERÃO SER ESPECIFICADAS COMO PCF-60.\nA JANELA PRESENTE NO BANHEIRO DA GUARITA DEVERÁ RETIRADA OU A PORTA DO BANHEIRO DEVERÁ SER PCF-60.\n\nOS ELEMENTOS DE FECHAMENTO ADOTADOS DEVERÃO GARANTIR O TEMPO REQUERIDO DE RESISTÊNCIA AO FOGO E A ADEQUADA COMPARTIMENTAÇÃO DA DESCARGA, CONFORME LEGISLAÇÃO VIGENTE DO CBMMG.',
+    solucao: null,
+    url_imagem: null,
+    data_criacao_arcis: '2026-06-22',
+    data_ultima_alteracao: '2026-06-22',
+    numero_relatorio: 'RSC_ALTAMIRA_47',
+    projetos: {
+      nome: 'ALTAMIRA 47',
+      pavimentos: [
+        'Térreo',
+        '1º PAV - Lazer e Vagas',
+        '2º ao 14º Pavimento Tipo',
+        '15º PAV - Penthouse',
+        'Ático',
+        'Cobertura',
+        'Reservatório',
+      ],
+    },
+  },
+  {
+    id: 'arcis-mock-2',
+    created_at: new Date(Date.now() - 3600000 * 24 * 60).toISOString(),
+    projeto_id: 'proj-4',
+    codigo_conflito: 2,
+    status_arcis: 'Aguardando Solução',
+    prioridade: 'Normal',
+    tipo_conflito: 'Conflito Normativo',
+    disciplina_principal: 'ARQUITETURA LEGAL',
+    disciplinas_envolvidas: ['INCÊNDIO'],
+    edificacao: 'TORRE',
+    pavimentos: ['1º PAV - LAZER E VAGAS', 'TÉRREO'],
+    local_edificacao: 'ESCADA EMERGÊNCIA',
+    localizacao: 'ESCADA DE EMERGÊNCIA',
+    descricao:
+      'CONFORME O DIMENSIONAMENTO DAS SAÍDAS DE EMERGÊNCIA, VERIFICOU-SE A NECESSIDADE DE QUE AS PORTAS DA ESCADA DE EMERGÊNCIA NO TÉRREO E NO 1º PAVIMENTO APRESENTEM LARGURA MÍNIMA DE ABERTURA DE 1,00 M, EM ATENDIMENTO À CAPACIDADE DE ESCOAMENTO CALCULADA.',
+    solucao: null,
+    url_imagem: null,
+    data_criacao_arcis: '2026-06-22',
+    data_ultima_alteracao: '2026-06-22',
+    numero_relatorio: 'RSC_ALTAMIRA_47',
+    projetos: {
+      nome: 'ALTAMIRA 47',
+      pavimentos: [
+        'Térreo',
+        '1º PAV - Lazer e Vagas',
+        '2º ao 14º Pavimento Tipo',
+        '15º PAV - Penthouse',
+        'Ático',
+        'Cobertura',
+        'Reservatório',
+      ],
+    },
+  },
+  {
+    id: 'arcis-mock-3',
+    created_at: new Date(Date.now() - 3600000 * 24 * 60).toISOString(),
+    projeto_id: 'proj-4',
+    codigo_conflito: 3,
+    status_arcis: 'Aguardando Solução',
+    prioridade: 'Normal',
+    tipo_conflito: 'Conflito Normativo',
+    disciplina_principal: 'ARQUITETURA LEGAL',
+    disciplinas_envolvidas: ['INCÊNDIO'],
+    edificacao: 'TORRE',
+    pavimentos: [
+      '10º, 12º E 14º PAV - TIPO',
+      '15º PAV - PENTHOUSE',
+      '1º PAV - LAZER E VAGAS',
+      '2º PAV - TIPO',
+      '3º, 5º E 7º PAV - TIPO',
+      '4º, 6º E 8º PAV - TIPO',
+      '9º, 11º E 13º PAV - TIPO',
+      'ÁTICO',
+      'COBERTURA',
+      'RESERVATÓRIO',
+      'TÉRREO',
+    ],
+    local_edificacao: 'ESCADA EMERGÊNCIA',
+    localizacao: 'ESCADA DE EMERGÊNCIA',
+    descricao:
+      'DE ACORDO COM A IT 08, ITEM 5.7.1.1, ALÍNEA "D", TODAS AS ESCADAS E RAMPAS DEVEM SER DOTADAS DE CORRIMÃOS EM TODOS OS LADOS.\n\nENTRETANTO, NAS ESCADAS DA EDIFICAÇÃO NÃO FORAM PREVISTOS CORRIMÃOS, DEVENDO O PROJETO SER ADEQUADO PARA ATENDIMENTO A ESSA EXIGÊNCIA NORMATIVA.',
+    solucao: null,
+    url_imagem: null,
+    data_criacao_arcis: '2026-06-22',
+    data_ultima_alteracao: '2026-06-22',
+    numero_relatorio: 'RSC_ALTAMIRA_47',
+    projetos: {
+      nome: 'ALTAMIRA 47',
+      pavimentos: [
+        'Térreo',
+        '1º PAV - Lazer e Vagas',
+        '2º ao 14º Pavimento Tipo',
+        '15º PAV - Penthouse',
+        'Ático',
+        'Cobertura',
+        'Reservatório',
+      ],
+    },
+  },
+  {
+    id: 'arcis-mock-4',
+    created_at: new Date(Date.now() - 3600000 * 24 * 59).toISOString(),
+    projeto_id: 'proj-4',
+    codigo_conflito: 4,
+    status_arcis: 'Aguardando Solução',
+    prioridade: 'Normal',
+    tipo_conflito: 'Análise Crítica Inicial',
+    disciplina_principal: 'ARQUITETURA LEGAL',
+    disciplinas_envolvidas: ['INCÊNDIO'],
+    edificacao: 'TORRE',
+    pavimentos: ['TORRE / FACHADA'],
+    local_edificacao: null,
+    localizacao: 'FACHADA',
+    descricao:
+      'CASO HAVER ALTERAÇÃO NA FACHADA E A CHEGADA DO ESTRUTURAL, VERIFICAR SE SERÁ RESPEITADO OS COMPRIMENTOS MÍNIMOS PARA A COMPARTIMENTAÇÃO VERTICAL DO EMPREENDIMENTO.\n\nOS QUAIS PODERÃO SER POR MEIO DE UM PEITORIL DE 120 CM, UM PROLONGAMENTO DE 90 CM OU PELO SOMATÓRIO DESSE PEITORIL E DO PROLONGAMENTO DANDO 120 CM.',
+    solucao: null,
+    url_imagem: null,
+    data_criacao_arcis: '2026-06-23',
+    data_ultima_alteracao: '2026-06-23',
+    numero_relatorio: 'RSC_ALTAMIRA_47',
+    projetos: {
+      nome: 'ALTAMIRA 47',
+      pavimentos: [
+        'Térreo',
+        '1º PAV - Lazer e Vagas',
+        '2º ao 14º Pavimento Tipo',
+        '15º PAV - Penthouse',
+        'Ático',
+        'Cobertura',
+        'Reservatório',
+      ],
+    },
+  },
+  {
+    id: 'arcis-mock-5',
+    created_at: new Date(Date.now() - 3600000 * 24 * 40).toISOString(),
+    projeto_id: 'proj-1',
+    codigo_conflito: 5,
+    status_arcis: 'Solução Proposta por Projetista',
+    prioridade: 'Alta',
+    tipo_conflito: 'Conflito Normativo',
+    disciplina_principal: 'CLIMATIZAÇÃO (HVAC)',
+    disciplinas_envolvidas: ['ESTRUTURA', 'INCÊNDIO'],
+    edificacao: 'BLOCO HOSPITALAR',
+    pavimentos: ['3º Pavimento (Centro Cirúrgico)'],
+    local_edificacao: 'CENTRO CIRÚRGICO',
+    localizacao: 'CORREDOR UTI - EIXO C-12',
+    descricao:
+      'CONFORME NBR 7256 E IT 08 DO CORPO DE BOMBEIROS, OS DUTOS DE CLIMATIZAÇÃO QUE CRUZAM A COMPARTIMENTAÇÃO CORTA-FOGO DO CENTRO CIRÚRGICO DEVEM RECEBER REGISTROS CORTA-FOGO (DAMPERS) COM ATUAÇÃO POR FUSÍVEL TÉRMICO E SENSOR DE FUMAÇA.',
+    solucao:
+      'Prever instalação de registro corta-fogo RF-90 com selagem intumescente na passagem da parede e integração com a central de alarme de incêndio.',
+    url_imagem: null,
+    data_criacao_arcis: '2026-07-10',
+    data_ultima_alteracao: '2026-07-12',
+    numero_relatorio: 'RSC_HOSPITAL_CENTRAL',
+    projetos: {
+      nome: 'Hospital Central - Bloco A',
+      pavimentos: [
+        'Subsolo 2 (Garagem / Utilidades)',
+        'Subsolo 1 (Gases Medicinais / Almoxarifado)',
+        'Térreo (Recepção / Emergência)',
+        '1º Pavimento (UTI Geral)',
+        '2º Pavimento (Internação Cirúrgica)',
+        '3º Pavimento (Centro Cirúrgico)',
+        'Cobertura Técnica (Chillers / HVAC)',
+      ],
+    },
+  },
+  {
+    id: 'arcis-mock-6',
+    created_at: new Date(Date.now() - 3600000 * 24 * 25).toISOString(),
+    projeto_id: 'proj-2',
+    codigo_conflito: 6,
+    status_arcis: 'Solução Aguardando Aprovação',
+    prioridade: 'Normal',
+    tipo_conflito: 'Interferência Geométrica',
+    disciplina_principal: 'HIDRÁULICA',
+    disciplinas_envolvidas: ['ARQUITETURA'],
+    edificacao: 'TORRE RESIDENCIAL',
+    pavimentos: ['2º ao 20º Pavimento Tipo'],
+    local_edificacao: 'SHAFT HIDRÁULICO',
+    localizacao: 'SHAFT HIDRÁULICO COZINHA',
+    descricao:
+      'INTERFERÊNCIA ENTRE A PASSAGEM DA PRUMADA DE ESGOTO E A VIGA DE BORDA DO SHAFT. NECESSIDADE DE CRIAÇÃO DE CARENAGEM EM DRYWALL RU PARA NÃO ROMPER OS BLOCOS ESTRUTURAIS.',
+    solucao:
+      'Ajustado detalhe em arquitetura com fechamento técnico de 15cm permitindo o desvio da prumada sem interferência na alvenaria armada.',
+    url_imagem: null,
+    data_criacao_arcis: '2026-07-15',
+    data_ultima_alteracao: '2026-07-18',
+    numero_relatorio: 'RSC_RESIDENCIAL_HORIZONTE',
+    projetos: {
+      nome: 'Edifício Residencial Horizonte',
+      pavimentos: [
+        'Subsolo 2',
+        'Subsolo 1',
+        'Térreo (Hall Social)',
+        '1º Pavimento (Lazer / Piscina)',
+        '2º ao 20º Pavimento Tipo',
+        '21º Pavimento (Penthouse)',
+        'Cobertura / Ático',
+        'Reservatórios Superiores',
+      ],
+    },
+  },
+];
+

@@ -153,3 +153,74 @@ DROP POLICY IF EXISTS "Permitir exclusão pública no bucket clashes" ON storage
 CREATE POLICY "Permitir leitura pública de imagens no bucket clashes" ON storage.objects FOR SELECT USING (bucket_id = 'clashes');
 CREATE POLICY "Permitir upload público no bucket clashes" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'clashes');
 CREATE POLICY "Permitir exclusão pública no bucket clashes" ON storage.objects FOR DELETE USING (bucket_id = 'clashes');
+
+-- =========================================================
+-- 9. MÓDULO ANEXO: Conflitos Grupo ARCIS (RSC)
+-- =========================================================
+CREATE TABLE IF NOT EXISTS public.apontamentos_arcis (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE,
+    codigo_conflito INTEGER NOT NULL,
+    status_arcis VARCHAR(80) NOT NULL DEFAULT 'Aguardando Solução',
+    prioridade VARCHAR(30) NOT NULL DEFAULT 'Normal',
+    tipo_conflito VARCHAR(100) NOT NULL DEFAULT 'Conflito Normativo',
+    disciplina_principal VARCHAR(100) NOT NULL,
+    disciplinas_envolvidas TEXT[] DEFAULT '{}',
+    edificacao VARCHAR(100) DEFAULT 'TORRE',
+    pavimentos TEXT[] DEFAULT '{}',
+    local_edificacao TEXT,
+    localizacao TEXT,
+    descricao TEXT NOT NULL,
+    solucao TEXT,
+    url_imagem TEXT,
+    imagens TEXT[] DEFAULT '{}',
+    data_criacao_arcis DATE,
+    data_ultima_alteracao DATE,
+    numero_relatorio VARCHAR(50)
+);
+
+-- Índices de performance para apontamentos_arcis
+CREATE INDEX IF NOT EXISTS idx_apontamentos_arcis_projeto ON public.apontamentos_arcis(projeto_id);
+CREATE INDEX IF NOT EXISTS idx_apontamentos_arcis_status ON public.apontamentos_arcis(status_arcis);
+CREATE INDEX IF NOT EXISTS idx_apontamentos_arcis_codigo ON public.apontamentos_arcis(codigo_conflito);
+
+-- Habilitar RLS na tabela apontamentos_arcis
+ALTER TABLE public.apontamentos_arcis ENABLE ROW LEVEL SECURITY;
+
+-- Políticas RLS para a tabela apontamentos_arcis
+DROP POLICY IF EXISTS "Permitir leitura pública em apontamentos_arcis" ON public.apontamentos_arcis;
+DROP POLICY IF EXISTS "Permitir inserção pública em apontamentos_arcis" ON public.apontamentos_arcis;
+DROP POLICY IF EXISTS "Permitir atualização pública em apontamentos_arcis" ON public.apontamentos_arcis;
+DROP POLICY IF EXISTS "Permitir exclusão pública em apontamentos_arcis" ON public.apontamentos_arcis;
+
+CREATE POLICY "Permitir leitura pública em apontamentos_arcis" ON public.apontamentos_arcis FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública em apontamentos_arcis" ON public.apontamentos_arcis FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública em apontamentos_arcis" ON public.apontamentos_arcis FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública em apontamentos_arcis" ON public.apontamentos_arcis FOR DELETE USING (true);
+
+-- Garantir adição da coluna projeto_id em tabelas apontamentos_arcis já existentes
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos_arcis' AND column_name = 'projeto_id'
+    ) THEN
+        ALTER TABLE public.apontamentos_arcis 
+        ADD COLUMN projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE;
+    END IF;
+END $$;
+
+-- Garantir constraint de unicidade por (projeto_id, codigo_conflito) para permitir UPSERT automático e sincronização de relatórios
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint 
+        WHERE conname = 'uq_apontamentos_arcis_projeto_codigo'
+    ) THEN
+        ALTER TABLE public.apontamentos_arcis 
+        ADD CONSTRAINT uq_apontamentos_arcis_projeto_codigo 
+        UNIQUE (projeto_id, codigo_conflito);
+    END IF;
+END $$;
+

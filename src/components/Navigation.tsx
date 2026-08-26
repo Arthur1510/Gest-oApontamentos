@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, ListFilter, FolderKanban, FileText, Presentation, LogOut, User as UserIcon, LogIn, Menu, X, ChevronRight, PanelLeftClose } from 'lucide-react';
+import { LayoutDashboard, ListFilter, FolderKanban, FileText, Presentation, LogOut, User as UserIcon, LogIn, Menu, X, ChevronRight, PanelLeftClose, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Button } from '@/components/ui/button';
@@ -67,8 +67,9 @@ export function Navigation() {
   const navLinks = [
     { href: '/projetos', label: 'Projetos', icon: FolderKanban },
     { href: '/', label: 'Apontamentos', icon: ListFilter },
-    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard', label: 'Dashboard WCC', icon: LayoutDashboard },
     { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
+    { href: '/arcis', label: 'Módulo ARCIS (RSC)', icon: ShieldAlert },
     { href: '/apresentacao', label: 'Resumo', icon: Presentation },
   ];
 
