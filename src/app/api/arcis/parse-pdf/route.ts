@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseArcisPdfBuffer } from '@/lib/arcis-parser';
 
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60 segundos no Vercel
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -11,6 +14,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: 'Nenhum arquivo enviado.' },
         { status: 400 }
+      );
+    }
+
+    // Verificar limite de 4.5MB da Vercel
+    if (file.size > 4.5 * 1024 * 1024) {
+      return NextResponse.json(
+        {
+          error:
+            'Arquivo muito grande para a rota do servidor (> 4.5 MB). O processamento local no navegador será acionado.',
+        },
+        { status: 413 }
       );
     }
 

@@ -1,7 +1,20 @@
 import { ConflitoArcis, RelatorioArcisMetadata, StatusConflitoArcis, PrioridadeArcis } from '@/types/arcis';
 
-// Inicializador seguro do worker do PDF.js para ambiente Next.js / Turbopack / Node.js
+// Inicializador seguro do worker do PDF.js para ambientes Browser e Node.js (Vercel / Local)
 async function ensurePdfWorkerInitialized() {
+  if (typeof window !== 'undefined') {
+    try {
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      }
+    } catch (e) {
+      console.warn('Aviso: Configuração de worker no browser:', e);
+    }
+    return;
+  }
+
+  // Ambiente Node.js (Servidor)
   if (typeof globalThis !== 'undefined' && !('pdfjsWorker' in globalThis)) {
     try {
       // @ts-expect-error - legacy worker import
@@ -18,21 +31,29 @@ function toCleanUint8Array(input: Buffer | Uint8Array | ArrayBuffer): Uint8Array
   if (input instanceof ArrayBuffer) {
     return new Uint8Array(input);
   }
-  return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  if (typeof Buffer !== 'undefined' && input instanceof Buffer) {
+    return new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  }
+  return input instanceof Uint8Array ? input : new Uint8Array(input);
 }
 
 /**
- * Extração de páginas de PDF compatível com Next.js Server Components e Route Handlers.
- * Utiliza fake worker em loopback diretamente na thread do Node.js, evitando erros de chunks.
+ * Extração de páginas de PDF universal (Browser e Servidor).
+ * - No browser: extrai diretamente no cliente sem limites de tamanho de payload da Vercel (4.5 MB).
+ * - No servidor: utiliza o fake worker em loopback sem requisições de chunks.
  */
 async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promise<string[]> {
   await ensurePdfWorkerInitialized();
 
   const data = toCleanUint8Array(buffer);
 
-  // Estratégia 1: pdfjs-dist direto (sem wrappers e com total controle de fontes/páginas)
+  // Estratégia 1: pdfjs-dist direto (funciona no Browser e no Node.js)
   try {
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    if (typeof window !== 'undefined' && !pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    }
 
     const loadingTask = pdfjs.getDocument({
       data,
@@ -57,20 +78,21 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
       return pages;
     }
   } catch (err) {
-    console.warn('Extração direta via pdfjs-dist falhou, tentando fallback com pdf-parse:', err);
+    console.warn('Extração via pdfjs-dist falhou, tentando alternativa:', err);
   }
 
-  // Estratégia 2: Fallback via pdf-parse
-  try {
-    const { PDFParse } = await import('pdf-parse');
-    const parser = new PDFParse(data);
-    const res = await parser.getText();
-    if (res && res.pages && res.pages.length > 0) {
-      return res.pages.map((p) => p.text);
+  // Estratégia 2: Fallback via pdf-parse (apenas em ambiente Node.js / servidor)
+  if (typeof window === 'undefined') {
+    try {
+      const { PDFParse } = await import('pdf-parse');
+      const parser = new PDFParse(data);
+      const res = await parser.getText();
+      if (res && res.pages && res.pages.length > 0) {
+        return res.pages.map((p) => p.text);
+      }
+    } catch (err) {
+      console.error('Fallback com pdf-parse também falhou no servidor:', err);
     }
-  } catch (err) {
-    console.error('Fallback com pdf-parse também falhou:', err);
-    throw err;
   }
 
   throw new Error('Não foi possível extrair páginas legíveis do arquivo PDF.');
@@ -126,7 +148,7 @@ export function cleanPdfText(text: string): string {
     .replace(/\bRES\s+ERVATÓRIO\b/gi, 'RESERVATÓRIO');
 }
 
-export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array, projetoId?: string): Promise<RelatorioArcisMetadata> {
+export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuffer, projetoId?: string): Promise<RelatorioArcisMetadata> {
   const pages = await extractPdfPages(buffer);
 
   if (!pages || pages.length === 0) {
