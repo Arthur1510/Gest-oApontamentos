@@ -19,7 +19,7 @@ import {
 } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
-import { parseDateToISO } from '@/lib/arcis-parser';
+import { parseDateToISO } from '@/lib/arcis-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArcisConflictCard } from '@/components/arcis/ArcisConflictCard';

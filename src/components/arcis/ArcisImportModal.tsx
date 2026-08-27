@@ -123,58 +123,41 @@ export function ArcisImportModal({
     setIsParsing(true);
 
     try {
-      let metadata: RelatorioArcisMetadata | null = null;
-
-      // 1. Tentar primeiro o processamento diretamente no navegador (Client-Side)
-      // Vantagem crucial para a Vercel: Não envia arquivos pesados pela rede,
-      // contornando o limite estrito de 4.5 MB ("Request Entity Too Large") e timeouts de serverless!
-      try {
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-        const { parseArcisPdfBuffer } = await import('@/lib/arcis-parser');
-        metadata = await parseArcisPdfBuffer(uint8Array, selectedProjetoId);
-      } catch (clientErr) {
-        console.warn('Processamento no navegador falhou, recorrendo à rota do servidor:', clientErr);
+      const formData = new FormData();
+      formData.append('file', file);
+      if (selectedProjetoId) {
+        formData.append('projetoId', selectedProjetoId);
       }
 
-      // 2. Se o processamento no navegador falhar, recorrer ao endpoint da API com tratamento seguro de status HTTP
-      if (!metadata) {
-        const formData = new FormData();
-        formData.append('file', file);
-        if (selectedProjetoId) {
-          formData.append('projetoId', selectedProjetoId);
+      const res = await fetch('/api/arcis/parse-pdf', {
+        method: 'POST',
+        body: formData,
+      });
+
+      // Verificação segura do status HTTP para evitar "Unexpected token R (Request Entity Too Large)"
+      if (!res.ok) {
+        if (res.status === 413) {
+          throw new Error(
+            'O arquivo PDF excede o limite de tamanho aceito pelo servidor na Vercel (4.5 MB). Tente otimizar o PDF ou reduzir o número de páginas.'
+          );
         }
-
-        const res = await fetch('/api/arcis/parse-pdf', {
-          method: 'POST',
-          body: formData,
-        });
-
-        // Verificação segura do status HTTP para evitar "Unexpected token R (Request Entity Too Large)"
-        if (!res.ok) {
-          if (res.status === 413) {
-            throw new Error(
-              'O arquivo PDF excede o limite de tamanho aceito pelo servidor na Vercel (4.5 MB) e o processamento local no navegador não pôde ser concluído. Tente otimizar o PDF ou reduzir o número de páginas.'
-            );
-          }
-          const rawText = await res.text();
-          let serverErrMsg = `Erro ${res.status}: ${res.statusText}`;
-          try {
-            const errJson = JSON.parse(rawText);
-            if (errJson.error) serverErrMsg = errJson.error;
-          } catch {
-            serverErrMsg = rawText.slice(0, 150) || serverErrMsg;
-          }
-          throw new Error(serverErrMsg);
+        const rawText = await res.text();
+        let serverErrMsg = `Erro ${res.status}: ${res.statusText}`;
+        try {
+          const errJson = JSON.parse(rawText);
+          if (errJson.error) serverErrMsg = errJson.error;
+        } catch {
+          serverErrMsg = rawText.slice(0, 150) || serverErrMsg;
         }
-
-        const json = await res.json();
-        if (!json.success || !json.data) {
-          throw new Error(json.error || 'Falha ao processar PDF no servidor.');
-        }
-
-        metadata = json.data as RelatorioArcisMetadata;
+        throw new Error(serverErrMsg);
       }
+
+      const json = await res.json();
+      if (!json.success || !json.data) {
+        throw new Error(json.error || 'Falha ao processar PDF no servidor.');
+      }
+
+      const metadata = json.data as RelatorioArcisMetadata;
 
       setParsedData(metadata);
       // Selecionar todos por padrão

@@ -19,7 +19,7 @@ import {
   FolderKanban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDateBR } from '@/lib/arcis-parser';
+import { formatDateBR } from '@/lib/arcis-utils';
 
 interface ArcisConflictCardProps {
   conflito: ConflitoArcis;

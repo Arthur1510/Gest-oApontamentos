@@ -31,7 +31,7 @@ import {
   Images,
   ExternalLink,
 } from 'lucide-react';
-import { formatDateBR } from '@/lib/arcis-parser';
+import { formatDateBR } from '@/lib/arcis-utils';
 
 interface ArcisConflictDetailModalProps {
   conflito: ConflitoArcis | null;
