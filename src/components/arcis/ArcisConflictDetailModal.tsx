@@ -29,6 +29,7 @@ import {
   Sparkles,
   FolderKanban,
 } from 'lucide-react';
+import { formatDateBR } from '@/lib/arcis-parser';
 
 interface ArcisConflictDetailModalProps {
   conflito: ConflitoArcis | null;
@@ -158,7 +159,7 @@ export function ArcisConflictDetailModal({
             </span>
             <span className="font-bold text-slate-700 dark:text-slate-200 text-xs block mt-0.5 flex items-center gap-1">
               <Calendar className="h-3 w-3 text-slate-400" />
-              {conflito.data_criacao_arcis || new Date(conflito.created_at).toLocaleDateString('pt-BR')}
+              {conflito.data_criacao_arcis ? formatDateBR(conflito.data_criacao_arcis) : new Date(conflito.created_at).toLocaleDateString('pt-BR')}
             </span>
           </div>
         </div>

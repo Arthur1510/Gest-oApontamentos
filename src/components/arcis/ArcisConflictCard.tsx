@@ -19,6 +19,7 @@ import {
   FolderKanban,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatDateBR } from '@/lib/arcis-parser';
 
 interface ArcisConflictCardProps {
   conflito: ConflitoArcis;
@@ -135,7 +136,7 @@ export function ArcisConflictCard({
         <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1">
           <span className="flex items-center gap-1">
             <Calendar className="h-3 w-3" />
-            {conflito.data_criacao_arcis || new Date(conflito.created_at).toLocaleDateString('pt-BR')}
+            {conflito.data_criacao_arcis ? formatDateBR(conflito.data_criacao_arcis) : new Date(conflito.created_at).toLocaleDateString('pt-BR')}
           </span>
 
           {nomeProjeto && (

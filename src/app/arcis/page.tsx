@@ -18,6 +18,7 @@ import {
 } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
+import { parseDateToISO } from '@/lib/arcis-parser';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArcisConflictCard } from '@/components/arcis/ArcisConflictCard';
@@ -253,7 +254,9 @@ export default function ArcisPage() {
   const handleSaveConflito = async (payload: NovoConflitoArcis, id?: string) => {
     const payloadToSave: NovoConflitoArcis = {
       ...payload,
-      projeto_id: payload.projeto_id || null,
+      projeto_id: payload.projeto_id && payload.projeto_id.trim() !== '' ? payload.projeto_id.trim() : null,
+      data_criacao_arcis: parseDateToISO(payload.data_criacao_arcis),
+      data_ultima_alteracao: parseDateToISO(payload.data_ultima_alteracao) || new Date().toISOString().slice(0, 10),
     };
 
     if (isSupabaseConfigured() && supabase) {
@@ -368,22 +371,22 @@ export default function ArcisPage() {
     if (isSupabaseConfigured() && supabase) {
       try {
         const rowsToUpsert = importedConflicts.map((c) => ({
-          projeto_id: c.projeto_id ? c.projeto_id : null,
+          projeto_id: c.projeto_id && c.projeto_id.trim() !== '' ? c.projeto_id.trim() : null,
           codigo_conflito: c.codigo_conflito,
           status_arcis: c.status_arcis,
           prioridade: c.prioridade,
           tipo_conflito: c.tipo_conflito,
           disciplina_principal: c.disciplina_principal,
-          disciplinas_envolvidas: c.disciplinas_envolvidas,
-          edificacao: c.edificacao,
-          pavimentos: c.pavimentos,
-          local_edificacao: c.local_edificacao,
-          localizacao: c.localizacao,
+          disciplinas_envolvidas: c.disciplinas_envolvidas || [],
+          edificacao: c.edificacao || 'TORRE',
+          pavimentos: c.pavimentos || [],
+          local_edificacao: c.local_edificacao || null,
+          localizacao: c.localizacao || null,
           descricao: c.descricao,
-          solucao: c.solucao,
-          data_criacao_arcis: c.data_criacao_arcis,
-          data_ultima_alteracao: c.data_ultima_alteracao || new Date().toISOString().slice(0, 10),
-          numero_relatorio: c.numero_relatorio,
+          solucao: c.solucao || null,
+          data_criacao_arcis: parseDateToISO(c.data_criacao_arcis),
+          data_ultima_alteracao: parseDateToISO(c.data_ultima_alteracao) || parseDateToISO(c.data_criacao_arcis) || new Date().toISOString().slice(0, 10),
+          numero_relatorio: c.numero_relatorio || 'RSC_ARCIS',
         }));
 
         // 1. Tentar upsert nativo com base na chave (projeto_id, codigo_conflito)
@@ -421,7 +424,7 @@ export default function ArcisPage() {
           setActiveTab('dashboard');
           return;
         } else if (error) {
-          console.warn('Upsert direto via constraint falhou, aplicando reconciliação granular:', error.message);
+          console.warn('Upsert direto via constraint falhou, aplicando reconciliação granular:', error.message, error.details);
           
           // Reconciliação seletiva: verifica um a um para atualizar ou inserir
           for (const row of rowsToUpsert) {
@@ -433,12 +436,20 @@ export default function ArcisPage() {
             }
             const { data: existingRows } = await query;
             if (existingRows && existingRows.length > 0) {
-              await supabase
+              const { error: updErr } = await supabase
                 .from('apontamentos_arcis')
                 .update(row)
                 .eq('id', existingRows[0].id);
+              if (updErr) {
+                console.error(`Erro ao atualizar conflito #${row.codigo_conflito}:`, updErr);
+                throw updErr;
+              }
             } else {
-              await supabase.from('apontamentos_arcis').insert([row]);
+              const { error: insErr } = await supabase.from('apontamentos_arcis').insert([row]);
+              if (insErr) {
+                console.error(`Erro ao inserir conflito #${row.codigo_conflito}:`, insErr);
+                throw insErr;
+              }
             }
           }
 
@@ -448,6 +459,7 @@ export default function ArcisPage() {
         }
       } catch (err) {
         console.error('Erro na sincronização de conflitos com Supabase:', err);
+        throw err;
       }
     }
 
