@@ -138,10 +138,79 @@ export async function convertPdfImageToWebp(
   });
 }
 
+async function uploadWebpBufferToSupabase(buffer: Buffer, fileNamePrefix: string): Promise<string | null> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !supabaseKey) return null;
+
+  try {
+    const fileName = `uploads/${Date.now()}_${fileNamePrefix}_${Math.random().toString(36).substring(2, 8)}.webp`;
+    const uploadUrl = `${supabaseUrl}/storage/v1/object/clashes/${fileName}`;
+
+    const res = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'apikey': supabaseKey,
+        'Authorization': `Bearer ${supabaseKey}`,
+        'Content-Type': 'image/webp',
+        'cache-control': '31536000',
+        'x-upsert': 'true',
+      },
+      body: new Uint8Array(buffer),
+    });
+
+    if (res.ok) {
+      return `${supabaseUrl}/storage/v1/object/public/clashes/${fileName}`;
+    }
+  } catch (err) {
+    console.warn('Erro no upload para o Supabase Storage via servidor:', err);
+  }
+  return null;
+}
+
+async function processServerPdfImage(
+  img: { width: number; height: number; kind: number; data: Uint8Array | Uint8ClampedArray },
+  fileNamePrefix: string
+): Promise<{ imageUrl: string } | null> {
+  try {
+    const sharp = (await import('sharp')).default;
+    const expectedChannels = Math.round(img.data.length / (img.width * img.height));
+    const channels = (expectedChannels === 1 || expectedChannels === 3 || expectedChannels === 4)
+      ? (expectedChannels as 1 | 3 | 4)
+      : (img.kind === 2 ? 3 : 4);
+
+    let sharpInstance = sharp(Buffer.from(img.data), {
+      raw: {
+        width: img.width,
+        height: img.height,
+        channels: channels,
+      },
+    });
+
+    if (img.width > 1920 || img.height > 1920) {
+      sharpInstance = sharpInstance.resize(1920, 1920, { fit: 'inside' });
+    }
+
+    const webpBuffer = await sharpInstance.webp({ quality: 82 }).toBuffer();
+
+    // 1. Tentar upload direto no bucket 'clashes' do Supabase Storage
+    const uploadedUrl = await uploadWebpBufferToSupabase(webpBuffer, fileNamePrefix);
+    if (uploadedUrl) {
+      return { imageUrl: uploadedUrl };
+    }
+
+    // 2. Fallback para base64 WebP
+    return { imageUrl: `data:image/webp;base64,${webpBuffer.toString('base64')}` };
+  } catch (err) {
+    console.warn('Erro ao processar imagem no servidor com sharp:', err);
+    return null;
+  }
+}
+
 /**
  * Extração de páginas e imagens de PDF universal (Browser e Servidor).
- * - No browser: extrai texto e imagens WebP diretamente no cliente sem limites de payload da Vercel (4.5 MB).
- * - No servidor: utiliza o fake worker em loopback sem requisições de chunks.
+ * - No browser: extrai texto e imagens WebP diretamente no cliente via Canvas.
+ * - No servidor: extrai texto e comprime imagens WebP via Sharp enviando para Supabase Storage.
  */
 async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promise<ExtractedPdfPage[]> {
   await ensurePdfWorkerInitialized();
@@ -176,27 +245,47 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
       let imageFile: File | null = null;
       let imageUrl: string | null = null;
 
-      // Extração de imagens técnicas de conflitos no browser via Canvas (apenas para páginas de conflitos i > 1)
-      if (typeof window !== 'undefined' && typeof document !== 'undefined' && i > 1) {
+      // Extração de imagens técnicas de conflitos (suporta Servidor com Sharp e Navegador com Canvas)
+      if (i > 1) {
         try {
           const ops = await page.getOperatorList();
           for (let j = 0; j < ops.fnArray.length; j++) {
             if (ops.fnArray[j] === pdfjs.OPS.paintImageXObject) {
               const objId = ops.argsArray[j][0];
               const img = await new Promise<any>((resolve) => {
+                const timer = setTimeout(() => resolve(null), 2500);
                 try {
-                  page.objs.get(objId, (imgData: any) => resolve(imgData));
+                  if (page.objs.has(objId)) {
+                    clearTimeout(timer);
+                    resolve(page.objs.get(objId));
+                    return;
+                  }
+                  page.objs.get(objId, (imgData: any) => {
+                    clearTimeout(timer);
+                    resolve(imgData);
+                  });
                 } catch {
+                  clearTimeout(timer);
                   resolve(null);
                 }
               });
 
               if (img && img.width > 120 && img.height > 120 && img.data) {
-                const res = await convertPdfImageToWebp(img, `conflito_arcis_p${i}`);
-                if (res) {
-                  imageFile = res.file;
-                  imageUrl = res.dataUrl;
-                  break; // Conflito ARCIS tem 1 print principal por prancha
+                if (typeof window === 'undefined') {
+                  // Ambiente Node.js (Servidor / API Route) -> Sharp + Supabase Storage
+                  const sRes = await processServerPdfImage(img, `conflito_arcis_p${i}`);
+                  if (sRes) {
+                    imageUrl = sRes.imageUrl;
+                    break;
+                  }
+                } else {
+                  // Ambiente Browser (Navegador) -> Canvas WebP
+                  const cRes = await convertPdfImageToWebp(img, `conflito_arcis_p${i}`);
+                  if (cRes) {
+                    imageFile = cRes.file;
+                    imageUrl = cRes.dataUrl;
+                    break;
+                  }
                 }
               }
             }
@@ -298,7 +387,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
   const cliente = clienteMatch ? clienteMatch[1].trim() : 'WCC CONSTRUTORA';
 
   // Extrair Empreendimento (ex: ALTAMIRA 47)
-  const obraMatch = coverText.match(/(?:WCC\s+CONSTRUTORA\s*\n\s*|Relatório\s+Serviços\s+de\s+Compatibilização\s+)([A-Z0-9\s_-]{3,40})/i);
+  const obraMatch = coverText.match(/(?:WCC\s+CONSTRUTORA\s*\n\s*|Relatório\s+Serviços\s+de\s+Compatibilização\s+)([^\n\r]+?)(?=\s*(?:Total\s+de|\n|\r|$))/i);
   const empreendimento = obraMatch ? obraMatch[1].trim() : 'ALTAMIRA 47';
 
   // Extrair Data (ex: 16/08/2026)

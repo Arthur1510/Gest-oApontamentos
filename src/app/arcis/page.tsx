@@ -389,6 +389,19 @@ export default function ArcisPage() {
               } catch (upErr) {
                 console.warn(`Upload da imagem do conflito #${c.codigo_conflito} falhou:`, upErr);
               }
+            } else if (c.url_imagem && c.url_imagem.startsWith('data:image/')) {
+              try {
+                const res = await fetch(c.url_imagem);
+                const blob = await res.blob();
+                const file = new File([blob], `conflito_${c.codigo_conflito}_${Date.now()}.webp`, { type: 'image/webp' });
+                const uploadedUrl = await uploadImageToClashesBucket(file);
+                if (uploadedUrl) {
+                  finalUrl = uploadedUrl;
+                  finalImagens = [uploadedUrl];
+                }
+              } catch (upErr) {
+                console.warn(`Upload da imagem base64 do conflito #${c.codigo_conflito} falhou:`, upErr);
+              }
             }
 
             return {
