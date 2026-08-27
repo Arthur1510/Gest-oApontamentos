@@ -451,26 +451,31 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
         ? 'Baixa'
         : 'Normal';
 
+    const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
+      if (!val) return fallback;
+      return val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+    };
+
     conflitos.push({
       id: `arcis-conf-${codigo}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       projeto_id: projetoId || null,
       codigo_conflito: codigo,
-      status_arcis: statusArcis,
-      prioridade,
-      tipo_conflito: tipoConflito.replace(/\s+/g, ' '),
-      disciplina_principal: discPrincipal.replace(/\s+/g, ' ').toUpperCase(),
-      disciplinas_envolvidas: discEnvolvidas.map((d) => d.replace(/\s+/g, ' ').toUpperCase()),
-      edificacao: edificacao.replace(/\s+/g, ' ').toUpperCase(),
+      status_arcis: cleanStr(statusArcis, 80, 'Aguardando Solução') as any,
+      prioridade: cleanStr(prioridade, 30, 'Normal') as any,
+      tipo_conflito: cleanStr(tipoConflito, 100, 'Conflito Normativo'),
+      disciplina_principal: cleanStr(discPrincipal, 100, 'ARQUITETURA').toUpperCase(),
+      disciplinas_envolvidas: discEnvolvidas.map((d) => cleanStr(d, 100).toUpperCase()).filter(Boolean),
+      edificacao: cleanStr(edificacao, 100, 'TORRE').toUpperCase(),
       pavimentos: pavimentosList,
-      local_edificacao: localEdificacao ? localEdificacao.replace(/\s+/g, ' ') : null,
-      localizacao: localizacao ? localizacao.replace(/\s+/g, ' ') : null,
+      local_edificacao: localEdificacao ? cleanStr(localEdificacao, 255) : null,
+      localizacao: localizacao ? cleanStr(localizacao, 255) : null,
       descricao: descricaoRaw.replace(/\s+/g, ' ').trim(),
       url_imagem: pages[i].imageUrl || null,
       imagens: pages[i].imageUrl ? [pages[i].imageUrl as string] : [],
       tempImageFile: pages[i].imageFile || null,
       data_criacao_arcis: parseDateToISO(dataCriacao),
       data_ultima_alteracao: parseDateToISO(dtUltima) || parseDateToISO(dataCriacao),
-      numero_relatorio: `RSC_${empreendimento.replace(/\s+/g, '_')}`,
+      numero_relatorio: cleanStr(`RSC_${empreendimento.replace(/\s+/g, '_')}`, 50, 'RSC_ARCIS'),
       created_at: new Date().toISOString(),
     });
   }

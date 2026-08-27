@@ -224,3 +224,12 @@ BEGIN
     END IF;
 END $$;
 
+-- Relaxar colunas VARCHAR para TEXT em apontamentos_arcis para prevenir erros de overflow (22001)
+ALTER TABLE public.apontamentos_arcis 
+    ALTER COLUMN status_arcis TYPE TEXT,
+    ALTER COLUMN prioridade TYPE TEXT,
+    ALTER COLUMN tipo_conflito TYPE TEXT,
+    ALTER COLUMN disciplina_principal TYPE TEXT,
+    ALTER COLUMN edificacao TYPE TEXT,
+    ALTER COLUMN numero_relatorio TYPE TEXT;
+

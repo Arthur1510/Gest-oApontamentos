@@ -412,15 +412,20 @@ export default function ArcisPage() {
           })
         );
 
+        const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
+          if (!val) return fallback;
+          return val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+        };
+
         const rowsToUpsert = conflictsWithUploadedImages.map((c) => ({
           projeto_id: c.projeto_id && c.projeto_id.trim() !== '' ? c.projeto_id.trim() : null,
           codigo_conflito: c.codigo_conflito,
-          status_arcis: c.status_arcis,
-          prioridade: c.prioridade,
-          tipo_conflito: c.tipo_conflito,
-          disciplina_principal: c.disciplina_principal,
-          disciplinas_envolvidas: c.disciplinas_envolvidas || [],
-          edificacao: c.edificacao || 'TORRE',
+          status_arcis: cleanStr(c.status_arcis, 80, 'Aguardando Solução'),
+          prioridade: cleanStr(c.prioridade, 30, 'Normal'),
+          tipo_conflito: cleanStr(c.tipo_conflito, 100, 'Conflito Normativo'),
+          disciplina_principal: cleanStr(c.disciplina_principal, 100, 'ARQUITETURA').toUpperCase(),
+          disciplinas_envolvidas: (c.disciplinas_envolvidas || []).map((d) => cleanStr(d, 100).toUpperCase()).filter(Boolean),
+          edificacao: cleanStr(c.edificacao, 100, 'TORRE').toUpperCase(),
           pavimentos: c.pavimentos || [],
           local_edificacao: c.local_edificacao || null,
           localizacao: c.localizacao || null,
@@ -430,7 +435,7 @@ export default function ArcisPage() {
           imagens: c.imagens || [],
           data_criacao_arcis: parseDateToISO(c.data_criacao_arcis),
           data_ultima_alteracao: parseDateToISO(c.data_ultima_alteracao) || parseDateToISO(c.data_criacao_arcis) || new Date().toISOString().slice(0, 10),
-          numero_relatorio: c.numero_relatorio || 'RSC_ARCIS',
+          numero_relatorio: cleanStr(c.numero_relatorio, 50, 'RSC_ARCIS'),
         }));
 
         // 2. Tentar upsert nativo com base na chave (projeto_id, codigo_conflito)
