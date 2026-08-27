@@ -13,6 +13,7 @@ import { Projeto } from '@/types/apontamento';
 import {
   supabase,
   isSupabaseConfigured,
+  uploadImageToClashesBucket,
   MOCK_PROJETOS,
   MOCK_CONFLITOS_ARCIS,
 } from '@/lib/supabase/client';
@@ -257,6 +258,8 @@ export default function ArcisPage() {
       projeto_id: payload.projeto_id && payload.projeto_id.trim() !== '' ? payload.projeto_id.trim() : null,
       data_criacao_arcis: parseDateToISO(payload.data_criacao_arcis),
       data_ultima_alteracao: parseDateToISO(payload.data_ultima_alteracao) || new Date().toISOString().slice(0, 10),
+      url_imagem: payload.url_imagem || null,
+      imagens: payload.imagens || [],
     };
 
     if (isSupabaseConfigured() && supabase) {
@@ -370,7 +373,33 @@ export default function ArcisPage() {
   const handleImportSuccess = async (importedConflicts: ConflitoArcis[], metadata: RelatorioArcisMetadata) => {
     if (isSupabaseConfigured() && supabase) {
       try {
-        const rowsToUpsert = importedConflicts.map((c) => ({
+        // 1. Upload de imagens técnicas para o Supabase Storage (bucket 'clashes') no modo otimizado de baixo consumo
+        const conflictsWithUploadedImages = await Promise.all(
+          importedConflicts.map(async (c) => {
+            let finalUrl = c.url_imagem || null;
+            let finalImagens = c.imagens && c.imagens.length > 0 ? c.imagens : [];
+
+            if (c.tempImageFile) {
+              try {
+                const uploadedUrl = await uploadImageToClashesBucket(c.tempImageFile);
+                if (uploadedUrl) {
+                  finalUrl = uploadedUrl;
+                  finalImagens = [uploadedUrl];
+                }
+              } catch (upErr) {
+                console.warn(`Upload da imagem do conflito #${c.codigo_conflito} falhou:`, upErr);
+              }
+            }
+
+            return {
+              ...c,
+              url_imagem: finalUrl,
+              imagens: finalImagens,
+            };
+          })
+        );
+
+        const rowsToUpsert = conflictsWithUploadedImages.map((c) => ({
           projeto_id: c.projeto_id && c.projeto_id.trim() !== '' ? c.projeto_id.trim() : null,
           codigo_conflito: c.codigo_conflito,
           status_arcis: c.status_arcis,
@@ -384,12 +413,14 @@ export default function ArcisPage() {
           localizacao: c.localizacao || null,
           descricao: c.descricao,
           solucao: c.solucao || null,
+          url_imagem: c.url_imagem || null,
+          imagens: c.imagens || [],
           data_criacao_arcis: parseDateToISO(c.data_criacao_arcis),
           data_ultima_alteracao: parseDateToISO(c.data_ultima_alteracao) || parseDateToISO(c.data_criacao_arcis) || new Date().toISOString().slice(0, 10),
           numero_relatorio: c.numero_relatorio || 'RSC_ARCIS',
         }));
 
-        // 1. Tentar upsert nativo com base na chave (projeto_id, codigo_conflito)
+        // 2. Tentar upsert nativo com base na chave (projeto_id, codigo_conflito)
         const { data, error } = await supabase
           .from('apontamentos_arcis')
           .upsert(rowsToUpsert, { onConflict: 'projeto_id,codigo_conflito' })

@@ -28,6 +28,8 @@ import {
   Clock,
   Sparkles,
   FolderKanban,
+  Images,
+  ExternalLink,
 } from 'lucide-react';
 import { formatDateBR } from '@/lib/arcis-parser';
 
@@ -192,6 +194,35 @@ export function ArcisConflictDetailModal({
             {conflito.descricao}
           </div>
         </div>
+
+        {/* Foto / Print Técnico do Conflito Extraído do PDF */}
+        {(conflito.url_imagem || (conflito.imagens && conflito.imagens.length > 0)) && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
+                Foto Técnica do Conflito ARCIS
+              </span>
+              <a
+                href={conflito.url_imagem || conflito.imagens?.[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+              >
+                <ExternalLink className="h-3 w-3" /> Abrir original
+              </a>
+            </div>
+
+            <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] flex items-center justify-center p-2 group shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={conflito.url_imagem || conflito.imagens?.[0]}
+                alt={`Foto técnica #${conflito.codigo_conflito}`}
+                className="max-h-96 w-auto object-contain rounded-xl"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Gestão de Solução & Alteração de Status */}
         <div className="p-4 rounded-2xl bg-[#00A3C4]/5 dark:bg-[#00A3C4]/10 border border-[#00A3C4]/20 space-y-4">

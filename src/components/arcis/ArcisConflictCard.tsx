@@ -40,9 +40,29 @@ export function ArcisConflictCard({
 }: ArcisConflictCardProps) {
   const isNormativo = conflito.tipo_conflito.toLowerCase().includes('normativ');
   const nomeProjeto = conflito.projetos?.nome || projectName;
+  const conflictImage = conflito.url_imagem || (conflito.imagens && conflito.imagens.length > 0 ? conflito.imagens[0] : null);
 
   return (
     <Card className="overflow-hidden hover:shadow-lg transition-all duration-200 border-slate-200/90 dark:border-[#0B384D] dark:bg-[#072B3B] group flex flex-col justify-between">
+      {/* Banner da Imagem do Conflito se houver */}
+      {conflictImage && (
+        <div
+          onClick={() => onViewDetails(conflito)}
+          className="relative h-40 w-full overflow-hidden bg-[#041A24] cursor-pointer border-b border-slate-100 dark:border-[#0B384D]"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={conflictImage}
+            alt={`Conflito #${conflito.codigo_conflito}`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#072B3B]/80 via-transparent to-transparent opacity-80 group-hover:opacity-50 transition-opacity" />
+        </div>
+      )}
+
       {/* Topo do Card com Código e Status */}
       <div className="p-4 sm:p-5 pb-3 border-b border-slate-100 dark:border-[#0B384D] space-y-3">
         <div className="flex items-start justify-between gap-2">

@@ -53,6 +53,7 @@ export interface ConflitoArcis {
   solucao?: string | null;
   url_imagem?: string | null;
   imagens?: string[] | null;
+  tempImageFile?: File | null;
   data_criacao_arcis?: string | null; // Formato YYYY-MM-DD ou DD/MM/YYYY
   data_ultima_alteracao?: string | null;
   numero_relatorio?: string | null; // Ex: 'RSC_47'

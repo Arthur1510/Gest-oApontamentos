@@ -37,12 +37,113 @@ function toCleanUint8Array(input: Buffer | Uint8Array | ArrayBuffer): Uint8Array
   return input instanceof Uint8Array ? input : new Uint8Array(input);
 }
 
+export interface ExtractedPdfPage {
+  text: string;
+  imageFile?: File | null;
+  imageUrl?: string | null;
+}
+
 /**
- * Extração de páginas de PDF universal (Browser e Servidor).
- * - No browser: extrai diretamente no cliente sem limites de tamanho de payload da Vercel (4.5 MB).
+ * Converte dados de imagem brutos do PDF (RGB/RGBA) para WebP otimizado no navegador via Canvas.
+ */
+export async function convertPdfImageToWebp(
+  img: { width: number; height: number; kind: number; data: Uint8Array | Uint8ClampedArray },
+  fileName: string
+): Promise<{ file: File; dataUrl: string } | null> {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+
+  return new Promise((resolve) => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(null);
+        return;
+      }
+
+      const imgData = ctx.createImageData(img.width, img.height);
+      const src = img.data;
+      const dst = imgData.data;
+
+      if (img.kind === 2) {
+        // RGB_24BPP (3 bytes por pixel) -> RGBA (4 bytes)
+        let j = 0;
+        for (let i = 0; i < src.length; i += 3) {
+          dst[j] = src[i];
+          dst[j + 1] = src[i + 1];
+          dst[j + 2] = src[i + 2];
+          dst[j + 3] = 255;
+          j += 4;
+        }
+      } else if (img.kind === 3 || src.length === img.width * img.height * 4) {
+        // RGBA_32BPP
+        dst.set(src);
+      } else if (img.kind === 1) {
+        // GRAYSCALE_1BPP
+        let j = 0;
+        for (let i = 0; i < src.length; i++) {
+          dst[j] = src[i];
+          dst[j + 1] = src[i];
+          dst[j + 2] = src[i];
+          dst[j + 3] = 255;
+          j += 4;
+        }
+      } else {
+        dst.set(src.subarray(0, dst.length));
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+
+      // Redimensionar suavemente se for excessivamente grande (> 1920px) mantendo resolução Full HD e nitidez
+      let finalCanvas = canvas;
+      if (img.width > 1920 || img.height > 1920) {
+        const scale = Math.min(1920 / img.width, 1920 / img.height);
+        const scaledWidth = Math.round(img.width * scale);
+        const scaledHeight = Math.round(img.height * scale);
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = scaledWidth;
+        resizedCanvas.height = scaledHeight;
+        const rCtx = resizedCanvas.getContext('2d');
+        if (rCtx) {
+          rCtx.imageSmoothingEnabled = true;
+          rCtx.imageSmoothingQuality = 'high';
+          rCtx.drawImage(canvas, 0, 0, scaledWidth, scaledHeight);
+          finalCanvas = resizedCanvas;
+        }
+      }
+
+      const dataUrl = finalCanvas.toDataURL('image/webp', 0.82);
+
+      finalCanvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(null);
+            return;
+          }
+          const file = new File([blob], `${fileName}.webp`, {
+            type: 'image/webp',
+            lastModified: Date.now(),
+          });
+          resolve({ file, dataUrl });
+        },
+        'image/webp',
+        0.82
+      );
+    } catch (err) {
+      console.warn('Erro ao processar imagem do PDF para WebP:', err);
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * Extração de páginas e imagens de PDF universal (Browser e Servidor).
+ * - No browser: extrai texto e imagens WebP diretamente no cliente sem limites de payload da Vercel (4.5 MB).
  * - No servidor: utiliza o fake worker em loopback sem requisições de chunks.
  */
-async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promise<string[]> {
+async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promise<ExtractedPdfPage[]> {
   await ensurePdfWorkerInitialized();
 
   const data = toCleanUint8Array(buffer);
@@ -63,7 +164,7 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
     });
 
     const doc = await loadingTask.promise;
-    const pages: string[] = [];
+    const pages: ExtractedPdfPage[] = [];
 
     for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
@@ -71,7 +172,41 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
       const pageText = textContent.items
         .map((item) => (typeof item === 'object' && item !== null && 'str' in item ? String((item as { str: unknown }).str) : ''))
         .join('\n');
-      pages.push(pageText);
+
+      let imageFile: File | null = null;
+      let imageUrl: string | null = null;
+
+      // Extração de imagens técnicas de conflitos no browser via Canvas (apenas para páginas de conflitos i > 1)
+      if (typeof window !== 'undefined' && typeof document !== 'undefined' && i > 1) {
+        try {
+          const ops = await page.getOperatorList();
+          for (let j = 0; j < ops.fnArray.length; j++) {
+            if (ops.fnArray[j] === pdfjs.OPS.paintImageXObject) {
+              const objId = ops.argsArray[j][0];
+              const img = await new Promise<any>((resolve) => {
+                try {
+                  page.objs.get(objId, (imgData: any) => resolve(imgData));
+                } catch {
+                  resolve(null);
+                }
+              });
+
+              if (img && img.width > 120 && img.height > 120 && img.data) {
+                const res = await convertPdfImageToWebp(img, `conflito_arcis_p${i}`);
+                if (res) {
+                  imageFile = res.file;
+                  imageUrl = res.dataUrl;
+                  break; // Conflito ARCIS tem 1 print principal por prancha
+                }
+              }
+            }
+          }
+        } catch (imgErr) {
+          console.warn(`Aviso na extração de imagem da prancha ${i}:`, imgErr);
+        }
+      }
+
+      pages.push({ text: pageText, imageFile, imageUrl });
     }
 
     if (pages.length > 0) {
@@ -88,7 +223,7 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
       const parser = new PDFParse(data);
       const res = await parser.getText();
       if (res && res.pages && res.pages.length > 0) {
-        return res.pages.map((p) => p.text);
+        return res.pages.map((p) => ({ text: p.text }));
       }
     } catch (err) {
       console.error('Fallback com pdf-parse também falhou no servidor:', err);
@@ -156,7 +291,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
   }
 
   // Página 1: Capa com informações gerais
-  const coverText = cleanPdfText(pages[0]);
+  const coverText = cleanPdfText(pages[0].text);
   
   // Extrair Cliente (ex: WCC CONSTRUTORA)
   const clienteMatch = coverText.match(/(WCC\s+CONSTRUTORA|[A-Z0-9\s]{3,30}(?:CONSTRUTORA|ENGENHARIA|INCORPORADORA))/i);
@@ -178,7 +313,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
 
   // Extrair páginas subsequentes (cada página representa 1 conflito)
   for (let i = 1; i < pages.length; i++) {
-    const rawPage = cleanPdfText(pages[i]);
+    const rawPage = cleanPdfText(pages[i].text);
 
     const conflictMatch = rawPage.match(/Conflito\s*#\s*(\d+)\s*-\s*([^\n]+)/i);
     if (!conflictMatch) continue;
@@ -240,6 +375,9 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
       local_edificacao: localEdificacao ? localEdificacao.replace(/\s+/g, ' ') : null,
       localizacao: localizacao ? localizacao.replace(/\s+/g, ' ') : null,
       descricao: descricaoRaw.replace(/\s+/g, ' ').trim(),
+      url_imagem: pages[i].imageUrl || null,
+      imagens: pages[i].imageUrl ? [pages[i].imageUrl as string] : [],
+      tempImageFile: pages[i].imageFile || null,
       data_criacao_arcis: parseDateToISO(dataCriacao),
       data_ultima_alteracao: parseDateToISO(dtUltima) || parseDateToISO(dataCriacao),
       numero_relatorio: `RSC_${empreendimento.replace(/\s+/g, '_')}`,

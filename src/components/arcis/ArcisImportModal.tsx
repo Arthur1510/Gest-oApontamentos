@@ -26,6 +26,7 @@ import {
   ArrowRight,
   RefreshCw,
   Plus,
+  Images,
 } from 'lucide-react';
 
 interface ArcisImportModalProps {
@@ -308,7 +309,7 @@ export function ArcisImportModal({
         {parsedData && (
           <div className="space-y-4 animate-in fade-in-50">
             {/* Metadados da Capa Extraídos */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#041A24] border border-slate-200 dark:border-[#0B384D] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-[#041A24] border border-slate-200 dark:border-[#0B384D] grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                   Empreendimento
@@ -339,10 +340,20 @@ export function ArcisImportModal({
 
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Conflitos Detectados
+                  Conflitos
                 </span>
                 <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm block mt-0.5">
                   {parsedData.conflitos.length} de {parsedData.total_conflitos}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                  Fotos Técnicas
+                </span>
+                <span className="font-black text-[#00A3C4] dark:text-[#00C4EB] text-sm block mt-0.5 flex items-center gap-1">
+                  <Images className="h-3.5 w-3.5" />
+                  {parsedData.conflitos.filter((c) => !!c.url_imagem).length} WebP
                 </span>
               </div>
             </div>
@@ -437,6 +448,20 @@ export function ArcisImportModal({
                         className="mt-1 h-4 w-4 rounded text-[#00A3C4] cursor-pointer"
                       />
 
+                      {c.url_imagem && (
+                        <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0 border border-slate-200 dark:border-[#0B384D] bg-[#041A24] shadow-2xs">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={c.url_imagem}
+                            alt={`Print #${c.codigo_conflito}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute bottom-0 inset-x-0 bg-[#072B3B]/85 text-[8px] text-[#00C4EB] text-center font-bold py-0.5">
+                            WEBP
+                          </div>
+                        </div>
+                      )}
+
                       <div className="flex-1 space-y-1.5">
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -517,7 +542,7 @@ export function ArcisImportModal({
             >
               {isImporting ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Sincronizando...
+                  <Loader2 className="h-4 w-4 animate-spin" /> Otimizando imagens e gravando no Supabase...
                 </>
               ) : stats.atualizacoes > 0 ? (
                 <>

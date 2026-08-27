@@ -117,6 +117,8 @@ export function ArcisConflictFormModal({
       data_criacao_arcis: conflitoParaEditar?.data_criacao_arcis || new Date().toISOString().slice(0, 10),
       data_ultima_alteracao: new Date().toISOString().slice(0, 10),
       numero_relatorio: conflitoParaEditar?.numero_relatorio || 'RSC_MANUAL',
+      url_imagem: conflitoParaEditar?.url_imagem || null,
+      imagens: conflitoParaEditar?.imagens || [],
     };
 
     try {
