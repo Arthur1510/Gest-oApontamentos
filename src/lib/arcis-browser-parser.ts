@@ -1,5 +1,12 @@
 import { ConflitoArcis, RelatorioArcisMetadata, PrioridadeArcis } from '@/types/arcis';
-import { parseDateToISO, normalizeStatusArcis } from '@/lib/arcis-utils';
+import {
+  parseDateToISO,
+  normalizeStatusArcis,
+  normalizePrioridadeArcis,
+  normalizeTipoConflitoArcis,
+  cleanArcisPdfText,
+  cleanDescriptionText,
+} from '@/lib/arcis-utils';
 import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
 
 export async function convertCanvasToWebp(
@@ -10,12 +17,7 @@ export async function convertCanvasToWebp(
 
   return new Promise((resolve) => {
     try {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(null);
-        return;
-      }
+      let canvas: HTMLCanvasElement | null = null;
 
       // 1. ImageBitmap ou objeto contendo bitmap
       const isBitmap =
@@ -24,57 +26,72 @@ export async function convertCanvasToWebp(
 
       if (isBitmap) {
         const bmp: ImageBitmap = img instanceof ImageBitmap ? img : img.bitmap;
+        canvas = document.createElement('canvas');
         canvas.width = bmp.width;
         canvas.height = bmp.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
         ctx.drawImage(bmp, 0, 0);
-      } else if (
-        (typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement) ||
-        (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement)
-      ) {
-        // 2. Elemento Canvas ou Imagem DOM
-        canvas.width = img.width;
-        canvas.height = img.height;
+      } else if (typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement) {
+        // 2. Elemento Canvas
+        canvas = img;
+      } else if (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement) {
+        // 3. Elemento Imagem DOM
+        canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
         ctx.drawImage(img, 0, 0);
       } else if (img.data && img.width && img.height) {
         // 3. Array de Pixels brutos (RGB / RGBA / Grayscale)
+        canvas = document.createElement('canvas');
         canvas.width = img.width;
         canvas.height = img.height;
-        const imgData = ctx.createImageData(img.width, img.height);
-        const src = img.data;
-        const dst = imgData.data;
-
-        if (img.kind === 2 || src.length === img.width * img.height * 3) {
-          // RGB (3 bytes por pixel) -> RGBA (4 bytes)
-          let j = 0;
-          for (let i = 0; i < src.length; i += 3) {
-            dst[j] = src[i];
-            dst[j + 1] = src[i + 1];
-            dst[j + 2] = src[i + 2];
-            dst[j + 3] = 255;
-            j += 4;
-          }
-        } else if (img.kind === 3 || src.length === img.width * img.height * 4) {
-          dst.set(src);
-        } else if (img.kind === 1 || src.length === img.width * img.height) {
-          let j = 0;
-          for (let i = 0; i < src.length; i++) {
-            dst[j] = src[i];
-            dst[j + 1] = src[i];
-            dst[j + 2] = src[i];
-            dst[j + 3] = 255;
-            j += 4;
-          }
-        } else {
-          dst.set(src.subarray(0, dst.length));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
         }
 
+        const imgData = ctx.createImageData(img.width, img.height);
+        const dataLen = img.data.length;
+        const expectedRgba = img.width * img.height * 4;
+        const expectedRgb = img.width * img.height * 3;
+
+        if (dataLen === expectedRgba) {
+          imgData.data.set(img.data);
+        } else if (dataLen === expectedRgb) {
+          let srcIdx = 0;
+          let dstIdx = 0;
+          while (srcIdx < dataLen) {
+            imgData.data[dstIdx] = img.data[srcIdx];
+            imgData.data[dstIdx + 1] = img.data[srcIdx + 1];
+            imgData.data[dstIdx + 2] = img.data[srcIdx + 2];
+            imgData.data[dstIdx + 3] = 255;
+            srcIdx += 3;
+            dstIdx += 4;
+          }
+        } else {
+          for (let i = 0; i < Math.min(dataLen, expectedRgba); i++) {
+            imgData.data[i] = img.data[i];
+          }
+        }
         ctx.putImageData(imgData, 0, 0);
-      } else {
+      }
+
+      if (!canvas || canvas.width === 0 || canvas.height === 0) {
         resolve(null);
         return;
       }
 
-      // Redimensionar suavemente se for excessivamente grande (> 1920px) mantendo resolução Full HD
+      // Redimensiona mantendo proporção se for muito grande (>1920px) para máxima performance
       let finalCanvas = canvas;
       if (canvas.width > 1920 || canvas.height > 1920) {
         const scale = Math.min(1920 / canvas.width, 1920 / canvas.height);
@@ -93,7 +110,6 @@ export async function convertCanvasToWebp(
       }
 
       const dataUrl = finalCanvas.toDataURL('image/webp', 0.85);
-
       finalCanvas.toBlob(
         (blob) => {
           if (!blob) {
@@ -117,23 +133,6 @@ export async function convertCanvasToWebp(
       resolve(null);
     }
   });
-}
-
-function cleanPdfText(text: string): string {
-  return text
-    .replace(/T\s*otal/gi, 'Total')
-    .replace(/S\s*erviços/gi, 'Serviços')
-    .replace(/C\s*onflito/gi, 'Conflito')
-    .replace(/D\s*isciplina\s+Principal/gi, 'Disciplina Principal')
-    .replace(/D\s*isciplinas\s+Envo\s*lvidas/gi, 'Disciplinas Envolvidas')
-    .replace(/D\s*e\s*scrição/gi, 'Descrição')
-    .replace(/Prio\s*ridade/gi, 'Prioridade')
-    .replace(/Pavim\s*e\s*nto/gi, 'Pavimento')
-    .replace(/L\s*o\s*calização/gi, 'Localização')
-    .replace(/L\s*o\s*cal\s+Edif\s*icação/gi, 'Local Edificação')
-    .replace(/Análise\s+Crít\s*ica/gi, 'Análise Crítica')
-    .replace(/No\s*rmal/gi, 'Normal')
-    .replace(/PENTHOUS\s*E/gi, 'PENTHOUSE');
 }
 
 /**
@@ -177,7 +176,7 @@ export async function parseArcisPdfClientSide(
   const coverRaw = textContent1.items
     .map((item) => (typeof item === 'object' && item !== null && 'str' in item ? String((item as { str: unknown }).str) : ''))
     .join('\n');
-  const coverText = cleanPdfText(coverRaw);
+  const coverText = cleanArcisPdfText(coverRaw);
 
   const clienteMatch = coverText.match(/(WCC\s+CONSTRUTORA|[A-Z0-9\s]{3,30}(?:CONSTRUTORA|ENGENHARIA|INCORPORADORA))/i);
   const cliente = clienteMatch ? clienteMatch[1].trim() : 'WCC CONSTRUTORA';
@@ -201,7 +200,7 @@ export async function parseArcisPdfClientSide(
     const pageRaw = textContent.items
       .map((item) => (typeof item === 'object' && item !== null && 'str' in item ? String((item as { str: unknown }).str) : ''))
       .join('\n');
-    const rawPage = cleanPdfText(pageRaw);
+    const rawPage = cleanArcisPdfText(pageRaw);
 
     const conflictMatch = rawPage.match(/Conflito\s*#\s*(\d+)\s*-\s*([^\n]+)/i);
     if (!conflictMatch) continue;
@@ -219,29 +218,27 @@ export async function parseArcisPdfClientSide(
     const prioridadeRaw = getField('Prioridade', ['Data de Criação', 'Dt. última alteração', 'Tipo Conflito']);
     const dataCriacao = getField('Data de Criação', ['Dt. última alteração', 'Tipo Conflito', 'Disciplina Principal']);
     const dtUltima = getField('Dt. última alteração', ['Tipo Conflito', 'Disciplina Principal']);
-    const tipoConflito = getField('Tipo Conflito', ['Disciplina Principal', 'Disciplinas Envolvidas', 'Edificação']) || 'Conflito Normativo';
-    const discPrincipal = getField('Disciplina Principal', ['Disciplinas Envolvidas', 'Edificação', 'Pavimento']) || 'ARQUITETURA';
+    const tipoConflitoRaw = getField('Tipo Conflito', ['Disciplina Principal', 'Disciplinas Envolvidas', 'Edificação']);
+    const tipoConflito = normalizeTipoConflitoArcis(tipoConflitoRaw);
+    const discPrincipalRaw = getField('Disciplina Principal', ['Disciplinas Envolvidas', 'Edificação', 'Pavimento']);
+    const discPrincipal = discPrincipalRaw.toUpperCase().trim() || 'ARQUITETURA LEGAL';
     const discEnvolvidasRaw = getField('Disciplinas Envolvidas', ['Edificação', 'Pavimento', 'Localização', 'Local Edificação']);
     const edificacao = getField('Edificação', ['Pavimento', 'Local Edificação', 'Localização', 'Descrição']) || 'TORRE';
     const pavimentoRaw = getField('Pavimento', ['Local Edificação', 'Localização', 'Descrição']);
     const localEdificacao = getField('Local Edificação', ['Localização', 'Descrição']);
     const localizacao = getField('Localização', ['Descrição', 'Relatório Serviços']) || localEdificacao || '';
     const descricaoRaw = getField('Descrição', ['Relatório Serviços', 'Grupo ARCIS']);
+    const descricao = cleanDescriptionText(descricaoRaw);
 
     const pavimentosList = pavimentoRaw
       ? pavimentoRaw.split(/,|\n/).map((p) => p.trim().replace(/\s+/g, ' ')).filter(Boolean)
       : [];
 
     const discEnvolvidas = discEnvolvidasRaw
-      ? discEnvolvidasRaw.split(/,|\n/).map((d) => d.trim()).filter(Boolean)
+      ? discEnvolvidasRaw.split(/,|\n/).map((d) => d.trim().toUpperCase()).filter(Boolean)
       : [];
 
-    const prioridade: PrioridadeArcis =
-      prioridadeRaw.toLowerCase().includes('alta') || prioridadeRaw.toLowerCase().includes('urgente')
-        ? 'Alta'
-        : prioridadeRaw.toLowerCase().includes('baixa')
-        ? 'Baixa'
-        : 'Normal';
+    const prioridade: PrioridadeArcis = normalizePrioridadeArcis(prioridadeRaw);
 
     // Extrair imagem técnica via Canvas
     let imageUrl: string | null = null;
@@ -320,7 +317,7 @@ export async function parseArcisPdfClientSide(
       pavimentos: pavimentosList,
       local_edificacao: localEdificacao ? cleanStr(localEdificacao, 255) : null,
       localizacao: localizacao ? cleanStr(localizacao, 255) : null,
-      descricao: descricaoRaw.replace(/\s+/g, ' ').trim(),
+      descricao: descricao,
       url_imagem: imageUrl,
       imagens: imageUrl ? [imageUrl] : [],
       tempImageFile: imageFile,

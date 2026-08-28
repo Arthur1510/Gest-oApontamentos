@@ -1,5 +1,13 @@
 import { ConflitoArcis, RelatorioArcisMetadata, StatusConflitoArcis, PrioridadeArcis } from '@/types/arcis';
-import { parseDateToISO, formatDateBR, normalizeStatusArcis } from '@/lib/arcis-utils';
+import {
+  parseDateToISO,
+  formatDateBR,
+  normalizeStatusArcis,
+  normalizePrioridadeArcis,
+  normalizeTipoConflitoArcis,
+  cleanArcisPdfText,
+  cleanDescriptionText,
+} from '@/lib/arcis-utils';
 
 // Inicializador seguro do worker do PDF.js para ambientes Browser e Node.js (Vercel / Local)
 async function ensurePdfWorkerInitialized() {
@@ -414,7 +422,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
   }
 
   // Página 1: Capa com informações gerais
-  const coverText = cleanPdfText(pages[0].text);
+  const coverText = cleanArcisPdfText(pages[0].text);
   
   // Extrair Cliente (ex: WCC CONSTRUTORA)
   const clienteMatch = coverText.match(/(WCC\s+CONSTRUTORA|[A-Z0-9\s]{3,30}(?:CONSTRUTORA|ENGENHARIA|INCORPORADORA))/i);
@@ -436,7 +444,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
 
   // Extrair páginas subsequentes (cada página representa 1 conflito)
   for (let i = 1; i < pages.length; i++) {
-    const rawPage = cleanPdfText(pages[i].text);
+    const rawPage = cleanArcisPdfText(pages[i].text);
 
     const conflictMatch = rawPage.match(/Conflito\s*#\s*(\d+)\s*-\s*([^\n]+)/i);
     if (!conflictMatch) continue;
@@ -454,14 +462,17 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
     const prioridadeRaw = getField('Prioridade', ['Data de Criação', 'Dt. última alteração', 'Tipo Conflito']);
     const dataCriacao = getField('Data de Criação', ['Dt. última alteração', 'Tipo Conflito', 'Disciplina Principal']);
     const dtUltima = getField('Dt. última alteração', ['Tipo Conflito', 'Disciplina Principal']);
-    const tipoConflito = getField('Tipo Conflito', ['Disciplina Principal', 'Disciplinas Envolvidas', 'Edificação']) || 'Conflito Normativo';
-    const discPrincipal = getField('Disciplina Principal', ['Disciplinas Envolvidas', 'Edificação', 'Pavimento']) || 'ARQUITETURA';
+    const tipoConflitoRaw = getField('Tipo Conflito', ['Disciplina Principal', 'Disciplinas Envolvidas', 'Edificação']);
+    const tipoConflito = normalizeTipoConflitoArcis(tipoConflitoRaw);
+    const discPrincipalRaw = getField('Disciplina Principal', ['Disciplinas Envolvidas', 'Edificação', 'Pavimento']);
+    const discPrincipal = discPrincipalRaw.toUpperCase().trim() || 'ARQUITETURA LEGAL';
     const discEnvolvidasRaw = getField('Disciplinas Envolvidas', ['Edificação', 'Pavimento', 'Localização', 'Local Edificação']);
     const edificacao = getField('Edificação', ['Pavimento', 'Local Edificação', 'Localização', 'Descrição']) || 'TORRE';
     const pavimentoRaw = getField('Pavimento', ['Local Edificação', 'Localização', 'Descrição']);
     const localEdificacao = getField('Local Edificação', ['Localização', 'Descrição']);
     const localizacao = getField('Localização', ['Descrição', 'Relatório Serviços']) || localEdificacao || '';
     const descricaoRaw = getField('Descrição', ['Relatório Serviços', 'Grupo ARCIS']);
+    const descricao = cleanDescriptionText(descricaoRaw);
 
     const pavimentosList = pavimentoRaw
       ? pavimentoRaw
@@ -473,16 +484,11 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
     const discEnvolvidas = discEnvolvidasRaw
       ? discEnvolvidasRaw
           .split(/,|\n/)
-          .map((d) => d.trim())
+          .map((d) => d.trim().toUpperCase())
           .filter(Boolean)
       : [];
 
-    const prioridade: PrioridadeArcis =
-      prioridadeRaw.toLowerCase().includes('alta') || prioridadeRaw.toLowerCase().includes('urgente')
-        ? 'Alta'
-        : prioridadeRaw.toLowerCase().includes('baixa')
-        ? 'Baixa'
-        : 'Normal';
+    const prioridade: PrioridadeArcis = normalizePrioridadeArcis(prioridadeRaw);
 
     const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
       if (!val) return fallback;
@@ -502,7 +508,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
       pavimentos: pavimentosList,
       local_edificacao: localEdificacao ? cleanStr(localEdificacao, 255) : null,
       localizacao: localizacao ? cleanStr(localizacao, 255) : null,
-      descricao: descricaoRaw.replace(/\s+/g, ' ').trim(),
+      descricao: descricao,
       url_imagem: pages[i].imageUrl || null,
       imagens: pages[i].imageUrl ? [pages[i].imageUrl as string] : [],
       tempImageFile: pages[i].imageFile || null,
@@ -523,4 +529,12 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
   };
 }
 
-export { parseDateToISO, formatDateBR, normalizeStatusArcis } from '@/lib/arcis-utils';
+export {
+  parseDateToISO,
+  formatDateBR,
+  normalizeStatusArcis,
+  normalizePrioridadeArcis,
+  normalizeTipoConflitoArcis,
+  cleanArcisPdfText,
+  cleanDescriptionText,
+} from '@/lib/arcis-utils';
