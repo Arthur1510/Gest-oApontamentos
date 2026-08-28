@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ConflitoArcis, StatusConflitoArcis, STATUS_ARCIS_OPCOES } from '@/types/arcis';
 import { ArcisStatusBadge } from '@/components/arcis/ArcisStatusBadge';
 import {
@@ -15,30 +15,31 @@ import { Button } from '@/components/ui/button';
 import { SelectNative } from '@/components/ui/select-native';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  ShieldAlert,
   Building,
   Layers,
   MapPin,
   Calendar,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
   FileText,
   Save,
-  Clock,
   Sparkles,
   FolderKanban,
   Images,
+  Image as ImageIcon,
   ExternalLink,
+  Upload,
+  Trash2,
+  ClipboardCheck,
 } from 'lucide-react';
 import { formatDateBR } from '@/lib/arcis-utils';
+import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
+import { compressImage } from '@/lib/image-compression';
 
 interface ArcisConflictDetailModalProps {
   conflito: ConflitoArcis | null;
   projectName?: string;
   isOpen: boolean;
   onClose: () => void;
-  onUpdateStatus?: (id: string, newStatus: StatusConflitoArcis, solucao?: string) => Promise<void> | void;
+  onUpdateStatus?: (id: string, newStatus: StatusConflitoArcis, solucao?: string, url_imagem?: string | null) => Promise<void> | void;
 }
 
 export function ArcisConflictDetailModal({
@@ -52,25 +53,91 @@ export function ArcisConflictDetailModal({
     conflito?.status_arcis || 'Aguardando Solução'
   );
   const [solucaoText, setSolucaoText] = useState(conflito?.solucao || '');
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [newImageFile, setNewImageFile] = useState<File | null>(null);
+  const [pasteSuccessMsg, setPasteSuccessMsg] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sincronizar estado local quando abrir com novo conflito
-  React.useEffect(() => {
+  useEffect(() => {
     if (conflito) {
       setSelectedStatus(conflito.status_arcis);
       setSolucaoText(conflito.solucao || '');
+      setCurrentImageUrl(conflito.url_imagem || (conflito.imagens && conflito.imagens[0]) || null);
+      setNewImageFile(null);
+      setPasteSuccessMsg('');
     }
-  }, [conflito]);
+  }, [conflito, isOpen]);
+
+  // Listener para colar foto com Ctrl+V dentro do modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            const optimized = await compressImage(file);
+            const previewUrl = URL.createObjectURL(optimized);
+            setNewImageFile(optimized);
+            setCurrentImageUrl(previewUrl);
+            setPasteSuccessMsg('Foto colada via Ctrl+V!');
+            setTimeout(() => setPasteSuccessMsg(''), 3500);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen]);
 
   if (!conflito) return null;
 
   const nomeProjeto = conflito.projetos?.nome || projectName || 'Projeto Não Vinculado';
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const optimized = await compressImage(file);
+      const previewUrl = URL.createObjectURL(optimized);
+      setNewImageFile(optimized);
+      setCurrentImageUrl(previewUrl);
+    } catch (err) {
+      console.error('Erro ao processar imagem:', err);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setCurrentImageUrl(null);
+    setNewImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSave = async () => {
     if (!onUpdateStatus) return;
     try {
       setIsSaving(true);
-      await onUpdateStatus(conflito.id, selectedStatus, solucaoText);
+      let finalUrl = currentImageUrl;
+
+      if (newImageFile && isSupabaseConfigured()) {
+        try {
+          const uploaded = await uploadImageToClashesBucket(newImageFile);
+          if (uploaded) finalUrl = uploaded;
+        } catch (upErr) {
+          console.warn('Upload de imagem falhou, mantendo dados:', upErr);
+        }
+      }
+
+      await onUpdateStatus(conflito.id, selectedStatus, solucaoText, finalUrl);
       onClose();
     } catch (err) {
       console.error('Erro ao salvar atualização do conflito ARCIS:', err);
@@ -195,34 +262,82 @@ export function ArcisConflictDetailModal({
           </div>
         </div>
 
-        {/* Foto / Print Técnico do Conflito Extraído do PDF */}
-        {(conflito.url_imagem || (conflito.imagens && conflito.imagens.length > 0)) && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
-                Foto Técnica do Conflito ARCIS
-              </span>
-              <a
-                href={conflito.url_imagem || conflito.imagens?.[0]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+        {/* QUADRO DEDICADO DE FOTO TÉCNICA ARCIS */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+              <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
+              Foto Técnica do Conflito ARCIS
+            </span>
+            <div className="flex items-center gap-2">
+              {currentImageUrl && (
+                <a
+                  href={currentImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir original
+                </a>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] text-slate-500 hover:text-[#00A3C4] font-bold flex items-center gap-1 cursor-pointer"
               >
-                <ExternalLink className="h-3 w-3" /> Abrir original
-              </a>
+                <Upload className="h-3 w-3" /> {currentImageUrl ? 'Alterar foto' : 'Anexar foto'}
+              </button>
             </div>
+          </div>
 
+          {pasteSuccessMsg && (
+            <div className="p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5">
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              <span>{pasteSuccessMsg}</span>
+            </div>
+          )}
+
+          {currentImageUrl ? (
             <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] flex items-center justify-center p-2 group shadow-inner">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={conflito.url_imagem || conflito.imagens?.[0]}
+                src={currentImageUrl}
                 alt={`Foto técnica #${conflito.codigo_conflito}`}
                 className="max-h-96 w-auto object-contain rounded-xl"
               />
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute top-3 right-3 p-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                title="Remover foto técnica"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="p-6 rounded-2xl border-2 border-dashed border-slate-200 dark:border-[#0B384D] hover:border-[#00A3C4] bg-slate-50/50 dark:bg-[#041A24]/60 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-[#072B3B] text-slate-400 group-hover:text-[#00A3C4] group-hover:scale-110 transition-all shadow-xs border border-slate-200/60 dark:border-[#0B384D]">
+                <ImageIcon className="h-6 w-6" />
+              </div>
+              <p className="text-xs font-bold text-slate-700 dark:text-slate-200">
+                Nenhuma foto técnica anexada
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Clique para selecionar um arquivo ou cole diretamente usando <strong className="text-[#00A3C4]">Ctrl + V</strong>
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Gestão de Solução & Alteração de Status */}
         <div className="p-4 rounded-2xl bg-[#00A3C4]/5 dark:bg-[#00A3C4]/10 border border-[#00A3C4]/20 space-y-4">

@@ -329,16 +329,27 @@ export default function ArcisPage() {
     }
   };
 
-  const handleUpdateStatus = async (id: string, newStatus: StatusConflitoArcis, solucao?: string) => {
+  const handleUpdateStatus = async (
+    id: string,
+    newStatus: StatusConflitoArcis,
+    solucao?: string,
+    url_imagem?: string | null
+  ) => {
+    const updatePayload: Record<string, any> = {
+      status_arcis: newStatus,
+      solucao: solucao !== undefined ? (solucao || null) : undefined,
+      data_ultima_alteracao: new Date().toISOString().slice(0, 10),
+    };
+    if (url_imagem !== undefined) {
+      updatePayload.url_imagem = url_imagem;
+      updatePayload.imagens = url_imagem ? [url_imagem] : [];
+    }
+
     if (isSupabaseConfigured() && supabase) {
       try {
         await supabase
           .from('apontamentos_arcis')
-          .update({
-            status_arcis: newStatus,
-            solucao: solucao || null,
-            data_ultima_alteracao: new Date().toISOString().slice(0, 10),
-          })
+          .update(updatePayload)
           .eq('id', id);
       } catch (err) {
         console.error('Erro ao atualizar no Supabase:', err);
@@ -352,6 +363,8 @@ export default function ArcisPage() {
               ...c,
               status_arcis: newStatus,
               solucao: solucao !== undefined ? solucao : c.solucao,
+              url_imagem: url_imagem !== undefined ? url_imagem : c.url_imagem,
+              imagens: url_imagem !== undefined ? (url_imagem ? [url_imagem] : []) : c.imagens,
               data_ultima_alteracao: new Date().toISOString().slice(0, 10),
             }
           : c
@@ -377,7 +390,7 @@ export default function ArcisPage() {
         const conflictsWithUploadedImages = await Promise.all(
           importedConflicts.map(async (c) => {
             let finalUrl = c.url_imagem || null;
-            let finalImagens = c.imagens && c.imagens.length > 0 ? c.imagens : [];
+            let finalImagens = c.imagens && c.imagens.length > 0 ? c.imagens : (c.url_imagem ? [c.url_imagem] : []);
 
             if (c.tempImageFile) {
               try {
@@ -391,16 +404,13 @@ export default function ArcisPage() {
               }
             } else if (c.url_imagem && c.url_imagem.startsWith('data:image/')) {
               try {
-                const res = await fetch(c.url_imagem);
-                const blob = await res.blob();
-                const file = new File([blob], `conflito_${c.codigo_conflito}_${Date.now()}.webp`, { type: 'image/webp' });
-                const uploadedUrl = await uploadImageToClashesBucket(file);
+                const uploadedUrl = await uploadImageToClashesBucket(c.url_imagem);
                 if (uploadedUrl) {
                   finalUrl = uploadedUrl;
                   finalImagens = [uploadedUrl];
                 }
               } catch (upErr) {
-                console.warn(`Upload da imagem base64 do conflito #${c.codigo_conflito} falhou:`, upErr);
+                console.warn(`Upload da imagem base64 do conflito #${c.codigo_conflito} falhou, mantendo dados:`, upErr);
               }
             }
 
@@ -463,8 +473,8 @@ export default function ArcisPage() {
               map.set(key, {
                 ...c,
                 id: c.id || existing?.id || `arcis-c-${c.codigo_conflito}`,
-                url_imagem: existing?.url_imagem || c.url_imagem,
-                imagens: existing?.imagens && existing.imagens.length > 0 ? existing.imagens : c.imagens,
+                url_imagem: c.url_imagem || existing?.url_imagem || null,
+                imagens: c.imagens && c.imagens.length > 0 ? c.imagens : (existing?.imagens || []),
               });
             });
             return Array.from(map.values()).sort((a, b) => a.codigo_conflito - b.codigo_conflito);
@@ -525,8 +535,8 @@ export default function ArcisPage() {
         map.set(key, {
           ...c,
           id: existing ? existing.id : c.id,
-          url_imagem: existing?.url_imagem || c.url_imagem,
-          imagens: existing?.imagens && existing.imagens.length > 0 ? existing.imagens : c.imagens,
+          url_imagem: c.url_imagem || existing?.url_imagem || null,
+          imagens: c.imagens && c.imagens.length > 0 ? c.imagens : (existing?.imagens || []),
         });
       });
       return Array.from(map.values()).sort((a, b) => a.codigo_conflito - b.codigo_conflito);

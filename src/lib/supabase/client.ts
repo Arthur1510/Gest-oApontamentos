@@ -27,13 +27,29 @@ export const supabase = isSupabaseConfigured()
   : null;
 
 // Função utilitária para fazer upload de imagens diretamente para o bucket 'clashes' com otimização WebP
-export const uploadImageToClashesBucket = async (file: File): Promise<string> => {
+export const uploadImageToClashesBucket = async (fileOrDataUrl: File | string): Promise<string> => {
   if (!isSupabaseConfigured() || !supabase) {
     throw new Error('Supabase não está configurado. Configure as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no arquivo .env.local.');
   }
 
+  let fileToUpload: File;
+
+  if (typeof fileOrDataUrl === 'string') {
+    if (fileOrDataUrl.startsWith('data:')) {
+      const res = await fetch(fileOrDataUrl);
+      const blob = await res.blob();
+      fileToUpload = new File([blob], `clash_${Date.now()}.webp`, { type: blob.type || 'image/webp' });
+    } else if (fileOrDataUrl.startsWith('http')) {
+      return fileOrDataUrl;
+    } else {
+      throw new Error('Formato de imagem inválido.');
+    }
+  } else {
+    fileToUpload = fileOrDataUrl;
+  }
+
   // 1. Otimiza e converte automaticamente a imagem para WebP no cliente antes do upload
-  const optimizedFile = await compressImage(file, {
+  const optimizedFile = await compressImage(fileToUpload, {
     maxWidth: 1920,
     maxHeight: 1920,
     quality: 0.82,
@@ -49,7 +65,7 @@ export const uploadImageToClashesBucket = async (file: File): Promise<string> =>
     .from('clashes')
     .upload(filePath, optimizedFile, {
       cacheControl: '31536000', // 1 ano de cache para economia de banda
-      upsert: false,
+      upsert: true,
       contentType: optimizedFile.type || 'image/webp',
     });
 
@@ -270,7 +286,8 @@ export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
     descricao:
       'IT 08, ITEM 5.11.1.1 – A DESCARGA, PARTE DA SAÍDA DE EMERGÊNCIA DE UMA EDIFICAÇÃO, QUE FICA ENTRE A ESCADA E A VIA PÚBLICA OU ÁREA EXTERNA EM COMUNICAÇÃO COM A VIA PÚBLICA, DEVE SER FEITA POR MEIO DE ÁTRIO ENCLAUSURADO.\n\nDESSA FORMA, O AMBIENTE DE DESCARGA DEVERÁ SER COMPARTIMENTADO EM RELAÇÃO AO ESTACIONAMENTO, POR MEIO DE ELEMENTOS CONSTRUTIVOS COM RESISTÊNCIA AO FOGO COMPATÍVEL COM A EXIGIDA PARA A ESCADA, CONFORME PREVISTO NA IT 08 E IT 06.\n\nNOS ACESSOS ENTRE O ÁTRIO DE DESCARGA E OS COMPARTIMENTOS ADJACENTES, DEVERÃO SER PREVISTAS PORTAS CORTA-FOGO COM RESISTÊNCIA MÍNIMA DE 60 MINUTOS, CONFORME ITEM 5.11.1.2, ALÍNEA "C", DA IT 08.\n\nPARA ATENDIMENTO A ESSE REQUISITO, AS PORTAS DE COMUNICAÇÃO COM O ESTACIONAMENTO DEVERÃO SER ESPECIFICADAS COMO PCF-60.\nA JANELA PRESENTE NO BANHEIRO DA GUARITA DEVERÁ RETIRADA OU A PORTA DO BANHEIRO DEVERÁ SER PCF-60.\n\nOS ELEMENTOS DE FECHAMENTO ADOTADOS DEVERÃO GARANTIR O TEMPO REQUERIDO DE RESISTÊNCIA AO FOGO E A ADEQUADA COMPARTIMENTAÇÃO DA DESCARGA, CONFORME LEGISLAÇÃO VIGENTE DO CBMMG.',
     solucao: null,
-    url_imagem: null,
+    url_imagem: 'https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80',
+    imagens: ['https://images.unsplash.com/photo-1541888946425-d0fbb186a5b3?auto=format&fit=crop&w=800&q=80'],
     data_criacao_arcis: '2026-06-22',
     data_ultima_alteracao: '2026-06-22',
     numero_relatorio: 'RSC_ALTAMIRA_47',
@@ -304,7 +321,8 @@ export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
     descricao:
       'CONFORME O DIMENSIONAMENTO DAS SAÍDAS DE EMERGÊNCIA, VERIFICOU-SE A NECESSIDADE DE QUE AS PORTAS DA ESCADA DE EMERGÊNCIA NO TÉRREO E NO 1º PAVIMENTO APRESENTEM LARGURA MÍNIMA DE ABERTURA DE 1,00 M, EM ATENDIMENTO À CAPACIDADE DE ESCOAMENTO CALCULADA.',
     solucao: null,
-    url_imagem: null,
+    url_imagem: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80',
+    imagens: ['https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=800&q=80'],
     data_criacao_arcis: '2026-06-22',
     data_ultima_alteracao: '2026-06-22',
     numero_relatorio: 'RSC_ALTAMIRA_47',
@@ -350,7 +368,8 @@ export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
     descricao:
       'DE ACORDO COM A IT 08, ITEM 5.7.1.1, ALÍNEA "D", TODAS AS ESCADAS E RAMPAS DEVEM SER DOTADAS DE CORRIMÃOS EM TODOS OS LADOS.\n\nENTRETANTO, NAS ESCADAS DA EDIFICAÇÃO NÃO FORAM PREVISTOS CORRIMÃOS, DEVENDO O PROJETO SER ADEQUADO PARA ATENDIMENTO A ESSA EXIGÊNCIA NORMATIVA.',
     solucao: null,
-    url_imagem: null,
+    url_imagem: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80',
+    imagens: ['https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=800&q=80'],
     data_criacao_arcis: '2026-06-22',
     data_ultima_alteracao: '2026-06-22',
     numero_relatorio: 'RSC_ALTAMIRA_47',
@@ -384,7 +403,8 @@ export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
     descricao:
       'CASO HAVER ALTERAÇÃO NA FACHADA E A CHEGADA DO ESTRUTURAL, VERIFICAR SE SERÁ RESPEITADO OS COMPRIMENTOS MÍNIMOS PARA A COMPARTIMENTAÇÃO VERTICAL DO EMPREENDIMENTO.\n\nOS QUAIS PODERÃO SER POR MEIO DE UM PEITORIL DE 120 CM, UM PROLONGAMENTO DE 90 CM OU PELO SOMATÓRIO DESSE PEITORIL E DO PROLONGAMENTO DANDO 120 CM.',
     solucao: null,
-    url_imagem: null,
+    url_imagem: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80',
+    imagens: ['https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=800&q=80'],
     data_criacao_arcis: '2026-06-23',
     data_ultima_alteracao: '2026-06-23',
     numero_relatorio: 'RSC_ALTAMIRA_47',
@@ -419,7 +439,8 @@ export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
       'CONFORME NBR 7256 E IT 08 DO CORPO DE BOMBEIROS, OS DUTOS DE CLIMATIZAÇÃO QUE CRUZAM A COMPARTIMENTAÇÃO CORTA-FOGO DO CENTRO CIRÚRGICO DEVEM RECEBER REGISTROS CORTA-FOGO (DAMPERS) COM ATUAÇÃO POR FUSÍVEL TÉRMICO E SENSOR DE FUMAÇA.',
     solucao:
       'Prever instalação de registro corta-fogo RF-90 com selagem intumescente na passagem da parede e integração com a central de alarme de incêndio.',
-    url_imagem: null,
+    url_imagem: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80',
+    imagens: ['https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=800&q=80'],
     data_criacao_arcis: '2026-07-10',
     data_ultima_alteracao: '2026-07-12',
     numero_relatorio: 'RSC_HOSPITAL_CENTRAL',

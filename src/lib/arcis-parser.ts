@@ -48,61 +48,83 @@ export interface ExtractedPdfPage {
  * Converte dados de imagem brutos do PDF (RGB/RGBA) para WebP otimizado no navegador via Canvas.
  */
 export async function convertPdfImageToWebp(
-  img: { width: number; height: number; kind: number; data: Uint8Array | Uint8ClampedArray },
+  img: any,
   fileName: string
 ): Promise<{ file: File; dataUrl: string } | null> {
-  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  if (typeof window === 'undefined' || typeof document === 'undefined' || !img) return null;
 
   return new Promise((resolve) => {
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
         resolve(null);
         return;
       }
 
-      const imgData = ctx.createImageData(img.width, img.height);
-      const src = img.data;
-      const dst = imgData.data;
+      // 1. ImageBitmap ou objeto contendo bitmap
+      const isBitmap =
+        (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) ||
+        (img.bitmap && typeof ImageBitmap !== 'undefined' && img.bitmap instanceof ImageBitmap);
 
-      if (img.kind === 2) {
-        // RGB_24BPP (3 bytes por pixel) -> RGBA (4 bytes)
-        let j = 0;
-        for (let i = 0; i < src.length; i += 3) {
-          dst[j] = src[i];
-          dst[j + 1] = src[i + 1];
-          dst[j + 2] = src[i + 2];
-          dst[j + 3] = 255;
-          j += 4;
+      if (isBitmap) {
+        const bmp: ImageBitmap = img instanceof ImageBitmap ? img : img.bitmap;
+        canvas.width = bmp.width;
+        canvas.height = bmp.height;
+        ctx.drawImage(bmp, 0, 0);
+      } else if (
+        (typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement) ||
+        (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement)
+      ) {
+        // 2. Elemento Canvas ou Imagem DOM
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+      } else if (img.data && img.width && img.height) {
+        // 3. Array de Pixels brutos (RGB / RGBA / Grayscale)
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const imgData = ctx.createImageData(img.width, img.height);
+        const src = img.data;
+        const dst = imgData.data;
+
+        if (img.kind === 2 || src.length === img.width * img.height * 3) {
+          // RGB (3 bytes por pixel) -> RGBA (4 bytes)
+          let j = 0;
+          for (let i = 0; i < src.length; i += 3) {
+            dst[j] = src[i];
+            dst[j + 1] = src[i + 1];
+            dst[j + 2] = src[i + 2];
+            dst[j + 3] = 255;
+            j += 4;
+          }
+        } else if (img.kind === 3 || src.length === img.width * img.height * 4) {
+          dst.set(src);
+        } else if (img.kind === 1 || src.length === img.width * img.height) {
+          let j = 0;
+          for (let i = 0; i < src.length; i++) {
+            dst[j] = src[i];
+            dst[j + 1] = src[i];
+            dst[j + 2] = src[i];
+            dst[j + 3] = 255;
+            j += 4;
+          }
+        } else {
+          dst.set(src.subarray(0, dst.length));
         }
-      } else if (img.kind === 3 || src.length === img.width * img.height * 4) {
-        // RGBA_32BPP
-        dst.set(src);
-      } else if (img.kind === 1) {
-        // GRAYSCALE_1BPP
-        let j = 0;
-        for (let i = 0; i < src.length; i++) {
-          dst[j] = src[i];
-          dst[j + 1] = src[i];
-          dst[j + 2] = src[i];
-          dst[j + 3] = 255;
-          j += 4;
-        }
+
+        ctx.putImageData(imgData, 0, 0);
       } else {
-        dst.set(src.subarray(0, dst.length));
+        resolve(null);
+        return;
       }
-
-      ctx.putImageData(imgData, 0, 0);
 
       // Redimensionar suavemente se for excessivamente grande (> 1920px) mantendo resolução Full HD e nitidez
       let finalCanvas = canvas;
-      if (img.width > 1920 || img.height > 1920) {
-        const scale = Math.min(1920 / img.width, 1920 / img.height);
-        const scaledWidth = Math.round(img.width * scale);
-        const scaledHeight = Math.round(img.height * scale);
+      if (canvas.width > 1920 || canvas.height > 1920) {
+        const scale = Math.min(1920 / canvas.width, 1920 / canvas.height);
+        const scaledWidth = Math.round(canvas.width * scale);
+        const scaledHeight = Math.round(canvas.height * scale);
         const resizedCanvas = document.createElement('canvas');
         resizedCanvas.width = scaledWidth;
         resizedCanvas.height = scaledHeight;
@@ -115,12 +137,15 @@ export async function convertPdfImageToWebp(
         }
       }
 
-      const dataUrl = finalCanvas.toDataURL('image/webp', 0.82);
+      const dataUrl = finalCanvas.toDataURL('image/webp', 0.85);
 
       finalCanvas.toBlob(
         (blob) => {
           if (!blob) {
-            resolve(null);
+            resolve({
+              file: new File([], `${fileName}.webp`, { type: 'image/webp' }),
+              dataUrl,
+            });
             return;
           }
           const file = new File([blob], `${fileName}.webp`, {
@@ -130,7 +155,7 @@ export async function convertPdfImageToWebp(
           resolve({ file, dataUrl });
         },
         'image/webp',
-        0.82
+        0.85
       );
     } catch (err) {
       console.warn('Erro ao processar imagem do PDF para WebP:', err);
@@ -251,10 +276,13 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
         try {
           const ops = await page.getOperatorList();
           for (let j = 0; j < ops.fnArray.length; j++) {
-            if (ops.fnArray[j] === pdfjs.OPS.paintImageXObject) {
+            if (
+              ops.fnArray[j] === pdfjs.OPS.paintImageXObject ||
+              ops.fnArray[j] === pdfjs.OPS.paintInlineImageXObject
+            ) {
               const objId = ops.argsArray[j][0];
               const img = await new Promise<any>((resolve) => {
-                const timer = setTimeout(() => resolve(null), 2500);
+                const timer = setTimeout(() => resolve(null), 3500);
                 try {
                   if (page.objs.has(objId)) {
                     clearTimeout(timer);
@@ -271,18 +299,23 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
                 }
               });
 
-              if (img && img.width > 120 && img.height > 120 && img.data) {
+              const imgWidth = img?.width || (img?.bitmap ? img.bitmap.width : 0);
+              const imgHeight = img?.height || (img?.bitmap ? img.bitmap.height : 0);
+
+              if (img && (imgWidth > 80 || imgHeight > 80 || img.data)) {
                 if (typeof window === 'undefined') {
                   // Ambiente Node.js (Servidor / API Route) -> Sharp + Supabase Storage
-                  const sRes = await processServerPdfImage(img, `conflito_arcis_p${i}`);
-                  if (sRes) {
-                    imageUrl = sRes.imageUrl;
-                    break;
+                  if (img.data) {
+                    const sRes = await processServerPdfImage(img, `conflito_arcis_p${i}`);
+                    if (sRes) {
+                      imageUrl = sRes.imageUrl;
+                      break;
+                    }
                   }
                 } else {
                   // Ambiente Browser (Navegador) -> Canvas WebP
                   const cRes = await convertPdfImageToWebp(img, `conflito_arcis_p${i}`);
-                  if (cRes) {
+                  if (cRes && cRes.dataUrl) {
                     imageFile = cRes.file;
                     imageUrl = cRes.dataUrl;
                     break;

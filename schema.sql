@@ -199,7 +199,7 @@ CREATE POLICY "Permitir inserção pública em apontamentos_arcis" ON public.apo
 CREATE POLICY "Permitir atualização pública em apontamentos_arcis" ON public.apontamentos_arcis FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública em apontamentos_arcis" ON public.apontamentos_arcis FOR DELETE USING (true);
 
--- Garantir adição da coluna projeto_id em tabelas apontamentos_arcis já existentes
+-- Garantir adição da coluna projeto_id, url_imagem e imagens em tabelas apontamentos_arcis já existentes
 DO $$ 
 BEGIN 
     IF NOT EXISTS (
@@ -208,6 +208,22 @@ BEGIN
     ) THEN
         ALTER TABLE public.apontamentos_arcis 
         ADD COLUMN projeto_id UUID REFERENCES public.projetos(id) ON DELETE CASCADE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos_arcis' AND column_name = 'url_imagem'
+    ) THEN
+        ALTER TABLE public.apontamentos_arcis 
+        ADD COLUMN url_imagem TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'apontamentos_arcis' AND column_name = 'imagens'
+    ) THEN
+        ALTER TABLE public.apontamentos_arcis 
+        ADD COLUMN imagens TEXT[] DEFAULT '{}';
     END IF;
 END $$;
 
