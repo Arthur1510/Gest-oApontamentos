@@ -19,7 +19,7 @@ import {
 } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
-import { parseDateToISO } from '@/lib/arcis-utils';
+import { parseDateToISO, normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArcisConflictCard } from '@/components/arcis/ArcisConflictCard';
@@ -93,13 +93,19 @@ export default function ArcisPage() {
           setConflitos(MOCK_CONFLITOS_ARCIS);
         } else if (data && data.length > 0) {
           const enriched = (data as ConflitoArcis[]).map((c) => {
-            if (!c.projetos?.nome && c.projeto_id) {
+            let pNome = c.projetos?.nome;
+            if (!pNome && c.projeto_id) {
               const foundProj = resolvedProjetos.find((p) => p.id === c.projeto_id);
               if (foundProj) {
-                return { ...c, projetos: { nome: foundProj.nome } };
+                pNome = foundProj.nome;
               }
             }
-            return c;
+            return {
+              ...c,
+              tipo_conflito: normalizeTipoConflitoArcis(c.tipo_conflito),
+              descricao: cleanDescriptionText(c.descricao),
+              projetos: pNome ? { nome: pNome } : null,
+            };
           });
           setConflitos(enriched);
         } else {
@@ -432,14 +438,14 @@ export default function ArcisPage() {
           codigo_conflito: c.codigo_conflito,
           status_arcis: cleanStr(c.status_arcis, 80, 'Aguardando Solução'),
           prioridade: cleanStr(c.prioridade, 30, 'Normal'),
-          tipo_conflito: cleanStr(c.tipo_conflito, 100, 'Conflito Normativo'),
+          tipo_conflito: normalizeTipoConflitoArcis(c.tipo_conflito),
           disciplina_principal: cleanStr(c.disciplina_principal, 100, 'ARQUITETURA').toUpperCase(),
           disciplinas_envolvidas: (c.disciplinas_envolvidas || []).map((d) => cleanStr(d, 100).toUpperCase()).filter(Boolean),
           edificacao: cleanStr(c.edificacao, 100, 'TORRE').toUpperCase(),
           pavimentos: c.pavimentos || [],
           local_edificacao: c.local_edificacao || null,
           localizacao: c.localizacao || null,
-          descricao: c.descricao,
+          descricao: cleanDescriptionText(c.descricao),
           solucao: c.solucao || null,
           url_imagem: c.url_imagem || null,
           imagens: c.imagens || [],

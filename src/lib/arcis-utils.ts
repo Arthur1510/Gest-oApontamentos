@@ -52,33 +52,22 @@ export function normalizePrioridadeArcis(raw?: string | null): PrioridadeArcis {
 
 export function normalizeTipoConflitoArcis(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return 'Conflito Normativo';
-  const clean = raw.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim();
-  const lower = clean.toLowerCase();
+  
+  // Normalizar removendo acentos e espaços para identificação infalível
+  const normalized = raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 
-  if (lower.includes('normat')) return 'Conflito Normativo';
-  if (lower.includes('crític') || lower.includes('critic') || lower.includes('inicial')) return 'Análise Crítica Inicial';
-  if (lower.includes('geomét') || lower.includes('geomet') || lower.includes('interfer')) return 'Interferência Geométrica';
-  if (lower.includes('inconsist') || lower.includes('técnic') || lower.includes('tecnic')) return 'Inconsistência Técnica';
-  if (lower.includes('produt') || lower.includes('defini')) return 'Definição de Produto';
-  if (lower.includes('informa')) return 'Informação';
+  if (normalized.includes('normat')) return 'Conflito Normativo';
+  if (normalized.includes('critic') || normalized.includes('inicial')) return 'Análise Crítica Inicial';
+  if (normalized.includes('geomet') || normalized.includes('interfer')) return 'Interferência Geométrica';
+  if (normalized.includes('inconsist') || normalized.includes('tecnic')) return 'Inconsistência Técnica';
+  if (normalized.includes('produt') || normalized.includes('defini')) return 'Definição de Produto';
+  if (normalized.includes('informa')) return 'Informação';
 
-  return clean || 'Conflito Normativo';
-}
-
-export function cleanDescriptionText(desc?: string | null): string {
-  if (!desc || typeof desc !== 'string') return '';
-  return desc
-    // Corrige espaços soltos antes de sinais de pontuação
-    .replace(/\s+([.,;:!?])/g, '$1')
-    // Corrige números decimais ou de itens normativos quebrados (ex: 5.7 .1.1 -> 5.7.1.1)
-    .replace(/(\d+)\s*\.\s*(\d+)/g, '$1.$2')
-    // Corrige aspas espaçadas (ex: " C" -> "C", " D" -> "D")
-    .replace(/["']\s*([A-Za-z0-9])\s*["']/g, '"$1"')
-    // Normaliza parágrafos mantendo saltos duplos quando houver quebra de linha intencional
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim())
-    .filter(Boolean)
-    .join('\n\n');
+  return raw.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Conflito Normativo';
 }
 
 export function cleanArcisPdfText(text: string): string {
@@ -91,27 +80,27 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bS\s*e\s*r\s*v\s*i\s*ç\s*o\s*s\b/gi, 'Serviços')
     .replace(/\bR\s*S\s*C\b/gi, 'RSC')
     .replace(/\bC\s*o\s*n\s*f\s*l\s*i\s*t\s*o\b/gi, 'Conflito')
-    .replace(/\bT\s*i\s*p\s*o\s+C\s*o\s*n\s*f\s*l\s*i\s*t\s*o\b/gi, 'Tipo Conflito')
+    .replace(/T\s*i\s*p\s*o\s+C\s*o\s*n\s*f\s*l\s*i\s*t\s*o/gi, 'Tipo Conflito')
     .replace(/\bP\s*r\s*i\s*o\s*r\s*i\s*d\s*a\s*d\s*e\b/gi, 'Prioridade')
-    .replace(/\bD\s*a\s*t\s*a\s+d\s*e\s+C\s*r\s*i\s*a\s*ç\s*ã\s*o\b/gi, 'Data de Criação')
-    .replace(/\bD\s*t\.\s*ú\s*l\s*t\s*i\s*m\s*a\s+a\s*l\s*t\s*e\s*r\s*a\s*ç\s*ã\s*o\b/gi, 'Dt. última alteração')
-    .replace(/\bD\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s+P\s*r\s*i\s*n\s*c\s*i\s*p\s*a\s*l\b/gi, 'Disciplina Principal')
-    .replace(/\bD\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s*s\s+E\s*n\s*v\s*o\s*l\s*v\s*i\s*d\s*a\s*s\b/gi, 'Disciplinas Envolvidas')
-    .replace(/\bE\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o\b/gi, (m) => (m === m.toUpperCase() ? 'EDIFICAÇÃO' : 'Edificação'))
-    .replace(/\bP\s*a\s*v\s*i\s*m\s*e\s*n\s*t\s*o\b/gi, (m) => (m === m.toUpperCase() ? 'PAVIMENTO' : 'Pavimento'))
-    .replace(/\bL\s*o\s*c\s*a\s*l\s+E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o\b/gi, 'Local Edificação')
-    .replace(/\bL\s*o\s*c\s*a\s*l\s*i\s*z\s*a\s*ç\s*ã\s*o\b/gi, 'Localização')
-    .replace(/\bD\s*e\s*s\s*c\s*r\s*i\s*ç\s*ã\s*o\b/gi, 'Descrição')
-    .replace(/\bS\s*o\s*l\s*u\s*ç\s*ã\s*o\b/gi, 'Solução');
+    .replace(/D\s*a\s*t\s*a\s+d\s*e\s+C\s*r\s*i\s*a\s*ç\s*ã\s*o/gi, 'Data de Criação')
+    .replace(/D\s*t\.\s*ú\s*l\s*t\s*i\s*m\s*a\s+a\s*l\s*t\s*e\s*r\s*a\s*ç\s*ã\s*o/gi, 'Dt. última alteração')
+    .replace(/D\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s+P\s*r\s*i\s*n\s*c\s*i\s*p\s*a\s*l/gi, 'Disciplina Principal')
+    .replace(/D\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s*s\s+E\s*n\s*v\s*o\s*l\s*v\s*i\s*d\s*a\s*s/gi, 'Disciplinas Envolvidas')
+    .replace(/E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o/gi, (m) => (m === m.toUpperCase() ? 'EDIFICAÇÃO' : 'Edificação'))
+    .replace(/P\s*a\s*v\s*i\s*m\s*e\s*n\s*t\s*o/gi, (m) => (m === m.toUpperCase() ? 'PAVIMENTO' : 'Pavimento'))
+    .replace(/L\s*o\s*c\s*a\s*l\s+E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o/gi, 'Local Edificação')
+    .replace(/L\s*o\s*c\s*a\s*l\s*i\s*z\s*a\s*ç\s*ã\s*o/gi, 'Localização')
+    .replace(/D\s*e\s*s\s*c\s*r\s*i\s*ç\s*ã\s*o/gi, 'Descrição')
+    .replace(/S\s*o\s*l\s*u\s*ç\s*ã\s*o/gi, 'Solução');
 
   // 2. Normalização de Tipos de Conflitos conhecidos da ARCIS
   res = res
-    .replace(/\bC\s*o\s*n\s*f\s*l\s*i\s*t\s*o\s+N\s*o\s*r\s*m\s*a\s*t\s*i\s*v\s*o\b/gi, 'Conflito Normativo')
-    .replace(/\bA\s*n\s*á\s*l\s*i\s*s\s*e\s+C\s*r\s*í\s*t\s*i\s*c\s*a\s+I\s*n\s*i\s*c\s*i\s*a\s*l\b/gi, 'Análise Crítica Inicial')
-    .replace(/\bI\s*n\s*t\s*e\s*r\s*f\s*e\s*r\s*ê\s*n\s*c\s*i\s*a\s+G\s*e\s*o\s*m\s*é\s*t\s*r\s*i\s*c\s*a\b/gi, 'Interferência Geométrica')
-    .replace(/\bI\s*n\s*c\s*o\s*n\s*s\s*i\s*s\s*t\s*ê\s*n\s*c\s*i\s*a\s+T\s*é\s*c\s*n\s*i\s*c\s*a\b/gi, 'Inconsistência Técnica')
-    .replace(/\bD\s*e\s*f\s*i\s*n\s*i\s*ç\s*ã\s*o\s+d\s*e\s+P\s*r\s*o\s*d\s*u\s*t\s*o\b/gi, 'Definição de Produto')
-    .replace(/\bI\s*n\s*f\s*o\s*r\s*m\s*a\s*ç\s*ã\s*o\b/gi, 'Informação');
+    .replace(/C\s*o\s*n\s*f\s*l\s*i\s*t\s*o\s+N\s*o\s*r\s*m\s*a\s*t\s*i\s*v\s*o/gi, 'Conflito Normativo')
+    .replace(/A\s*n\s*á\s*l\s*i\s*s\s*e\s+C\s*r\s*í\s*t\s*i\s*c\s*a\s+I\s*n\s*i\s*c\s*i\s*a\s*l/gi, 'Análise Crítica Inicial')
+    .replace(/I\s*n\s*t\s*e\s*r\s*f\s*e\s*r\s*ê\s*n\s*c\s*i\s*a\s+G\s*e\s*o\s*m\s*é\s*t\s*r\s*i\s*c\s*a/gi, 'Interferência Geométrica')
+    .replace(/I\s*n\s*c\s*o\s*n\s*s\s*i\s*s\s*t\s*ê\s*n\s*c\s*i\s*a\s+T\s*é\s*c\s*n\s*i\s*c\s*a/gi, 'Inconsistência Técnica')
+    .replace(/D\s*e\s*f\s*i\s*n\s*i\s*ç\s*ã\s*o\s+d\s*e\s+P\s*r\s*o\s*d\s*u\s*t\s*o/gi, 'Definição de Produto')
+    .replace(/I\s*n\s*f\s*o\s*r\s*m\s*a\s*ç\s*ã\s*o/gi, 'Informação');
 
   // 3. Normalização de Status e Prioridades
   res = res
@@ -120,21 +109,24 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bA\s*p\s*r\s*o\s*v\s*a\s*d\s*a\b/gi, 'Aprovada')
     .replace(/\bE\s*n\s*c\s*e\s*r\s*r\s*a\s*d\s*o\b/gi, 'Encerrado');
 
-  // 4. Correção Sistemática de Palavras do Vocabulário da Construção / Incêndio / Normas
+  // 4. Correção Sistemática de Palavras e Quebras de Kerning da ARCIS
   res = res
+    .replace(/-\s*S\s*E\b/gi, '-SE')
+    .replace(/\bS\s+E\b/gi, 'SE')
+    .replace(/\bS\s+ER\b/gi, 'SER')
+    .replace(/\bS\s+ERÁ\b/gi, 'SERÁ')
+    .replace(/\bS\s+ERÃO\b/gi, 'SERÃO')
+    .replace(/\bS\s+AÍDA\b/gi, 'SAÍDA')
+    .replace(/\bS\s+AÍDAS\b/gi, 'SAÍDAS')
+    .replace(/\bS\s+OMATÓRIO\b/gi, 'SOMATÓRIO')
+    .replace(/\bJ\s+ANELA\b/gi, 'JANELA')
+    .replace(/\bJ\s+ANELAS\b/gi, 'JANELAS')
     .replace(/\bDES\s+CARGA\b/gi, 'DESCARGA')
     .replace(/\bDES\s+CARGAS\b/gi, 'DESCARGAS')
     .replace(/\bDES\s+S\s*A\b/gi, 'DESSA')
     .replace(/\bDES\s+S\s*E\b/gi, 'DESSE')
     .replace(/\bDES\s+S\s*ES\b/gi, 'DESSES')
     .replace(/\bDES\s+S\s*AS\b/gi, 'DESSAS')
-    .replace(/\bS\s+AÍDA\b/gi, 'SAÍDA')
-    .replace(/\bS\s+AÍDAS\b/gi, 'SAÍDAS')
-    .replace(/\bS\s+ER\b/gi, 'SER')
-    .replace(/\bS\s+ERÁ\b/gi, 'SERÁ')
-    .replace(/\bS\s+ERÃO\b/gi, 'SERÃO')
-    .replace(/\bS\s+E\b/gi, 'SE')
-    .replace(/\bS\s+OMATÓRIO\b/gi, 'SOMATÓRIO')
     .replace(/\bES\s+CADA\b/gi, 'ESCADA')
     .replace(/\bES\s+CADAS\b/gi, 'ESCADAS')
     .replace(/\bES\s+TACIONAMENTO\b/gi, 'ESTACIONAMENTO')
@@ -147,6 +139,7 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bES\s+PECIFICAR\b/gi, 'ESPECIFICAR')
     .replace(/\bES\s+COAMENTO\b/gi, 'ESCOAMENTO')
     .replace(/\bES\s+PAÇO\b/gi, 'ESPAÇO')
+    .replace(/\bES\s+PAÇOS\b/gi, 'ESPAÇOS')
     .replace(/\bES\s+QUEMA\b/gi, 'ESQUEMA')
     .replace(/\bES\s+TUDO\b/gi, 'ESTUDO')
     .replace(/\bES\s+TÁ\b/gi, 'ESTÁ')
@@ -157,6 +150,7 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bCONS\s+TRUTIVO\b/gi, 'CONSTRUTIVO')
     .replace(/\bCONS\s+TRUÇÃO\b/gi, 'CONSTRUÇÃO')
     .replace(/\bRES\s+IS\s*TÊNCIA\b/gi, 'RESISTÊNCIA')
+    .replace(/\bRES\s+IS\s*TÊNCIAS\b/gi, 'RESISTÊNCIAS')
     .replace(/\bRES\s+PEITADO\b/gi, 'RESPEITADO')
     .replace(/\bRES\s+PEITADA\b/gi, 'RESPEITADA')
     .replace(/\bRES\s+PEITAR\b/gi, 'RESPEITAR')
@@ -176,8 +170,6 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bES\s+S\s*AS\b/gi, 'ESSAS')
     .replace(/\bREQUIS\s+ITO\b/gi, 'REQUISITO')
     .replace(/\bREQUIS\s+ITOS\b/gi, 'REQUISITOS')
-    .replace(/\bJ\s+ANELA\b/gi, 'JANELA')
-    .replace(/\bJ\s+ANELAS\b/gi, 'JANELAS')
     .replace(/\bPRES\s+ENTE\b/gi, 'PRESENTE')
     .replace(/\bPRES\s+ENTES\b/gi, 'PRESENTES')
     .replace(/\bLEGIS\s+LAÇÃO\b/gi, 'LEGISLAÇÃO')
@@ -197,4 +189,27 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/\bES\s+CADA\s+DE\s+EMERG[ÂA]NCIA\b/gi, 'ESCADA DE EMERGÊNCIA');
 
   return res;
+}
+
+export function cleanDescriptionText(desc?: string | null): string {
+  if (!desc || typeof desc !== 'string') return '';
+  // 1. Aplica a limpeza de quebras fonéticas
+  let text = cleanArcisPdfText(desc);
+
+  // 2. Corrige espaços soltos antes de sinais de pontuação
+  text = text.replace(/\s+([.,;:!?])/g, '$1');
+
+  // 3. Corrige números decimais ou de itens normativos quebrados (ex: 5.7 .1.1 -> 5.7.1.1)
+  text = text.replace(/(\d+)\s*\.\s*(\d+)/g, '$1.$2');
+  text = text.replace(/(\d+)\s*\.\s*(\d+)/g, '$1.$2');
+
+  // 4. Corrige aspas espaçadas (ex: " C" -> "C", " D" -> "D")
+  text = text.replace(/["']\s*([A-Za-z0-9])\s*["']/g, '"$1"');
+
+  // 5. Normaliza parágrafos mantendo saltos duplos quando houver quebra de linha intencional
+  return text
+    .split(/\n\s*\n/)
+    .map((p) => p.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n\n');
 }

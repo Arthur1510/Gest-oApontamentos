@@ -23,7 +23,7 @@ import {
   ZoomIn,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatDateBR } from '@/lib/arcis-utils';
+import { formatDateBR, normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
 
 interface ArcisConflictCardProps {
   conflito: ConflitoArcis;
@@ -42,7 +42,9 @@ export function ArcisConflictCard({
   onDelete,
 }: ArcisConflictCardProps) {
   const [imageError, setImageError] = useState(false);
-  const isNormativo = conflito.tipo_conflito.toLowerCase().includes('normativ');
+  const tipoConflitoClean = normalizeTipoConflitoArcis(conflito.tipo_conflito);
+  const descricaoClean = cleanDescriptionText(conflito.descricao);
+  const isNormativo = tipoConflitoClean.toLowerCase().includes('normativ');
   const nomeProjeto = conflito.projetos?.nome || projectName;
   const conflictImage = !imageError && (conflito.url_imagem || (conflito.imagens && conflito.imagens.length > 0 ? conflito.imagens[0] : null));
   const totalImagens = conflito.imagens && conflito.imagens.length > 0 ? conflito.imagens.length : (conflito.url_imagem ? 1 : 0);
@@ -79,7 +81,7 @@ export function ArcisConflictCard({
                     : 'bg-[#00A3C4]/90 text-white border-[#00A3C4]'
                 )}
               >
-                {conflito.tipo_conflito}
+                {tipoConflitoClean}
               </span>
             </div>
 
@@ -121,7 +123,7 @@ export function ArcisConflictCard({
                     : 'bg-cyan-500/10 text-[#008EA9] border-[#00A3C4]/30 dark:text-[#00C4EB]'
                 )}
               >
-                {conflito.tipo_conflito}
+                {tipoConflitoClean}
               </span>
             </div>
 
@@ -204,7 +206,7 @@ export function ArcisConflictCard({
 
           {/* Descrição do Conflito */}
           <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-3 leading-relaxed">
-            {conflito.descricao}
+            {descricaoClean}
           </p>
 
           {/* Destaque de Solução Proposta se existir */}

@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { ConflitoArcis, RelatorioArcisMetadata } from '@/types/arcis';
 import { Projeto } from '@/types/apontamento';
 import { ArcisStatusBadge } from '@/components/arcis/ArcisStatusBadge';
+import { normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
 import {
   Dialog,
   DialogContent,
@@ -505,11 +506,11 @@ export function ArcisImportModal({
                         )}
 
                         <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                          {c.descricao}
+                          {cleanDescriptionText(c.descricao)}
                         </p>
 
                         <div className="flex items-center gap-2 text-[10.5px] text-slate-500 dark:text-slate-400 pt-0.5">
-                          <span>{c.tipo_conflito}</span>
+                          <span>{normalizeTipoConflitoArcis(c.tipo_conflito)}</span>
                           <span>•</span>
                           <span>{c.localizacao || c.local_edificacao || 'Local Geral'}</span>
                         </div>

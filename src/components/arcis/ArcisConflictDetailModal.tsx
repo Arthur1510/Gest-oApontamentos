@@ -30,7 +30,7 @@ import {
   Trash2,
   ClipboardCheck,
 } from 'lucide-react';
-import { formatDateBR } from '@/lib/arcis-utils';
+import { formatDateBR, normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
 import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/image-compression';
 
@@ -156,7 +156,7 @@ export function ArcisConflictDetailModal({
                 Conflito #{conflito.codigo_conflito}
               </span>
               <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] border border-[#00A3C4]/30 uppercase">
-                {conflito.tipo_conflito}
+                {normalizeTipoConflitoArcis(conflito.tipo_conflito)}
               </span>
             </div>
 
@@ -258,7 +258,7 @@ export function ArcisConflictDetailModal({
             <FileText className="h-3.5 w-3.5 text-[#00A3C4]" /> Parecer Técnico & Descrição do Conflito:
           </label>
           <div className="p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] text-xs sm:text-sm leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap font-sans">
-            {conflito.descricao}
+            {cleanDescriptionText(conflito.descricao)}
           </div>
         </div>
 
