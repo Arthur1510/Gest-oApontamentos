@@ -23,7 +23,9 @@ export type TipoConflitoArcis =
   | 'Interferência Geométrica'
   | 'Inconsistência Técnica'
   | 'Definição de Produto'
-  | 'Informação';
+  | 'Informação'
+  | 'Conflito Físico'
+  | 'Conflito Funcional';
 
 export const TIPOS_CONFLITO_ARCIS_OPCOES: TipoConflitoArcis[] = [
   'Conflito Normativo',
@@ -32,6 +34,8 @@ export const TIPOS_CONFLITO_ARCIS_OPCOES: TipoConflitoArcis[] = [
   'Inconsistência Técnica',
   'Definição de Produto',
   'Informação',
+  'Conflito Físico',
+  'Conflito Funcional',
 ];
 
 export type PrioridadeArcis = 'Baixa' | 'Normal' | 'Alta' | 'Urgente';
