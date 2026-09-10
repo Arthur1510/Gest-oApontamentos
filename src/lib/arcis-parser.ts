@@ -7,6 +7,7 @@ import {
   normalizeTipoConflitoArcis,
   cleanArcisPdfText,
   cleanDescriptionText,
+  cleanFieldText,
 } from '@/lib/arcis-utils';
 
 // Inicializador seguro do worker do PDF.js para ambientes Browser e Node.js (Vercel / Local)
@@ -365,53 +366,7 @@ async function extractPdfPages(buffer: Buffer | Uint8Array | ArrayBuffer): Promi
 }
 
 export function cleanPdfText(text: string): string {
-  return text
-    // Cabeçalhos e Rótulos principais
-    .replace(/T\s*otal/gi, 'Total')
-    .replace(/S\s*erviços/gi, 'Serviços')
-    .replace(/RS\s*C/gi, 'RSC')
-    .replace(/Co\s*nf\s*lit\s*o/gi, 'Conflito')
-    .replace(/No\s*rmat\s*ivo/gi, 'Normativo')
-    .replace(/Edif\s*icação/gi, 'Edificação')
-    .replace(/ES\s*CADA/gi, 'ESCADA')
-    .replace(/D\s*ata\s+de\s+Criação/gi, 'Data de Criação')
-    .replace(/D\s*t\.\s*últim\s*a\s+alte\s*ração/gi, 'Dt. última alteração')
-    .replace(/T\s*ipo\s+Conflito/gi, 'Tipo Conflito')
-    .replace(/D\s*isciplina\s+Principal/gi, 'Disciplina Principal')
-    .replace(/D\s*isciplinas\s+Envo\s*lvidas/gi, 'Disciplinas Envolvidas')
-    .replace(/D\s*e\s*scrição/gi, 'Descrição')
-    .replace(/Prio\s*ridade/gi, 'Prioridade')
-    .replace(/Pavim\s*e\s*nto/gi, 'Pavimento')
-    .replace(/L\s*o\s*calização/gi, 'Localização')
-    .replace(/L\s*o\s*cal\s+Edif\s*icação/gi, 'Local Edificação')
-    .replace(/Análise\s+Crít\s*ica/gi, 'Análise Crítica')
-    .replace(/No\s*rmal/gi, 'Normal')
-    .replace(/PENTHOUS\s*E/gi, 'PENTHOUSE')
-    // Normalizações de palavras com espaçamentos OCR
-    .replace(/\bS\s+ER\b/gi, 'SER')
-    .replace(/\bS\s+E\b/gi, 'SE')
-    .replace(/\bS\s+AÍDA\b/gi, 'SAÍDA')
-    .replace(/\bS\s+OMATÓRIO\b/gi, 'SOMATÓRIO')
-    .replace(/\bDES\s+CARGA\b/gi, 'DESCARGA')
-    .replace(/\bDES\s+S\s*A\b/gi, 'DESSA')
-    .replace(/\bES\s+TACIONAMENTO\b/gi, 'ESTACIONAMENTO')
-    .replace(/\bES\s+TRUTURAL\b/gi, 'ESTRUTURAL')
-    .replace(/\bES\s+PECIFICADAS\b/gi, 'ESPECIFICADAS')
-    .replace(/\bES\s+COAMENTO\b/gi, 'ESCOAMENTO')
-    .replace(/\bPRES\s+ENTE\b/gi, 'PRESENTE')
-    .replace(/\bRES\s+IS\s*TÊNCIA\b/gi, 'RESISTÊNCIA')
-    .replace(/\bRES\s+PEITADO\b/gi, 'RESPEITADO')
-    .replace(/\bPREVIS\s+TO\b/gi, 'PREVISTO')
-    .replace(/\bPREVIS\s+TAS\b/gi, 'PREVISTAS')
-    .replace(/\bPREVIS\s+TOS\b/gi, 'PREVISTOS')
-    .replace(/\bNECES\s+S\s*IDADE\b/gi, 'NECESSIDADE')
-    .replace(/\bDIMENS\s+IONAMENTO\b/gi, 'DIMENSIONAMENTO')
-    .replace(/\bLEGIS\s+LAÇÃO\b/gi, 'LEGISLAÇÃO')
-    .replace(/\bPROJ\s+ETO\b/gi, 'PROJETO')
-    .replace(/\bCAS\s+O\b/gi, 'CASO')
-    .replace(/\bJ\s+ANELA\b/gi, 'JANELA')
-    .replace(/\bACES\s+S\s*OS\b/gi, 'ACESSOS')
-    .replace(/\bRES\s+ERVATÓRIO\b/gi, 'RESERVATÓRIO');
+  return cleanArcisPdfText(text);
 }
 
 export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuffer, projetoId?: string): Promise<RelatorioArcisMetadata> {
@@ -477,14 +432,14 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
     const pavimentosList = pavimentoRaw
       ? pavimentoRaw
           .split(/,|\n/)
-          .map((p) => p.trim().replace(/\s+/g, ' '))
+          .map((p) => cleanFieldText(p))
           .filter(Boolean)
       : [];
 
     const discEnvolvidas = discEnvolvidasRaw
       ? discEnvolvidasRaw
           .split(/,|\n/)
-          .map((d) => d.trim().toUpperCase())
+          .map((d) => cleanFieldText(d).toUpperCase())
           .filter(Boolean)
       : [];
 
@@ -492,7 +447,7 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
 
     const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
       if (!val) return fallback;
-      return val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+      return cleanFieldText(val).slice(0, maxLen);
     };
 
     conflitos.push({
@@ -537,4 +492,5 @@ export {
   normalizeTipoConflitoArcis,
   cleanArcisPdfText,
   cleanDescriptionText,
+  cleanFieldText,
 } from '@/lib/arcis-utils';

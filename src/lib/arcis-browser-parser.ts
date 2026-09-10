@@ -6,6 +6,7 @@ import {
   normalizeTipoConflitoArcis,
   cleanArcisPdfText,
   cleanDescriptionText,
+  cleanFieldText,
 } from '@/lib/arcis-utils';
 import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
 
@@ -231,11 +232,11 @@ export async function parseArcisPdfClientSide(
     const descricao = cleanDescriptionText(descricaoRaw);
 
     const pavimentosList = pavimentoRaw
-      ? pavimentoRaw.split(/,|\n/).map((p) => p.trim().replace(/\s+/g, ' ')).filter(Boolean)
+      ? pavimentoRaw.split(/,|\n/).map((p) => cleanFieldText(p)).filter(Boolean)
       : [];
 
     const discEnvolvidas = discEnvolvidasRaw
-      ? discEnvolvidasRaw.split(/,|\n/).map((d) => d.trim().toUpperCase()).filter(Boolean)
+      ? discEnvolvidasRaw.split(/,|\n/).map((d) => cleanFieldText(d).toUpperCase()).filter(Boolean)
       : [];
 
     const prioridade: PrioridadeArcis = normalizePrioridadeArcis(prioridadeRaw);
@@ -301,7 +302,7 @@ export async function parseArcisPdfClientSide(
 
     const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
       if (!val) return fallback;
-      return val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+      return cleanFieldText(val).slice(0, maxLen);
     };
 
     conflitos.push({

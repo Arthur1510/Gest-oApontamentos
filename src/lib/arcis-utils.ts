@@ -70,11 +70,29 @@ export function normalizeTipoConflitoArcis(raw?: string | null): string {
   return raw.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim() || 'Conflito Normativo';
 }
 
+function preserveCase(original: string, replacement: string): string {
+  if (original === original.toUpperCase()) return replacement.toUpperCase();
+  if (original === original.toLowerCase()) return replacement.toLowerCase();
+  if (original[0] === original[0].toUpperCase()) {
+    return replacement[0].toUpperCase() + replacement.slice(1).toLowerCase();
+  }
+  return replacement;
+}
+
+export function cleanFieldText(val?: string | null): string {
+  if (!val || typeof val !== 'string') return '';
+  return cleanArcisPdfText(val)
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function cleanArcisPdfText(text: string): string {
   if (!text || typeof text !== 'string') return '';
   let res = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // 1. Correções de quebras de cabeçalhos e rótulos de campos estruturados da ARCIS
+  // 1. Correções estruturais de rótulos e cabeçalhos do relatório ARCIS
   res = res
     .replace(/\bT\s*o\s*t\s*a\s*l\b/gi, 'Total')
     .replace(/\bS\s*e\s*r\s*v\s*i\s*ç\s*o\s*s\b/gi, 'Serviços')
@@ -86,14 +104,14 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/D\s*t\.\s*ú\s*l\s*t\s*i\s*m\s*a\s+a\s*l\s*t\s*e\s*r\s*a\s*ç\s*ã\s*o/gi, 'Dt. última alteração')
     .replace(/D\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s+P\s*r\s*i\s*n\s*c\s*i\s*p\s*a\s*l/gi, 'Disciplina Principal')
     .replace(/D\s*i\s*s\s*c\s*i\s*p\s*l\s*i\s*n\s*a\s*s\s+E\s*n\s*v\s*o\s*l\s*v\s*i\s*d\s*a\s*s/gi, 'Disciplinas Envolvidas')
-    .replace(/E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o/gi, (m) => (m === m.toUpperCase() ? 'EDIFICAÇÃO' : 'Edificação'))
-    .replace(/P\s*a\s*v\s*i\s*m\s*e\s*n\s*t\s*o/gi, (m) => (m === m.toUpperCase() ? 'PAVIMENTO' : 'Pavimento'))
+    .replace(/E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o/gi, (m) => preserveCase(m, 'Edificação'))
+    .replace(/P\s*a\s*v\s*i\s*m\s*e\s*n\s*t\s*o/gi, (m) => preserveCase(m, 'Pavimento'))
     .replace(/L\s*o\s*c\s*a\s*l\s+E\s*d\s*i\s*f\s*i\s*c\s*a\s*ç\s*ã\s*o/gi, 'Local Edificação')
     .replace(/L\s*o\s*c\s*a\s*l\s*i\s*z\s*a\s*ç\s*ã\s*o/gi, 'Localização')
     .replace(/D\s*e\s*s\s*c\s*r\s*i\s*ç\s*ã\s*o/gi, 'Descrição')
     .replace(/S\s*o\s*l\s*u\s*ç\s*ã\s*o/gi, 'Solução');
 
-  // 2. Normalização de Tipos de Conflitos conhecidos da ARCIS
+  // Tipos de conflitos conhecidos da ARCIS
   res = res
     .replace(/C\s*o\s*n\s*f\s*l\s*i\s*t\s*o\s+N\s*o\s*r\s*m\s*a\s*t\s*i\s*v\s*o/gi, 'Conflito Normativo')
     .replace(/A\s*n\s*á\s*l\s*i\s*s\s*e\s+C\s*r\s*í\s*t\s*i\s*c\s*a\s+I\s*n\s*i\s*c\s*i\s*a\s*l/gi, 'Análise Crítica Inicial')
@@ -102,91 +120,88 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/D\s*e\s*f\s*i\s*n\s*i\s*ç\s*ã\s*o\s+d\s*e\s+P\s*r\s*o\s*d\s*u\s*t\s*o/gi, 'Definição de Produto')
     .replace(/I\s*n\s*f\s*o\s*r\s*m\s*a\s*ç\s*ã\s*o/gi, 'Informação');
 
-  // 3. Normalização de Status e Prioridades
+  // Status e prioridades
   res = res
     .replace(/\bN\s*o\s*r\s*m\s*a\s*l\b/gi, 'Normal')
     .replace(/\bA\s*g\s*u\s*a\s*r\s*d\s*a\s*n\s*d\s*o\b/gi, 'Aguardando')
     .replace(/\bA\s*p\s*r\s*o\s*v\s*a\s*d\s*a\b/gi, 'Aprovada')
     .replace(/\bE\s*n\s*c\s*e\s*r\s*r\s*a\s*d\s*o\b/gi, 'Encerrado');
 
-  // 4. Correção Sistemática de Palavras e Quebras de Kerning da ARCIS
+  // Ordinais (ex: 14 º -> 14º)
   res = res
-    .replace(/-\s*S\s*E\b/gi, '-SE')
-    .replace(/\bS\s+E\b/gi, 'SE')
-    .replace(/\bS\s+ER\b/gi, 'SER')
-    .replace(/\bS\s+ERÁ\b/gi, 'SERÁ')
-    .replace(/\bS\s+ERÃO\b/gi, 'SERÃO')
-    .replace(/\bS\s+AÍDA\b/gi, 'SAÍDA')
-    .replace(/\bS\s+AÍDAS\b/gi, 'SAÍDAS')
-    .replace(/\bS\s+OMATÓRIO\b/gi, 'SOMATÓRIO')
-    .replace(/\bJ\s+ANELA\b/gi, 'JANELA')
-    .replace(/\bJ\s+ANELAS\b/gi, 'JANELAS')
-    .replace(/\bDES\s+CARGA\b/gi, 'DESCARGA')
-    .replace(/\bDES\s+CARGAS\b/gi, 'DESCARGAS')
-    .replace(/\bDES\s+S\s*A\b/gi, 'DESSA')
-    .replace(/\bDES\s+S\s*E\b/gi, 'DESSE')
-    .replace(/\bDES\s+S\s*ES\b/gi, 'DESSES')
-    .replace(/\bDES\s+S\s*AS\b/gi, 'DESSAS')
-    .replace(/\bES\s+CADA\b/gi, 'ESCADA')
-    .replace(/\bES\s+CADAS\b/gi, 'ESCADAS')
-    .replace(/\bES\s+TACIONAMENTO\b/gi, 'ESTACIONAMENTO')
-    .replace(/\bES\s+TACIONAMENTOS\b/gi, 'ESTACIONAMENTOS')
-    .replace(/\bES\s+TRUTURAL\b/gi, 'ESTRUTURAL')
-    .replace(/\bES\s+TRUTURAIS\b/gi, 'ESTRUTURAIS')
-    .replace(/\bES\s+PECIFICADAS\b/gi, 'ESPECIFICADAS')
-    .replace(/\bES\s+PECIFICADO\b/gi, 'ESPECIFICADO')
-    .replace(/\bES\s+PECIFICADOS\b/gi, 'ESPECIFICADOS')
-    .replace(/\bES\s+PECIFICAR\b/gi, 'ESPECIFICAR')
-    .replace(/\bES\s+COAMENTO\b/gi, 'ESCOAMENTO')
-    .replace(/\bES\s+PAÇO\b/gi, 'ESPAÇO')
-    .replace(/\bES\s+PAÇOS\b/gi, 'ESPAÇOS')
-    .replace(/\bES\s+QUEMA\b/gi, 'ESQUEMA')
-    .replace(/\bES\s+TUDO\b/gi, 'ESTUDO')
-    .replace(/\bES\s+TÁ\b/gi, 'ESTÁ')
-    .replace(/\bES\s+TÃO\b/gi, 'ESTÃO')
-    .replace(/\bENCLAUS\s+URADO\b/gi, 'ENCLAUSURADO')
-    .replace(/\bENCLAUS\s+URADA\b/gi, 'ENCLAUSURADA')
-    .replace(/\bCONS\s+TRUTIVOS\b/gi, 'CONSTRUTIVOS')
-    .replace(/\bCONS\s+TRUTIVO\b/gi, 'CONSTRUTIVO')
-    .replace(/\bCONS\s+TRUÇÃO\b/gi, 'CONSTRUÇÃO')
-    .replace(/\bRES\s+IS\s*TÊNCIA\b/gi, 'RESISTÊNCIA')
-    .replace(/\bRES\s+IS\s*TÊNCIAS\b/gi, 'RESISTÊNCIAS')
-    .replace(/\bRES\s+PEITADO\b/gi, 'RESPEITADO')
-    .replace(/\bRES\s+PEITADA\b/gi, 'RESPEITADA')
-    .replace(/\bRES\s+PEITAR\b/gi, 'RESPEITAR')
-    .replace(/\bRES\s+ERVATÓRIO\b/gi, 'RESERVATÓRIO')
-    .replace(/\bRES\s+ERVATÓRIOS\b/gi, 'RESERVATÓRIOS')
-    .replace(/\bPREVIS\s+TO\b/gi, 'PREVISTO')
-    .replace(/\bPREVIS\s+TA\b/gi, 'PREVISTA')
-    .replace(/\bPREVIS\s+TAS\b/gi, 'PREVISTAS')
-    .replace(/\bPREVIS\s+TOS\b/gi, 'PREVISTOS')
-    .replace(/\bACES\s+S\s*OS\b/gi, 'ACESSOS')
-    .replace(/\bACES\s+S\s*O\b/gi, 'ACESSO')
-    .replace(/\bADJ\s+ACENTES\b/gi, 'ADJACENTES')
-    .replace(/\bADJ\s+ACENTE\b/gi, 'ADJACENTE')
-    .replace(/\bES\s+S\s*E\b/gi, 'ESSE')
-    .replace(/\bES\s+S\s*A\b/gi, 'ESSA')
-    .replace(/\bES\s+S\s*ES\b/gi, 'ESSES')
-    .replace(/\bES\s+S\s*AS\b/gi, 'ESSAS')
-    .replace(/\bREQUIS\s+ITO\b/gi, 'REQUISITO')
-    .replace(/\bREQUIS\s+ITOS\b/gi, 'REQUISITOS')
-    .replace(/\bPRES\s+ENTE\b/gi, 'PRESENTE')
-    .replace(/\bPRES\s+ENTES\b/gi, 'PRESENTES')
-    .replace(/\bLEGIS\s+LAÇÃO\b/gi, 'LEGISLAÇÃO')
-    .replace(/\bDIMENS\s+IONAMENTO\b/gi, 'DIMENSIONAMENTO')
-    .replace(/\bNECES\s+S\s*IDADE\b/gi, 'NECESSIDADE')
-    .replace(/\bNECES\s+S\s*ÁRIO\b/gi, 'NECESSÁRIO')
-    .replace(/\bNECES\s+S\s*ÁRIA\b/gi, 'NECESSÁRIA')
-    .replace(/\bAPRES\s+ENTEM\b/gi, 'APRESENTEM')
-    .replace(/\bAPRES\s+ENTAR\b/gi, 'APRESENTAR')
-    .replace(/\bAPRES\s+ENTA\b/gi, 'APRESENTA')
-    .replace(/\bPROJ\s+ETO\b/gi, 'PROJETO')
-    .replace(/\bPROJ\s+ETOS\b/gi, 'PROJETOS')
-    .replace(/\bCAS\s+O\b/gi, 'CASO')
-    .replace(/\bPENTHOUS\s*E\b/gi, 'PENTHOUSE')
     .replace(/(\d+)\s+º/g, '$1º')
-    .replace(/(\d+)\s+ª/g, '$1ª')
-    .replace(/\bES\s+CADA\s+DE\s+EMERG[ÂA]NCIA\b/gi, 'ESCADA DE EMERGÊNCIA');
+    .replace(/(\d+)\s+ª/g, '$1ª');
+
+  // Clíticos com hífen (ex: VERIFICOU- S E -> VERIFICOU-SE)
+  res = res.replace(/-\s*([sS])\s*([eE])(?=$|[\s\p{P}])/gu, '-$1$2');
+
+  // 2. Junção de palavras de raiz quebrada com duplo SS (ex: DES S A -> DESSA, ES S E -> ESSE, NECES S IDADE -> NECESSIDADE, ACES S OS -> ACESSOS)
+  res = res
+    .replace(/(?:^|(?<=[\s\p{P}]))(des|DES)\s*([sS])\s*(a|e|as|es|A|E|AS|ES)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(es|ES)\s*([sS])\s*(a|e|as|es|te|ta|tes|tas|A|E|AS|ES|TE|TA|TES|TAS)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(neces|NECES)\s*([sS])\s*(idade|idades|ário|ária|ários|árias|IDADE|IDADES|ÁRIO|ÁRIA|ÁRIOS|ÁRIAS)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(aces|ACES)\s*([sS])\s*(o|os|ível|íveis|O|OS|ÍVEL|ÍVEIS)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(pos|POS)\s*([sS])\s*(o|ível|íveis|ibilidade|ibilidades|O|ÍVEL|ÍVEIS|IBILIDADE|IBILIDADES)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(pas|PAS)\s*([sS])\s*(o|os|agem|agens|ar|ou|am|O|OS|AGEM|AGENS|AR|OU|AM)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(pres|PRES)\s*([sS])\s*(ão|ões|ÃO|ÕES)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(is|IS)\s*([sS])\s*(o|O)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(as|AS)\s*([sS])\s*(im|IM)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(dis|DIS)\s*([sS])\s*(o|O)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(proces|PROCES)\s*([sS])\s*(o|os|O|OS)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(exces|EXCES)\s*([sS])\s*(o|os|ivo|iva|ivos|ivas|O|OS|IVO|IVA|IVOS|IVAS)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(mis|MIS)\s*([sS])\s*(ão|ões|ÃO|ÕES)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(impres|IMPRES)\s*([sS])\s*(ão|ões|ÃO|ÕES)(?=$|[\s\p{P}])/gu, '$1$2$3')
+    .replace(/(?:^|(?<=[\s\p{P}]))(exten|EXTEN)\s*([sS])\s*(ão|ões|ÃO|ÕES)(?=$|[\s\p{P}])/gu, '$1$2$3');
+
+  // 3. Quebras triplas de RES IS TÊNCIA / RES IS TÊNCIAS
+  res = res.replace(/(?:^|(?<=[\s\p{P}]))(res|RES)\s+(is|IS)\s+(t[êe]ncia[s]?|tente[s]?|T[ÊE]NCIA[S]?|TENTE[S]?)(?=$|[\s\p{P}])/gu, '$1$2$3');
+
+  // 4. Prefixos e raízes do português que NUNCA existem isoladas como palavra
+  // (es, des, res, cons, dis, ins, proj, adj, trans, obs, subs, neces, aces)
+  res = res
+    .replace(/(?:^|(?<=[\s\p{P}]))(es|ES)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(des|DES)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(res|RES)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(neces|NECES)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(aces|ACES)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(cons|CONS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(dis|DIS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(ins|INS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(proj|PROJ)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(adj|ADJ)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(trans|TRANS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(obs|OBS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(subs|SUBS)\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2');
+
+  // 5. Letra 's', 'S', 'j', 'J' isolada no início da palavra quebrada (Unicode-aware)
+  // Resolve casos como "s imbologia" -> "simbologia", "S AÍDA" -> "SAÍDA", "s istema" -> "sistema", "J ANELA" -> "JANELA", "s er" -> "ser", "s e" -> "se", "s ó" -> "só"
+  // Não consome se for precedido por número (ex: 30 s)
+  res = res.replace(/(?<!\d\s*)(?:^|(?<=[\s\p{P}]))([sSjJ])\s+(\p{L}+)(?=$|[\s\p{P}])/gu, '$1$2');
+
+  // 6. Quebras internas comuns em laudos técnicos e normas (ex: PREVIS TO, REQUIS ITO, PRES ENTE, CAS O, etc.)
+  res = res
+    .replace(/(?:^|(?<=[\s\p{P}]))(enclaus|ENCLAUS)\s+(urado|urada|urados|uradas|URADO|URADA|URADOS|URADAS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(penthous|PENTHOUS)\s+(e|E)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(previs|PREVIS)\s+(to|ta|tos|tas|TO|TA|TOS|TAS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(requis|REQUIS)\s+(ito|ita|itos|itas|ITO|ITA|ITOS|ITAS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(pres|PRES)\s+(ente|entes|ENTE|ENTES)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(apres|APRES)\s+(enta|entam|ente|entem|entado|entada|entados|entadas|entar|ENTA|ENTAM|ENTE|ENTEM|ENTADO|ENTADA|ENTADOS|ENTADAS|ENTAR)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(dimens|DIMENS)\s+(ionamento|ionamentos|IONAMENTO|IONAMENTOS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(legis|LEGIS)\s+(lação|lações|LAÇÃO|LAÇÕES)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(cas|CAS)\s+(o|os|O|OS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(avis|AVIS)\s+(o|os|O|OS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(pis|PIS)\s+(o|os|O|OS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(us|US)\s+(o|os|O|OS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(is|IS)\s+(tência|tências|tente|tentes|TÊNCIA|TÊNCIAS|TENTE|TENTES)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(exis|EXIS)\s+(tência|tências|tente|tentes|tir|tem|te|TÊNCIA|TÊNCIAS|TENTE|TENTES|TIR|TEM|TE)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(consis|CONSIS)\s+(tência|tências|tente|tentes|TÊNCIA|TÊNCIAS|TENTE|TENTES)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(inconsis|INCONSIS)\s+(tência|tências|tente|tentes|TÊNCIA|TÊNCIAS|TENTE|TENTES)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(assis|ASSIS)\s+(tência|tências|tente|tentes|tir|TÊNCIA|TÊNCIAS|TENTE|TENTES|TIR)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(res|RES)\s+(ervatório|ervatórios|ERVATÓRIO|ERVATÓRIOS)(?=$|[\s\p{P}])/gu, '$1$2')
+    .replace(/(?:^|(?<=[\s\p{P}]))(res|RES)\s+(peitado|peitada|peitados|peitadas|peitar|peito|PEITADO|PEITADA|PEITADOS|PEITADAS|PEITAR|PEITO)(?=$|[\s\p{P}])/gu, '$1$2');
+
+  // Espaços soltos antes de sinais de pontuação
+  res = res.replace(/\s+([,;:!?])/g, '$1');
 
   return res;
 }

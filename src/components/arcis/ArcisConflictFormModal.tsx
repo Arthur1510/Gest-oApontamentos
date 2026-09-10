@@ -25,6 +25,7 @@ import { SelectNative } from '@/components/ui/select-native';
 import { Plus, Edit2, Save, X, Upload, Image as ImageIcon, Trash2, ClipboardCheck, Link as LinkIcon, Loader2, Images } from 'lucide-react';
 import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/image-compression';
+import { cleanDescriptionText } from '@/lib/arcis-utils';
 
 interface ArcisConflictFormModalProps {
   isOpen: boolean;
@@ -204,8 +205,8 @@ export function ArcisConflictFormModal({
       edificacao: edificacao.toUpperCase(),
       pavimentos: pavsArray,
       localizacao: localizacao || null,
-      descricao: descricao.trim(),
-      solucao: solucao.trim() || null,
+      descricao: cleanDescriptionText(descricao) || descricao.trim(),
+      solucao: solucao.trim() ? cleanDescriptionText(solucao) : null,
       data_criacao_arcis: conflitoParaEditar?.data_criacao_arcis || new Date().toISOString().slice(0, 10),
       data_ultima_alteracao: new Date().toISOString().slice(0, 10),
       numero_relatorio: conflitoParaEditar?.numero_relatorio || 'RSC_MANUAL',

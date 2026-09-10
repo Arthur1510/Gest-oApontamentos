@@ -19,7 +19,7 @@ import {
 } from '@/lib/supabase/client';
 import { SupabaseStatusBanner } from '@/components/apontamentos/SupabaseStatusBanner';
 import { MultiSelectFilter } from '@/components/ui/multi-select-filter';
-import { parseDateToISO, normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
+import { parseDateToISO, normalizeTipoConflitoArcis, cleanDescriptionText, cleanFieldText } from '@/lib/arcis-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArcisConflictCard } from '@/components/arcis/ArcisConflictCard';
@@ -430,7 +430,7 @@ export default function ArcisPage() {
 
         const cleanStr = (val: string | null | undefined, maxLen: number, fallback = ''): string => {
           if (!val) return fallback;
-          return val.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLen);
+          return cleanFieldText(val).slice(0, maxLen);
         };
 
         const rowsToUpsert = conflictsWithUploadedImages.map((c) => ({
@@ -442,11 +442,11 @@ export default function ArcisPage() {
           disciplina_principal: cleanStr(c.disciplina_principal, 100, 'ARQUITETURA').toUpperCase(),
           disciplinas_envolvidas: (c.disciplinas_envolvidas || []).map((d) => cleanStr(d, 100).toUpperCase()).filter(Boolean),
           edificacao: cleanStr(c.edificacao, 100, 'TORRE').toUpperCase(),
-          pavimentos: c.pavimentos || [],
-          local_edificacao: c.local_edificacao || null,
-          localizacao: c.localizacao || null,
+          pavimentos: (c.pavimentos || []).map((p) => cleanFieldText(p)).filter(Boolean),
+          local_edificacao: c.local_edificacao ? cleanFieldText(c.local_edificacao) : null,
+          localizacao: c.localizacao ? cleanFieldText(c.localizacao) : null,
           descricao: cleanDescriptionText(c.descricao),
-          solucao: c.solucao || null,
+          solucao: c.solucao ? cleanDescriptionText(c.solucao) : null,
           url_imagem: c.url_imagem || null,
           imagens: c.imagens || [],
           data_criacao_arcis: parseDateToISO(c.data_criacao_arcis),
