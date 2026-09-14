@@ -29,10 +29,12 @@ import {
   Upload,
   Trash2,
   ClipboardCheck,
+  Maximize2,
 } from 'lucide-react';
 import { formatDateBR, normalizeTipoConflitoArcis, cleanDescriptionText } from '@/lib/arcis-utils';
 import { uploadImageToClashesBucket, isSupabaseConfigured } from '@/lib/supabase/client';
 import { compressImage } from '@/lib/image-compression';
+import { ImageLightboxModal } from '@/components/apontamentos/ImageLightboxModal';
 
 interface ArcisConflictDetailModalProps {
   conflito: ConflitoArcis | null;
@@ -57,6 +59,7 @@ export function ArcisConflictDetailModal({
   const [newImageFile, setNewImageFile] = useState<File | null>(null);
   const [pasteSuccessMsg, setPasteSuccessMsg] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sincronizar estado local quando abrir com novo conflito
@@ -271,14 +274,14 @@ export function ArcisConflictDetailModal({
             </span>
             <div className="flex items-center gap-2">
               {currentImageUrl && (
-                <a
-                  href={currentImageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+                <button
+                  type="button"
+                  onClick={() => setIsLightboxOpen(true)}
+                  className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold cursor-pointer"
+                  title="Ampliar foto técnica em pop-up (Lightbox)"
                 >
-                  <ExternalLink className="h-3 w-3" /> Abrir original
-                </a>
+                  <Maximize2 className="h-3 w-3" /> Ampliar foto
+                </button>
               )}
               <input
                 ref={fileInputRef}
@@ -305,17 +308,29 @@ export function ArcisConflictDetailModal({
           )}
 
           {currentImageUrl ? (
-            <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] flex items-center justify-center p-2 group shadow-inner">
+            <div 
+              onClick={() => setIsLightboxOpen(true)}
+              className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] flex items-center justify-center p-2 group shadow-inner cursor-zoom-in"
+              title="Clique para ampliar a foto técnica"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={currentImageUrl}
                 alt={`Foto técnica #${conflito.codigo_conflito}`}
-                className="max-h-96 w-auto object-contain rounded-xl"
+                className="max-h-96 w-auto object-contain rounded-xl group-hover:scale-[1.02] transition-transform duration-300"
               />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 pointer-events-none">
+                <span className="px-3 py-1.5 rounded-full bg-[#072B3B]/90 border border-[#00A3C4]/60 text-[#00C4EB] text-xs font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-xs">
+                  <Maximize2 className="h-3.5 w-3.5" /> Clique para ampliar
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={handleRemoveImage}
-                className="absolute top-3 right-3 p-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveImage();
+                }}
+                className="absolute top-3 right-3 p-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white shadow-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 z-10"
                 title="Remover foto técnica"
               >
                 <Trash2 className="h-4 w-4" />
@@ -396,6 +411,16 @@ export function ArcisConflictDetailModal({
             </Button>
           )}
         </DialogFooter>
+
+        {currentImageUrl && (
+          <ImageLightboxModal
+            isOpen={isLightboxOpen}
+            onClose={() => setIsLightboxOpen(false)}
+            images={[currentImageUrl]}
+            title={`Conflito #${conflito?.codigo_conflito}`}
+            subtitle={projectName}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

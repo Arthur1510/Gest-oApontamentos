@@ -10,6 +10,7 @@ import { ApontamentosFilters } from '@/components/apontamentos/ApontamentosFilte
 import { ApontamentoCard } from '@/components/apontamentos/ApontamentoCard';
 import { ApontamentoFormModal } from '@/components/apontamentos/ApontamentoFormModal';
 import { ApontamentoDetailModal } from '@/components/apontamentos/ApontamentoDetailModal';
+import { ImageLightboxModal } from '@/components/apontamentos/ImageLightboxModal';
 import { Button } from '@/components/ui/button';
 import { SortCriteria, sortApontamentos } from '@/lib/sorting';
 import { matchesDateRange } from '@/lib/utils';
@@ -21,6 +22,15 @@ export default function HomePage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingApontamento, setEditingApontamento] = useState<Apontamento | null>(null);
   const [selectedApontamento, setSelectedApontamento] = useState<Apontamento | null>(null);
+
+  // Estado para Visualização Ampliada da Foto em Lightbox (Pop-up)
+  const [lightboxData, setLightboxData] = useState<{
+    images: string[];
+    initialIndex: number;
+    title: string;
+    subtitle?: string;
+    apontamento?: Apontamento;
+  } | null>(null);
 
   // Mensagem Toast Interativa
   const [toastMessage, setToastMessage] = useState<string>('');
@@ -435,6 +445,25 @@ export default function HomePage() {
                 key={item.id}
                 apontamento={item}
                 onView={(apontamento) => setSelectedApontamento(apontamento)}
+                onPreviewImage={(apt, idx = 0) => {
+                  const imgs =
+                    apt.imagens_apontamento && apt.imagens_apontamento.length > 0
+                      ? apt.imagens_apontamento
+                      : apt.url_imagem
+                      ? [apt.url_imagem]
+                      : [];
+                  if (imgs.length > 0) {
+                    setLightboxData({
+                      images: imgs,
+                      initialIndex: idx,
+                      title: apt.titulo,
+                      subtitle:
+                        apt.projetos?.nome ||
+                        [apt.disciplina_origem, apt.disciplina_destino].filter(Boolean).join(' → '),
+                      apontamento: apt,
+                    });
+                  }
+                }}
                 onEdit={handleOpenEditModal}
                 onToggleStatus={handleToggleStatus}
                 onDelete={handleDeleteApontamento}
@@ -492,6 +521,25 @@ export default function HomePage() {
         onToggleStatus={handleToggleStatus}
         onDelete={handleDeleteApontamento}
         onUpdateSolucao={handleUpdateSolucao}
+      />
+
+      {/* Pop-up de Imagem Ampliada (Lightbox) */}
+      <ImageLightboxModal
+        isOpen={Boolean(lightboxData)}
+        onClose={() => setLightboxData(null)}
+        images={lightboxData?.images || []}
+        initialIndex={lightboxData?.initialIndex || 0}
+        title={lightboxData?.title || ''}
+        subtitle={lightboxData?.subtitle}
+        onViewDetails={
+          lightboxData?.apontamento
+            ? () => {
+                const apt = lightboxData.apontamento!;
+                setLightboxData(null);
+                setSelectedApontamento(apt);
+              }
+            : undefined
+        }
       />
     </main>
   );

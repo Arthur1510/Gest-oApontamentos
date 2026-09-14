@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images, Pencil, Layers } from 'lucide-react';
+import { ArrowRight, Calendar, CheckCircle2, AlertCircle, Eye, Trash2, FolderKanban, ShieldAlert, Lightbulb, Images, Pencil, Layers, Maximize2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { formatDate } from '@/lib/utils';
 interface ApontamentoCardProps {
   apontamento: Apontamento;
   onView: (apontamento: Apontamento) => void;
+  onPreviewImage?: (apontamento: Apontamento, initialIndex?: number) => void;
   onEdit?: (apontamento: Apontamento) => void;
   onToggleStatus: (apontamento: Apontamento) => void;
   onDelete: (id: string) => void;
@@ -19,6 +20,7 @@ interface ApontamentoCardProps {
 export function ApontamentoCard({
   apontamento,
   onView,
+  onPreviewImage,
   onEdit,
   onToggleStatus,
   onDelete,
@@ -41,19 +43,33 @@ export function ApontamentoCard({
         {/* Banner Superior da Thumbnail se houver Imagem */}
         {mainImageUrl && (
           <div 
-            onClick={() => onView(apontamento)}
-            className="relative h-44 w-full overflow-hidden bg-[#041A24] cursor-pointer"
+            onClick={() => {
+              if (onPreviewImage) {
+                onPreviewImage(apontamento, 0);
+              } else {
+                onView(apontamento);
+              }
+            }}
+            className="relative h-44 w-full overflow-hidden bg-[#041A24] cursor-pointer group/image"
+            title="Clique para ampliar a foto do apontamento"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={mainImageUrl}
               alt={apontamento.titulo}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+              className="w-full h-full object-cover group-hover/image:scale-105 transition-transform duration-500 opacity-90 group-hover/image:opacity-100"
               onError={(e) => {
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#072B3B] via-[#072B3B]/40 to-transparent opacity-80 group-hover:opacity-60 transition-opacity" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#072B3B] via-[#072B3B]/40 to-transparent opacity-80 group-hover/image:opacity-40 transition-opacity" />
+
+            {/* Overlay com indicação de clique para ampliar */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/image:opacity-100 transition-opacity duration-200 pointer-events-none bg-black/25">
+              <span className="px-3 py-1.5 rounded-full bg-[#072B3B]/90 border border-[#00A3C4]/60 text-[#00C4EB] text-xs font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-xs">
+                <Maximize2 className="h-3.5 w-3.5" /> Clique para ampliar
+              </span>
+            </div>
             
             {/* Badges Flutuantes no Banner */}
             <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">

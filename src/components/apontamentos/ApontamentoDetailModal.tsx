@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil, Layers, MapPin, FolderKanban, RotateCw } from 'lucide-react';
+import { Calendar, ArrowRight, CheckCircle2, AlertCircle, Trash2, ExternalLink, ShieldAlert, Lightbulb, Save, Upload, X, Images, ClipboardCheck, Pencil, Layers, MapPin, FolderKanban, RotateCw, Maximize2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Apontamento } from '@/types/apontamento';
 import { formatDate } from '@/lib/utils';
 import { supabase, isSupabaseConfigured, uploadImageToClashesBucket } from '@/lib/supabase/client';
 import { compressImage, formatFileSize, rotateImageUrl, rotateImageFile } from '@/lib/image-compression';
+import { ImageLightboxModal } from './ImageLightboxModal';
 
 interface ApontamentoDetailModalProps {
   apontamento: Apontamento | null;
@@ -39,6 +40,13 @@ export function ApontamentoDetailModal({
 
   const [selectedApontamentoImageIdx, setSelectedApontamentoImageIdx] = useState(0);
   const [selectedSolucaoImageIdx, setSelectedSolucaoImageIdx] = useState(0);
+
+  // Estados do Pop-up Lightbox Ampliado
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [lightboxTitle, setLightboxTitle] = useState('');
+  const [lightboxSubtitle, setLightboxSubtitle] = useState<string | undefined>(undefined);
 
   const [isSavingSolucao, setIsSavingSolucao] = useState(false);
   const [isEditingSolucao, setIsEditingSolucao] = useState(false);
@@ -285,33 +293,65 @@ export function ApontamentoDetailModal({
                   <RotateCw className={`h-3 w-3 text-[#00A3C4] ${isRotating ? 'animate-spin' : ''}`} />
                   Girar 90°
                 </Button>
-                <a
-                  href={allApontamentoImages[selectedApontamentoImageIdx]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] text-[#00A3C4] dark:text-[#00C4EB] hover:underline flex items-center gap-1 font-bold"
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setLightboxImages(allApontamentoImages);
+                    setLightboxIndex(selectedApontamentoImageIdx);
+                    setLightboxTitle(apontamento.titulo);
+                    setLightboxSubtitle(
+                      apontamento.projetos?.nome ||
+                        [apontamento.disciplina_origem, apontamento.disciplina_destino].filter(Boolean).join(' → ')
+                    );
+                    setIsLightboxOpen(true);
+                  }}
+                  className="h-7 px-2 text-xs gap-1.5 font-bold hover:border-[#00A3C4] cursor-pointer text-[#00A3C4] dark:text-[#00C4EB]"
+                  title="Ampliar foto em pop-up (Lightbox)"
                 >
-                  <ExternalLink className="h-3 w-3" /> Abrir original
-                </a>
+                  <Maximize2 className="h-3 w-3" /> Ampliar foto
+                </Button>
               </div>
             </div>
 
             {/* Imagem Principal Ativa */}
-            <div className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] group">
+            <div 
+              onClick={() => {
+                setLightboxImages(allApontamentoImages);
+                setLightboxIndex(selectedApontamentoImageIdx);
+                setLightboxTitle(apontamento.titulo);
+                setLightboxSubtitle(
+                  apontamento.projetos?.nome ||
+                    [apontamento.disciplina_origem, apontamento.disciplina_destino].filter(Boolean).join(' → ')
+                );
+                setIsLightboxOpen(true);
+              }}
+              className="relative rounded-2xl border border-slate-200 dark:border-[#0B384D] overflow-hidden bg-[#041A24] group cursor-zoom-in"
+              title="Clique para ampliar a foto"
+            >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={allApontamentoImages[selectedApontamentoImageIdx]}
                 alt={apontamento.titulo}
-                className="w-full h-72 object-contain object-center max-h-96"
+                className="w-full h-72 object-contain object-center max-h-96 group-hover:scale-[1.02] transition-transform duration-300"
               />
-              <div className="absolute top-2 left-2 bg-[#072B3B]/90 text-white text-[10px] font-mono px-2 py-0.5 rounded border border-[#0B384D]">
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 pointer-events-none">
+                <span className="px-3 py-1.5 rounded-full bg-[#072B3B]/90 border border-[#00A3C4]/60 text-[#00C4EB] text-xs font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-xs">
+                  <Maximize2 className="h-3.5 w-3.5" /> Clique para ampliar
+                </span>
+              </div>
+              <div className="absolute top-2 left-2 bg-[#072B3B]/90 text-white text-[10px] font-mono px-2 py-0.5 rounded border border-[#0B384D] z-10">
                 Foto #{selectedApontamentoImageIdx + 1} de {allApontamentoImages.length}
               </div>
               <button
                 type="button"
-                onClick={handleRotateActiveApontamentoImage}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRotateActiveApontamentoImage();
+                }}
                 disabled={isRotating}
-                className="absolute bottom-2 right-2 bg-[#072B3B]/90 text-white text-[10px] font-bold px-2 py-1 rounded-lg border border-[#00A3C4]/40 flex items-center gap-1 hover:bg-[#00A3C4] transition-colors shadow-md cursor-pointer"
+                className="absolute bottom-2 right-2 bg-[#072B3B]/90 text-white text-[10px] font-bold px-2 py-1 rounded-lg border border-[#00A3C4]/40 flex items-center gap-1 hover:bg-[#00A3C4] transition-colors shadow-md cursor-pointer z-10"
                 title="Girar imagem 90° (Vertical ⟷ Horizontal)"
               >
                 <RotateCw className={`h-3.5 w-3.5 ${isRotating ? 'animate-spin' : ''}`} />
@@ -524,21 +564,43 @@ export function ApontamentoDetailModal({
                     Fotos da Solução Proposta ({solucaoImagesList.length})
                   </span>
 
-                  <div className="relative rounded-xl border border-emerald-300 dark:border-emerald-800 overflow-hidden bg-slate-950">
+                  <div 
+                    onClick={() => {
+                      setLightboxImages(solucaoImagesList);
+                      setLightboxIndex(selectedSolucaoImageIdx);
+                      setLightboxTitle(`Solução: ${apontamento.titulo}`);
+                      setLightboxSubtitle(apontamento.projetos?.nome || 'Foto da Solução Proposta');
+                      setIsLightboxOpen(true);
+                    }}
+                    className="relative rounded-xl border border-emerald-300 dark:border-emerald-800 overflow-hidden bg-slate-950 group cursor-zoom-in"
+                    title="Clique para ampliar a foto da solução"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={solucaoImagesList[selectedSolucaoImageIdx]}
                       alt="Foto da Solução"
-                      className="w-full h-56 object-contain object-center max-h-72"
+                      className="w-full h-56 object-contain object-center max-h-72 group-hover:scale-[1.02] transition-transform duration-300"
                     />
-                    <a
-                      href={solucaoImagesList[selectedSolucaoImageIdx]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="absolute bottom-2 right-2 bg-slate-900/80 hover:bg-slate-900 text-white text-[11px] px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1"
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/25 pointer-events-none">
+                      <span className="px-3 py-1.5 rounded-full bg-slate-900/90 border border-emerald-500/60 text-emerald-300 text-xs font-bold flex items-center gap-1.5 shadow-xl backdrop-blur-xs">
+                        <Maximize2 className="h-3.5 w-3.5" /> Clique para ampliar
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLightboxImages(solucaoImagesList);
+                        setLightboxIndex(selectedSolucaoImageIdx);
+                        setLightboxTitle(`Solução: ${apontamento.titulo}`);
+                        setLightboxSubtitle(apontamento.projetos?.nome || 'Foto da Solução Proposta');
+                        setIsLightboxOpen(true);
+                      }}
+                      className="absolute bottom-2 right-2 bg-slate-900/90 hover:bg-[#00A3C4] text-white text-[11px] font-bold px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1 z-10 transition-colors cursor-pointer"
+                      title="Ampliar foto da solução"
                     >
-                      <ExternalLink className="h-3 w-3" /> Ver original
-                    </a>
+                      <Maximize2 className="h-3 w-3" /> Ampliar
+                    </button>
                   </div>
 
                   {solucaoImagesList.length > 1 && (
@@ -625,6 +687,16 @@ export function ApontamentoDetailModal({
             </Button>
           </div>
         </DialogFooter>
+
+        {/* Pop-up Lightbox para Visualização Ampliada das Fotos deste Apontamento */}
+        <ImageLightboxModal
+          isOpen={isLightboxOpen}
+          onClose={() => setIsLightboxOpen(false)}
+          images={lightboxImages}
+          initialIndex={lightboxIndex}
+          title={lightboxTitle}
+          subtitle={lightboxSubtitle}
+        />
       </DialogContent>
     </Dialog>
   );
