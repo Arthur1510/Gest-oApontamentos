@@ -50,6 +50,7 @@ export function ApontamentoDetailModal({
 
   const [isSavingSolucao, setIsSavingSolucao] = useState(false);
   const [isEditingSolucao, setIsEditingSolucao] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
   const solucaoFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -156,8 +157,6 @@ export function ApontamentoDetailModal({
       setIsSavingSolucao(false);
     }
   };
-
-  const [isRotating, setIsRotating] = useState(false);
 
   const handleRotateActiveApontamentoImage = async () => {
     if (!apontamento || allApontamentoImages.length === 0) return;
