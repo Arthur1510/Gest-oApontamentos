@@ -249,3 +249,132 @@ ALTER TABLE public.apontamentos_arcis
     ALTER COLUMN edificacao TYPE TEXT,
     ALTER COLUMN numero_relatorio TYPE TEXT;
 
+-- =========================================================
+-- 10. MÓDULO FINANCEIRO: Orçamentos, Contratos e Medições (WCC R01)
+-- =========================================================
+
+-- Tabela Obras
+CREATE TABLE IF NOT EXISTS public.obras_cad (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    cc TEXT,
+    codigo TEXT NOT NULL UNIQUE,
+    nome TEXT NOT NULL,
+    endereco TEXT
+);
+
+-- Tabela Fornecedores
+CREATE TABLE IF NOT EXISTS public.fornecedores_cad (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    id_sienge TEXT,
+    fornecedor TEXT NOT NULL,
+    tipo TEXT
+);
+
+-- Tabela Orçamentos Base
+CREATE TABLE IF NOT EXISTS public.orcamentos_base (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    obra TEXT NOT NULL,
+    nome_obra TEXT,
+    disciplina TEXT NOT NULL,
+    subdisciplina TEXT NOT NULL,
+    orcamento_base NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização')),
+    status TEXT NOT NULL DEFAULT 'A contratar'
+);
+
+-- Tabela Contratos
+CREATE TABLE IF NOT EXISTS public.contratos_obras (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    num_sienge TEXT,
+    empresa TEXT NOT NULL,
+    obra TEXT NOT NULL,
+    disciplina TEXT NOT NULL,
+    subdisciplina TEXT NOT NULL,
+    valor_contrato NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização'))
+);
+
+-- Tabela Medições
+CREATE TABLE IF NOT EXISTS public.medicoes_contratos (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    contrato_id TEXT NOT NULL REFERENCES public.contratos_obras(id) ON DELETE CASCADE,
+    empresa TEXT NOT NULL,
+    obra TEXT NOT NULL,
+    etapa TEXT NOT NULL,
+    percentual NUMERIC(6, 4) NOT NULL DEFAULT 0,
+    data_prevista DATE,
+    data_medicao DATE,
+    data_referencia DATE,
+    mes_competencia TEXT,
+    valor_medicao NUMERIC(15, 2) NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'A Medir',
+    nf TEXT,
+    data_pagamento DATE
+);
+
+-- Garantir adição de categoria se as tabelas já tiverem sido criadas
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'orcamentos_base' AND column_name = 'categoria'
+    ) THEN
+        ALTER TABLE public.orcamentos_base ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Projeto';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'categoria'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Projeto';
+    END IF;
+END $$;
+
+-- Índices de performance
+CREATE INDEX IF NOT EXISTS idx_orcamentos_obra ON public.orcamentos_base(obra);
+CREATE INDEX IF NOT EXISTS idx_orcamentos_categoria ON public.orcamentos_base(categoria);
+CREATE INDEX IF NOT EXISTS idx_contratos_obra ON public.contratos_obras(obra);
+CREATE INDEX IF NOT EXISTS idx_contratos_categoria ON public.contratos_obras(categoria);
+CREATE INDEX IF NOT EXISTS idx_contratos_empresa ON public.contratos_obras(empresa);
+CREATE INDEX IF NOT EXISTS idx_medicoes_contrato ON public.medicoes_contratos(contrato_id);
+CREATE INDEX IF NOT EXISTS idx_medicoes_obra ON public.medicoes_contratos(obra);
+CREATE INDEX IF NOT EXISTS idx_medicoes_status ON public.medicoes_contratos(status);
+
+-- RLS
+ALTER TABLE public.obras_cad ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.fornecedores_cad ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orcamentos_base ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.contratos_obras ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.medicoes_contratos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir leitura pública obras_cad" ON public.obras_cad FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública obras_cad" ON public.obras_cad FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública obras_cad" ON public.obras_cad FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública obras_cad" ON public.obras_cad FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública fornecedores_cad" ON public.fornecedores_cad FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública fornecedores_cad" ON public.fornecedores_cad FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública fornecedores_cad" ON public.fornecedores_cad FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública fornecedores_cad" ON public.fornecedores_cad FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública orcamentos_base" ON public.orcamentos_base FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública orcamentos_base" ON public.orcamentos_base FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública orcamentos_base" ON public.orcamentos_base FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública orcamentos_base" ON public.orcamentos_base FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública contratos_obras" ON public.contratos_obras FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública contratos_obras" ON public.contratos_obras FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública contratos_obras" ON public.contratos_obras FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública contratos_obras" ON public.contratos_obras FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública medicoes_contratos" ON public.medicoes_contratos FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública medicoes_contratos" ON public.medicoes_contratos FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública medicoes_contratos" ON public.medicoes_contratos FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública medicoes_contratos" ON public.medicoes_contratos FOR DELETE USING (true);
+
+

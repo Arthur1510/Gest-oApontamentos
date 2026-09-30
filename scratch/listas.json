@@ -1,0 +1,717 @@
+﻿{
+    "obras":  [
+                  {
+                      "id":  "OBR001",
+                      "cc":  "29",
+                      "codigo":  "PAI3",
+                      "nome":  "Paineiras 3",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR002",
+                      "cc":  "33",
+                      "codigo":  "OTI",
+                      "nome":  "Otília",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR003",
+                      "cc":  "47",
+                      "codigo":  "ALT",
+                      "nome":  "Altamira",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR004",
+                      "cc":  "53",
+                      "codigo":  "MON",
+                      "nome":  "Monterré",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR005",
+                      "cc":  "65",
+                      "codigo":  "GAL",
+                      "nome":  "Galassi",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR006",
+                      "cc":  "71",
+                      "codigo":  "PQSUL",
+                      "nome":  "Parque Sul",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR007",
+                      "cc":  "77",
+                      "codigo":  "LIB",
+                      "nome":  "Liberdade",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR008",
+                      "cc":  "82",
+                      "codigo":  "UNA",
+                      "nome":  "UNA",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR009",
+                      "cc":  "84",
+                      "codigo":  "STM",
+                      "nome":  "Santa Mônica",
+                      "endereco":  null
+                  },
+                  {
+                      "id":  "OBR010",
+                      "cc":  "85",
+                      "codigo":  "SEFAZ",
+                      "nome":  "Galassi SEFAZ",
+                      "endereco":  null
+                  }
+              ],
+    "disciplinas":  [
+                        {
+                            "id":  "DIS001",
+                            "disciplina":  "ARQUITETURA",
+                            "codigo":  "ARQ"
+                        },
+                        {
+                            "id":  "DIS002",
+                            "disciplina":  "ESTRUTURA",
+                            "codigo":  "EST"
+                        },
+                        {
+                            "id":  "DIS003",
+                            "disciplina":  "COMPLEMENTARES",
+                            "codigo":  "COMP"
+                        },
+                        {
+                            "id":  "DIS004",
+                            "disciplina":  "PLANIALTIMÉTRICO",
+                            "codigo":  "PLAN"
+                        },
+                        {
+                            "id":  "DIS005",
+                            "disciplina":  "SONDAGEM",
+                            "codigo":  "SON"
+                        },
+                        {
+                            "id":  "DIS006",
+                            "disciplina":  "FUNDAÇÃO",
+                            "codigo":  "FUN"
+                        },
+                        {
+                            "id":  "DIS007",
+                            "disciplina":  "INTERIORES",
+                            "codigo":  "INT"
+                        },
+                        {
+                            "id":  "DIS008",
+                            "disciplina":  "FACHADA",
+                            "codigo":  "FCH"
+                        },
+                        {
+                            "id":  "DIS009",
+                            "disciplina":  "ESQUADRIAS",
+                            "codigo":  "ESQ"
+                        },
+                        {
+                            "id":  "DIS010",
+                            "disciplina":  "IMPERMEABILIZAÇÃO",
+                            "codigo":  "IMP"
+                        },
+                        {
+                            "id":  "DIS011",
+                            "disciplina":  "SEGURANÇA",
+                            "codigo":  "SEG"
+                        },
+                        {
+                            "id":  "DIS012",
+                            "disciplina":  "DESEMPENHO",
+                            "codigo":  "DES"
+                        },
+                        {
+                            "id":  "DIS013",
+                            "disciplina":  "INFRAESTRUTURA",
+                            "codigo":  "INF"
+                        },
+                        {
+                            "id":  "DIS014",
+                            "disciplina":  "LEGALIZAÇÃO",
+                            "codigo":  "LEG"
+                        },
+                        {
+                            "id":  "DIS015",
+                            "disciplina":  "ORÇAMENTO",
+                            "codigo":  "ORC"
+                        },
+                        {
+                            "id":  "DIS016",
+                            "disciplina":  "PLANEJAMENTO",
+                            "codigo":  "PLA"
+                        }
+                    ],
+    "subdisciplinas":  [
+                           {
+                               "id":  "SUB001",
+                               "disciplina":  "ARQUITETURA",
+                               "cod_disciplina":  "ARQ",
+                               "subdisciplina":  "ARQUITERURA LEGAL",
+                               "cod_subdisciplina":  "ARQ_LEGAL"
+                           },
+                           {
+                               "id":  "SUB002",
+                               "disciplina":  "ARQUITETURA",
+                               "cod_disciplina":  "ARQ",
+                               "subdisciplina":  "ARQUITETURA EXECUTIVA",
+                               "cod_subdisciplina":  "ARQ_EXE"
+                           },
+                           {
+                               "id":  "SUB003",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "ESTRUTURA DE CONCRETO",
+                               "cod_subdisciplina":  "EST_CON"
+                           },
+                           {
+                               "id":  "SUB004",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "ESTRUTURA DE AÇO",
+                               "cod_subdisciplina":  "EST_MET"
+                           },
+                           {
+                               "id":  "SUB005",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "ESTRUTURA DE MADEIRA",
+                               "cod_subdisciplina":  "EST_MAD"
+                           },
+                           {
+                               "id":  "SUB006",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "ESCORAMENTO",
+                               "cod_subdisciplina":  "EST_ESC"
+                           },
+                           {
+                               "id":  "SUB007",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "FUNDAÇÃO SUPERFICIAL",
+                               "cod_subdisciplina":  "EST_FUN"
+                           },
+                           {
+                               "id":  "SUB008",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "CONTENÇÕES",
+                               "cod_subdisciplina":  "EST_CON"
+                           },
+                           {
+                               "id":  "SUB025",
+                               "disciplina":  "ESTRUTURA",
+                               "cod_disciplina":  "EST",
+                               "subdisciplina":  "PISO SUBSOLO",
+                               "cod_subdisciplina":  "EST_PISO"
+                           },
+                           {
+                               "id":  "SUB009",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "COMPLEMENTARES",
+                               "cod_subdisciplina":  "COMP"
+                           },
+                           {
+                               "id":  "SUB010",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "HIDROSSANITÁRIO",
+                               "cod_subdisciplina":  "HID"
+                           },
+                           {
+                               "id":  "SUB011",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "ELÉTRICO",
+                               "cod_subdisciplina":  "ELE"
+                           },
+                           {
+                               "id":  "SUB012",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "COMUNICAÇÃO",
+                               "cod_subdisciplina":  "COM"
+                           },
+                           {
+                               "id":  "SUB013",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "SPDA",
+                               "cod_subdisciplina":  "SPDA"
+                           },
+                           {
+                               "id":  "SUB014",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "GÁS",
+                               "cod_subdisciplina":  "GLP"
+                           },
+                           {
+                               "id":  "SUB015",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "CLIMATIZAÇÃO",
+                               "cod_subdisciplina":  "CLI"
+                           },
+                           {
+                               "id":  "SUB016",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "INCÊNDIO",
+                               "cod_subdisciplina":  "PCI"
+                           },
+                           {
+                               "id":  "SUB017",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "PRESSURIZAÇÃO",
+                               "cod_subdisciplina":  "PRE"
+                           },
+                           {
+                               "id":  "SUB018",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "MARKUP",
+                               "cod_subdisciplina":  "MKP"
+                           },
+                           {
+                               "id":  "SUB019",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "PISCINA",
+                               "cod_subdisciplina":  "PIS"
+                           },
+                           {
+                               "id":  "SUB020",
+                               "disciplina":  "COMPLEMENTARES",
+                               "cod_disciplina":  "COMP",
+                               "subdisciplina":  "COMPATIBILIZAÇÃO",
+                               "cod_subdisciplina":  "MOD"
+                           },
+                           {
+                               "id":  "SUB021",
+                               "disciplina":  "PLANIALTIMÉTRICO",
+                               "cod_disciplina":  "PLAN",
+                               "subdisciplina":  "PLANIALTIMÉTRICO",
+                               "cod_subdisciplina":  "PLAN"
+                           },
+                           {
+                               "id":  "SUB022",
+                               "disciplina":  "SONDAGEM",
+                               "cod_disciplina":  "SON",
+                               "subdisciplina":  "SONDAGEM",
+                               "cod_subdisciplina":  "SON"
+                           },
+                           {
+                               "id":  "SUB023",
+                               "disciplina":  "FUNDAÇÃO",
+                               "cod_disciplina":  "FUN",
+                               "subdisciplina":  "FUNDAÇÃO PROFUNDA",
+                               "cod_subdisciplina":  "FUN_PRO"
+                           },
+                           {
+                               "id":  "SUB026",
+                               "disciplina":  "INTERIORES",
+                               "cod_disciplina":  "INT",
+                               "subdisciplina":  "INTERIORES",
+                               "cod_subdisciplina":  "INT"
+                           },
+                           {
+                               "id":  "SUB027",
+                               "disciplina":  "INTERIORES",
+                               "cod_disciplina":  "INT",
+                               "subdisciplina":  "PAISAGISMO",
+                               "cod_subdisciplina":  "PSG"
+                           },
+                           {
+                               "id":  "SUB028",
+                               "disciplina":  "FACHADA",
+                               "cod_disciplina":  "FCH",
+                               "subdisciplina":  "FACHADA",
+                               "cod_subdisciplina":  "FCH"
+                           },
+                           {
+                               "id":  "SUB029",
+                               "disciplina":  "ESQUADRIAS",
+                               "cod_disciplina":  "ESQ",
+                               "subdisciplina":  "ESQUADRIAS",
+                               "cod_subdisciplina":  "ESQ"
+                           },
+                           {
+                               "id":  "SUB030",
+                               "disciplina":  "IMPERMEABILIZAÇÃO",
+                               "cod_disciplina":  "IMP",
+                               "subdisciplina":  "IMPERMEABILIZAÇÃO",
+                               "cod_subdisciplina":  "IMP"
+                           },
+                           {
+                               "id":  "SUB031",
+                               "disciplina":  "SEGURANÇA",
+                               "cod_disciplina":  "SEG",
+                               "subdisciplina":  "SEGURANÇA",
+                               "cod_subdisciplina":  "CFTV"
+                           },
+                           {
+                               "id":  "SUB032",
+                               "disciplina":  "DESEMPENHO",
+                               "cod_disciplina":  "DES",
+                               "subdisciplina":  "DESEMPENHO",
+                               "cod_subdisciplina":  "DES"
+                           },
+                           {
+                               "id":  "SUB033",
+                               "disciplina":  "DESEMPENHO",
+                               "cod_disciplina":  "DES",
+                               "subdisciplina":  "LAUDO DE RUÍDO",
+                               "cod_subdisciplina":  "RUI"
+                           },
+                           {
+                               "id":  "SUB034",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "INTERLIGAÇÃO ÁGUA",
+                               "cod_subdisciplina":  "INF_DMAE"
+                           },
+                           {
+                               "id":  "SUB035",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "INTERLIGAÇÃO ELÉTRICA",
+                               "cod_subdisciplina":  "INF_CEMIG"
+                           },
+                           {
+                               "id":  "SUB036",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "INTERLIGAÇÃO ESGOTO",
+                               "cod_subdisciplina":  "INF_DMAE"
+                           },
+                           {
+                               "id":  "SUB037",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "INTERLIGAÇÃO DRENAGEM PLUVIAL",
+                               "cod_subdisciplina":  "INF_DMAE"
+                           },
+                           {
+                               "id":  "SUB038",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "PROLONGAMENTO REDE",
+                               "cod_subdisciplina":  "INF_DMAE"
+                           },
+                           {
+                               "id":  "SUB039",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "ELÉTRICO MÉDIA TENSÃO",
+                               "cod_subdisciplina":  "INF_CEMIG"
+                           },
+                           {
+                               "id":  "SUB040",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "TERRAPLANAGEM",
+                               "cod_subdisciplina":  "TER"
+                           },
+                           {
+                               "id":  "SUB041",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "ABASTECIMENTO DE ÁGUA",
+                               "cod_subdisciplina":  "ABA"
+                           },
+                           {
+                               "id":  "SUB042",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "ESGOTO SANITÁRIO",
+                               "cod_subdisciplina":  "SES"
+                           },
+                           {
+                               "id":  "SUB043",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "DRENAGEM PLUVIAL",
+                               "cod_subdisciplina":  "DRE"
+                           },
+                           {
+                               "id":  "SUB044",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "PAVIMENTAÇÃO",
+                               "cod_subdisciplina":  "PAV"
+                           },
+                           {
+                               "id":  "SUB045",
+                               "disciplina":  "INFRAESTRUTURA",
+                               "cod_disciplina":  "INF",
+                               "subdisciplina":  "ENERGIA ELÉTRICA",
+                               "cod_subdisciplina":  "INF_ELE"
+                           },
+                           {
+                               "id":  "SUB046",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "LEGALIZAÇÃO",
+                               "cod_subdisciplina":  "LEG"
+                           },
+                           {
+                               "id":  "SUB047",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "CONSULTORIA",
+                               "cod_subdisciplina":  "COM"
+                           },
+                           {
+                               "id":  "SUB048",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "ALVARÁ",
+                               "cod_subdisciplina":  "ALV"
+                           },
+                           {
+                               "id":  "SUB049",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "PROTOCOLO",
+                               "cod_subdisciplina":  "PRO"
+                           },
+                           {
+                               "id":  "SUB050",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "ART",
+                               "cod_subdisciplina":  "ART"
+                           },
+                           {
+                               "id":  "SUB051",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "PGRCC",
+                               "cod_subdisciplina":  "PGRCC"
+                           },
+                           {
+                               "id":  "SUB052",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "RESTRIÇÃO URBANÍSTICA",
+                               "cod_subdisciplina":  "RU"
+                           },
+                           {
+                               "id":  "SUB053",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "VIABILIDADE DMAE",
+                               "cod_subdisciplina":  "VIB"
+                           },
+                           {
+                               "id":  "SUB054",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "TAXA",
+                               "cod_subdisciplina":  "TAXA"
+                           },
+                           {
+                               "id":  "SUB055",
+                               "disciplina":  "LEGALIZAÇÃO",
+                               "cod_disciplina":  "LEG",
+                               "subdisciplina":  "IMPOSTOS",
+                               "cod_subdisciplina":  "IMPT"
+                           },
+                           {
+                               "id":  "SUB056",
+                               "disciplina":  "ORÇAMENTO",
+                               "cod_disciplina":  "ORC",
+                               "subdisciplina":  "PARAMÉTRICO",
+                               "cod_subdisciplina":  "PAR"
+                           },
+                           {
+                               "id":  "SUB057",
+                               "disciplina":  "ORÇAMENTO",
+                               "cod_disciplina":  "ORC",
+                               "subdisciplina":  "PRELIMINAR",
+                               "cod_subdisciplina":  "PRE"
+                           },
+                           {
+                               "id":  "SUB058",
+                               "disciplina":  "ORÇAMENTO",
+                               "cod_disciplina":  "ORC",
+                               "subdisciplina":  "EXECUTIVO",
+                               "cod_subdisciplina":  "EXE"
+                           },
+                           {
+                               "id":  "SUB059",
+                               "disciplina":  "PLANEJAMENTO",
+                               "cod_disciplina":  "PLA",
+                               "subdisciplina":  "PRELIMINAR",
+                               "cod_subdisciplina":  "PRE"
+                           },
+                           {
+                               "id":  "SUB060",
+                               "disciplina":  "PLANEJAMENTO",
+                               "cod_disciplina":  "PLA",
+                               "subdisciplina":  "EXECUTIVO",
+                               "cod_subdisciplina":  "EXE"
+                           }
+                       ],
+    "fornecedores":  [
+                         {
+                             "id":  "FOR001",
+                             "id_sienge":  "2306",
+                             "fornecedor":  "SOMA",
+                             "tipo":  "ARQUITETURA"
+                         },
+                         {
+                             "id":  "FOR002",
+                             "id_sienge":  "27",
+                             "fornecedor":  "MBUIATE",
+                             "tipo":  "ESTRUTURA"
+                         },
+                         {
+                             "id":  "FOR003",
+                             "id_sienge":  "1532",
+                             "fornecedor":  "ARCIS",
+                             "tipo":  "COMPLEMENTARES"
+                         },
+                         {
+                             "id":  "FOR004",
+                             "id_sienge":  "2665",
+                             "fornecedor":  "VERTICAL",
+                             "tipo":  "ORÇAMENTO"
+                         },
+                         {
+                             "id":  "FOR005",
+                             "id_sienge":  "2859",
+                             "fornecedor":  "DALTON",
+                             "tipo":  "INTERIORES"
+                         },
+                         {
+                             "id":  "FOR006",
+                             "id_sienge":  "2712",
+                             "fornecedor":  "KARINA",
+                             "tipo":  "INTERIORES"
+                         },
+                         {
+                             "id":  "FOR007",
+                             "id_sienge":  "125",
+                             "fornecedor":  "GEOMETA",
+                             "tipo":  "SONDAGEM"
+                         },
+                         {
+                             "id":  "FOR008",
+                             "id_sienge":  "1763",
+                             "fornecedor":  "GEOMETRIA",
+                             "tipo":  "FUNDAÇÃO"
+                         },
+                         {
+                             "id":  "FOR009",
+                             "id_sienge":  "2691",
+                             "fornecedor":  "EMMIG",
+                             "tipo":  "ESTRUTURA"
+                         },
+                         {
+                             "id":  "FOR010",
+                             "id_sienge":  "2739",
+                             "fornecedor":  "BINV",
+                             "tipo":  "COMPLEMENTARES"
+                         },
+                         {
+                             "id":  "FOR011",
+                             "id_sienge":  "2637",
+                             "fornecedor":  "DOMANI",
+                             "tipo":  "DESEMPENHO"
+                         },
+                         {
+                             "id":  "FOR012",
+                             "id_sienge":  "447",
+                             "fornecedor":  "VANIA",
+                             "tipo":  "SONDAGEM"
+                         },
+                         {
+                             "id":  "FOR013",
+                             "id_sienge":  "475",
+                             "fornecedor":  "JP SERVIÇOS",
+                             "tipo":  "SONDAGEM"
+                         },
+                         {
+                             "id":  "FOR014",
+                             "id_sienge":  "1062",
+                             "fornecedor":  "GÊMEAS",
+                             "tipo":  "ARQUITETURA"
+                         },
+                         {
+                             "id":  "FOR015",
+                             "id_sienge":  "663",
+                             "fornecedor":  "IDEAL",
+                             "tipo":  "PLANIALTIMÉTRICO"
+                         },
+                         {
+                             "id":  "FOR016",
+                             "id_sienge":  "2740",
+                             "fornecedor":  "GEOMAP",
+                             "tipo":  "PLANIALTIMÉTRICO"
+                         },
+                         {
+                             "id":  "FOR017",
+                             "id_sienge":  "2778",
+                             "fornecedor":  "THAIS",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR018",
+                             "id_sienge":  "844",
+                             "fornecedor":  "COSTA",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR019",
+                             "id_sienge":  "60",
+                             "fornecedor":  "CARTÓRIO",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR020",
+                             "id_sienge":  "370",
+                             "fornecedor":  "CREA",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR021",
+                             "id_sienge":  "1942",
+                             "fornecedor":  "CRT",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR022",
+                             "id_sienge":  "1653",
+                             "fornecedor":  "PMU",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR023",
+                             "id_sienge":  "2",
+                             "fornecedor":  "RECEITA",
+                             "tipo":  "LEGALIZAÇÃO"
+                         },
+                         {
+                             "id":  "FOR024",
+                             "id_sienge":  null,
+                             "fornecedor":  "TAXAS",
+                             "tipo":  "LEGALIZAÇÃO"
+                         }
+                     ]
+}
