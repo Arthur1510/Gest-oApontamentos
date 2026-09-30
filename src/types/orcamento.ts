@@ -143,6 +143,13 @@ export interface KpiOrcamento {
   // Métricas específicas de Projetos vs Legalização
   totalProjetosContratado: number;
   totalLegalizacaoContratado: number;
+  // Métricas de Medições em Atraso (Vencidas no Cronograma)
+  totalEmAtraso: number;
+  qtdEmAtraso: number;
+  totalMedidoNaoPago: number;
+  qtdMedidoNaoPago: number;
+  totalAMedirAtrasado: number;
+  qtdAMedirAtrasado: number;
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {

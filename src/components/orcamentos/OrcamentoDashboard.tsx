@@ -49,6 +49,7 @@ import {
   Building,
   CreditCard,
   Percent,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface OrcamentoDashboardProps {
@@ -138,16 +139,15 @@ export function OrcamentoDashboard({
     const map: Record<string, { count: number; valor: number }> = {
       'Pago': { count: 0, valor: 0 },
       'Medido': { count: 0, valor: 0 },
-      'A medir': { count: 0, valor: 0 },
-      'A fazer': { count: 0, valor: 0 },
-      'Em andamento': { count: 0, valor: 0 },
-      'Cancelada': { count: 0, valor: 0 },
+      'A Medir': { count: 0, valor: 0 },
+      'Cancelado': { count: 0, valor: 0 },
     };
 
     for (const m of filteredMed) {
-      if (map[m.status]) {
-        map[m.status].count += 1;
-        map[m.status].valor += m.valor_medicao || 0;
+      const st = m.status;
+      if (map[st]) {
+        map[st].count += 1;
+        map[st].valor += m.valor_medicao || 0;
       }
     }
 
@@ -163,10 +163,8 @@ export function OrcamentoDashboard({
   const PIE_COLORS: Record<string, string> = {
     'Pago': '#10b981', // emerald
     'Medido': '#00a3c4', // cyan WCC
-    'A medir': '#f59e0b', // amber
-    'A fazer': '#f97316', // orange
-    'Em andamento': '#3b82f6', // blue
-    'Cancelada': '#94a3b8', // slate
+    'A Medir': '#f59e0b', // amber
+    'Cancelado': '#94a3b8', // slate
   };
 
   return (
@@ -376,6 +374,45 @@ export function OrcamentoDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {/* ALERTA DE CRONOGRAMA: MEDIÇÕES EM ATRASO */}
+      {kpis.qtdEmAtraso > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in fade-in-0 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0">
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-extrabold text-amber-900 dark:text-amber-200">
+                  Atenção de Cronograma: {kpis.qtdEmAtraso} Medições Vencidas / Em Atraso
+                </h4>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white">
+                  {formatCurrency(kpis.totalEmAtraso)}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-relaxed">
+                Existem marcos previstos para meses anteriores que ainda não foram concluídos ou quitados:
+                <strong className="text-slate-800 dark:text-slate-100 ml-1">
+                  {kpis.qtdAMedirAtrasado} a medir pelos projetistas ({formatCurrency(kpis.totalAMedirAtrasado)})
+                </strong>{' '}
+                e{' '}
+                <strong className="text-slate-800 dark:text-slate-100">
+                  {kpis.qtdMedidoNaoPago} medidas aguardando quitação ({formatCurrency(kpis.totalMedidoNaoPago)})
+                </strong>.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            size="sm"
+            onClick={() => onNavigateTab('medicoes')}
+            className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold gap-1.5 h-9 rounded-xl shrink-0 self-end md:self-center"
+          >
+            Ver Medições em Atraso &rarr;
+          </Button>
+        </div>
+      )}
 
       {/* 3. GRÁFICO PRINCIPAL: CURVA DE DESEMBOLSO / CURVA S (PREVISTO X REALIZADO) */}
       <Card className="border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] shadow-sm">

@@ -278,12 +278,36 @@ export function calculateKpis(
   let totalMedidoPendente = 0;
   let totalPrevistoAMedir = 0;
   let totalCancelado = 0;
+  let totalEmAtraso = 0;
+  let qtdEmAtraso = 0;
+  let totalMedidoNaoPago = 0;
+  let qtdMedidoNaoPago = 0;
+  let totalAMedirAtrasado = 0;
+  let qtdAMedirAtrasado = 0;
 
   for (const m of filteredMed) {
-    if (m.status === 'Pago') totalPago += m.valor_medicao;
-    else if (m.status === 'Medido') totalMedidoPendente += m.valor_medicao;
-    else if (m.status === 'Cancelado' || (m.status as any) === 'Cancelada') totalCancelado += m.valor_medicao;
-    else totalPrevistoAMedir += m.valor_medicao; // 'A Medir'
+    if (m.status === 'Pago') {
+      totalPago += m.valor_medicao;
+    } else if (m.status === 'Medido') {
+      totalMedidoPendente += m.valor_medicao;
+      if (isMedicaoEmAtraso(m)) {
+        totalEmAtraso += m.valor_medicao;
+        qtdEmAtraso++;
+        totalMedidoNaoPago += m.valor_medicao;
+        qtdMedidoNaoPago++;
+      }
+    } else if (m.status === 'Cancelado' || (m.status as any) === 'Cancelada') {
+      totalCancelado += m.valor_medicao;
+    } else {
+      // 'A Medir'
+      totalPrevistoAMedir += m.valor_medicao;
+      if (isMedicaoEmAtraso(m)) {
+        totalEmAtraso += m.valor_medicao;
+        qtdEmAtraso++;
+        totalAMedirAtrasado += m.valor_medicao;
+        qtdAMedirAtrasado++;
+      }
+    }
   }
 
   const totalMedido = totalPago + totalMedidoPendente;
@@ -314,7 +338,60 @@ export function calculateKpis(
     totalMedicoesCount: filteredMed.length,
     totalProjetosContratado,
     totalLegalizacaoContratado,
+    totalEmAtraso,
+    qtdEmAtraso,
+    totalMedidoNaoPago,
+    qtdMedidoNaoPago,
+    totalAMedirAtrasado,
+    qtdAMedirAtrasado,
   };
+}
+
+/**
+ * Verifica se uma medição está em atraso em relação à data atual
+ * (Prevista para uma data/mês no passado, mas ainda não paga)
+ */
+export function isMedicaoEmAtraso(m: Medicao, dataReferencia?: string): boolean {
+  if (m.status === 'Pago' || m.status === 'Cancelado' || (m.status as any) === 'Cancelada') {
+    return false;
+  }
+
+  const todayStr = dataReferencia || new Date().toISOString().split('T')[0];
+
+  // Se tiver data prevista explícita
+  if (m.data_prevista) {
+    return m.data_prevista < todayStr;
+  }
+
+  // Se não tiver data prevista, verificar pelo mês de competência (formato "AA/MM")
+  if (m.mes_competencia) {
+    const { sortKey } = parseMesCompetencia(m.mes_competencia);
+    const todaySortKey = todayStr.substring(0, 7); // "YYYY-MM"
+    return sortKey < todaySortKey;
+  }
+
+  return false;
+}
+
+/**
+ * Retorna a quantidade de dias em atraso de uma medição
+ */
+export function getDiasAtraso(m: Medicao, dataReferencia?: string): number {
+  if (!isMedicaoEmAtraso(m, dataReferencia)) return 0;
+  const todayStr = dataReferencia || new Date().toISOString().split('T')[0];
+  const refDate = new Date(todayStr);
+
+  let targetDate: Date | null = null;
+  if (m.data_prevista) {
+    targetDate = new Date(m.data_prevista);
+  } else if (m.mes_competencia) {
+    const { sortKey } = parseMesCompetencia(m.mes_competencia);
+    targetDate = new Date(`${sortKey}-28`);
+  }
+
+  if (!targetDate || isNaN(targetDate.getTime())) return 0;
+  const diffMs = refDate.getTime() - targetDate.getTime();
+  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 /**

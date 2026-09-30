@@ -10,7 +10,7 @@ import {
   STATUS_MEDICAO_OPCOES,
   STATUS_MEDICAO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent, formatDateBR } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, formatDateBR, isMedicaoEmAtraso, getDiasAtraso } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +23,7 @@ import {
   Calendar,
   Building,
   Check,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface MedicoesTableProps {
@@ -54,11 +55,20 @@ export function MedicoesTable({
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroMes, setFiltroMes] = useState<string>('');
   const [filtroContrato, setFiltroContrato] = useState<string>('');
+  const [filtroAtrasoApenas, setFiltroAtrasoApenas] = useState(false);
 
   // Modais rápidos de pagamento inline
   const [pagamentoModalItem, setPagamentoModalItem] = useState<Medicao | null>(null);
   const [nfInput, setNfInput] = useState('');
   const [dataPagamentoInput, setDataPagamentoInput] = useState(new Date().toISOString().split('T')[0]);
+
+  // Contagem de medições em atraso no total recebido
+  const countEmAtraso = useMemo(() => {
+    return medicoes.filter((m) => {
+      if (filtroObra && m.obra !== filtroObra) return false;
+      return isMedicaoEmAtraso(m);
+    }).length;
+  }, [medicoes, filtroObra]);
 
   // Lista única de meses para o filtro
   const mesesUnicos = useMemo(() => {
@@ -76,6 +86,7 @@ export function MedicoesTable({
       if (filtroStatus && m.status !== filtroStatus) return false;
       if (filtroMes && m.mes_competencia !== filtroMes) return false;
       if (filtroContrato && m.contrato_id !== filtroContrato) return false;
+      if (filtroAtrasoApenas && !isMedicaoEmAtraso(m)) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -89,7 +100,7 @@ export function MedicoesTable({
 
       return true;
     });
-  }, [medicoes, filtroObra, filtroStatus, filtroMes, filtroContrato, searchQuery]);
+  }, [medicoes, filtroObra, filtroStatus, filtroMes, filtroContrato, filtroAtrasoApenas, searchQuery]);
 
   // Totais
   const totais = useMemo(() => {
@@ -97,15 +108,22 @@ export function MedicoesTable({
     let pago = 0;
     let medido = 0;
     let aMedir = 0;
+    let totalAtraso = 0;
+    let countAtraso = 0;
 
     for (const m of medicoesFiltradas) {
       totalValor += m.valor_medicao || 0;
       if (m.status === 'Pago') pago += m.valor_medicao || 0;
       else if (m.status === 'Medido') medido += m.valor_medicao || 0;
       else if (m.status === 'A Medir') aMedir += m.valor_medicao || 0;
+
+      if (isMedicaoEmAtraso(m)) {
+        totalAtraso += m.valor_medicao || 0;
+        countAtraso++;
+      }
     }
 
-    return { totalValor, pago, medido, aMedir };
+    return { totalValor, pago, medido, aMedir, totalAtraso, countAtraso };
   }, [medicoesFiltradas]);
 
   const handleConfirmarPagamento = () => {
@@ -174,7 +192,22 @@ export function MedicoesTable({
             ))}
           </select>
 
-          {(searchQuery || filtroObra || filtroStatus || filtroMes || filtroContrato) && (
+          {/* Filtro Rápido: Apenas Em Atraso */}
+          <button
+            type="button"
+            onClick={() => setFiltroAtrasoApenas(!filtroAtrasoApenas)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all h-9 border ${
+              filtroAtrasoApenas
+                ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-300/60 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+            }`}
+            title="Exibir apenas medições vencidas (previstas no passado e não pagas)"
+          >
+            <AlertTriangle className="h-3.5 w-3.5" />
+            <span>Em Atraso ({countEmAtraso})</span>
+          </button>
+
+          {(searchQuery || filtroObra || filtroStatus || filtroMes || filtroContrato || filtroAtrasoApenas) && (
             <Button
               variant="ghost"
               size="sm"
@@ -184,6 +217,7 @@ export function MedicoesTable({
                 setFiltroStatus('');
                 setFiltroMes('');
                 setFiltroContrato('');
+                setFiltroAtrasoApenas(false);
               }}
               className="text-xs text-rose-600 hover:text-rose-700 h-9"
             >
@@ -237,11 +271,15 @@ export function MedicoesTable({
                     text: 'text-slate-600',
                     border: 'border-slate-300',
                   };
+                  const isAtraso = isMedicaoEmAtraso(m);
+                  const diasAtraso = isAtraso ? getDiasAtraso(m) : 0;
 
                   return (
                     <tr
                       key={m.id}
-                      className="hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors"
+                      className={`hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors ${
+                        isAtraso ? 'bg-amber-500/5' : ''
+                      }`}
                     >
                       <td className="py-2.5 px-3.5 font-bold">
                         <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0B384D] text-[#072B3B] dark:text-white font-mono text-[10px] border border-slate-200 dark:border-[#00A3C4]/30">
@@ -268,8 +306,21 @@ export function MedicoesTable({
                       <td className="py-2.5 px-3.5 text-right font-bold text-slate-900 dark:text-white">
                         {formatCurrency(m.valor_medicao)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-slate-500 dark:text-slate-400">
-                        {formatDateBR(m.data_prevista)}
+                      <td className="py-2.5 px-3.5">
+                        <div className="flex flex-col gap-0.5">
+                          <span className={isAtraso ? 'text-amber-700 dark:text-amber-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}>
+                            {formatDateBR(m.data_prevista)}
+                          </span>
+                          {isAtraso && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30 w-fit"
+                              title={`Medição não concluída/paga vencida há ${diasAtraso} dias`}
+                            >
+                              <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
+                              {diasAtraso > 0 ? `${diasAtraso}d atraso` : 'Em atraso'}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2.5 px-3.5 font-medium text-slate-800 dark:text-slate-200">
                         {formatDateBR(m.data_medicao)}
@@ -355,6 +406,11 @@ export function MedicoesTable({
                   <span className="text-amber-600 dark:text-amber-400 font-bold">
                     A Medir: {formatCurrency(totais.aMedir)}
                   </span>
+                  {totais.countAtraso > 0 && (
+                    <span className="text-rose-600 dark:text-rose-400 font-bold block sm:inline sm:ml-2">
+                      {' | '}⚠️ Em Atraso: {formatCurrency(totais.totalAtraso)} ({totais.countAtraso})
+                    </span>
+                  )}
                 </td>
                 <td colSpan={3}></td>
               </tr>

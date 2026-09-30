@@ -195,18 +195,39 @@ const medicoes = medicoesTable.map((m, idx) => {
   }
 
   const statusNorm = normalizeStatus(m.STATUS);
+  const id = m['Estudo preliminar'] || `MED${String(idx + 1).padStart(3, '0')}`;
+
+  // Correção de erro de digitação de ano na planilha original (2026 -> 2027)
+  // Medições cujos marcos precedentes ocorrem no fim de 2026 (Out/Nov/Dez), mas cujo marco executivo/alvará foi digitado como '26' em vez de '27'
+  let fixedDataPrevista = dataPrevista;
+  let fixedDataRef = dataRef;
+  let fixedMesCompetencia = m['MÊS'] || (dataRef ? dataRef.substring(2, 7).replace('-', '/') : '');
+
+  if (['MED023', 'MED034', 'MED038', 'MED041', 'MED082', 'MED086'].includes(id)) {
+    if (fixedDataPrevista && fixedDataPrevista.startsWith('2026-01-')) {
+      fixedDataPrevista = fixedDataPrevista.replace('2026-01-', '2027-01-');
+      fixedDataRef = fixedDataRef ? fixedDataRef.replace('2026-01-', '2027-01-') : fixedDataPrevista;
+      fixedMesCompetencia = '27/01';
+    }
+  } else if (id === 'MED042') {
+    if (fixedDataPrevista && fixedDataPrevista.startsWith('2026-03-')) {
+      fixedDataPrevista = fixedDataPrevista.replace('2026-03-', '2027-03-');
+      fixedDataRef = fixedDataRef ? fixedDataRef.replace('2026-03-', '2027-03-') : fixedDataPrevista;
+      fixedMesCompetencia = '27/03';
+    }
+  }
 
   return {
-    id: m['Estudo preliminar'] || `MED${String(idx + 1).padStart(3, '0')}`,
+    id: id,
     contrato_id: m.CONTRATO_ID || '',
     empresa: sanitizeText(m.EMPRESA),
     obra: m.OBRA || '',
     etapa: etapaStr,
     percentual: parseFloat(m.PERCENTUAL) || 0,
-    data_prevista: dataPrevista,
+    data_prevista: fixedDataPrevista,
     data_medicao: dataMedicao,
-    data_referencia: dataRef,
-    mes_competencia: m['MÊS'] || (dataRef ? dataRef.substring(2, 7).replace('-', '/') : ''),
+    data_referencia: fixedDataRef,
+    mes_competencia: fixedMesCompetencia,
     valor_medicao: parseFloat(m['VALOR MEDIÇÃO']) || 0,
     status: statusNorm,
     nf: m.NF ? String(m.NF).trim() : '',

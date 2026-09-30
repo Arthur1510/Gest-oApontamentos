@@ -27,6 +27,7 @@ import {
   recalculateContratos,
   recalculateOrcamentos,
   calculateCurvaDesembolso,
+  isMedicaoEmAtraso,
 } from '@/lib/orcamento-utils';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase/client';
 import { OrcamentoDashboard } from '@/components/orcamentos/OrcamentoDashboard';
@@ -412,6 +413,18 @@ export default function OrcamentosPage() {
         >
           <FileCheck className="h-4 w-4" />
           Medições ({medicoes.length})
+          {medicoes.some((m) => isMedicaoEmAtraso(m)) && (
+            <span
+              className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                activeTab === 'medicoes'
+                  ? 'bg-amber-400 text-slate-900'
+                  : 'bg-amber-500 text-white'
+              }`}
+              title="Medições com marcos previstos no passado ainda não quitadas"
+            >
+              {medicoes.filter((m) => isMedicaoEmAtraso(m)).length} em atraso
+            </span>
+          )}
         </button>
 
         <button
