@@ -269,12 +269,12 @@ export function OrcamentoBaseTable({
                       key={item.id}
                       className="hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors"
                     >
-                      <td className="py-2.5 px-3.5 font-bold">
+                      <td className="py-2.5 px-3.5 font-bold whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
                           {item.obra}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3.5">
+                      <td className="py-2.5 px-3.5 whitespace-nowrap">
                         <span
                           className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
                             item.categoria === 'Legalização'
@@ -285,20 +285,20 @@ export function OrcamentoBaseTable({
                           {item.categoria || 'Projeto'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3.5 font-semibold text-slate-900 dark:text-white">
+                      <td className="py-2.5 px-3.5 font-semibold text-slate-900 dark:text-white max-w-[160px] break-words">
                         {item.disciplina}
                       </td>
-                      <td className="py-2.5 px-3.5 text-slate-600 dark:text-slate-300">
+                      <td className="py-2.5 px-3.5 text-slate-600 dark:text-slate-300 max-w-[180px] break-words">
                         {item.subdisciplina}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-bold text-slate-900 dark:text-white">
+                      <td className="py-2.5 px-3.5 text-right font-bold text-slate-900 dark:text-white font-mono whitespace-nowrap">
                         {formatCurrency(item.orcamento_base)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-semibold text-[#008EA9] dark:text-[#00C4EB]">
+                      <td className="py-2.5 px-3.5 text-right font-semibold text-[#008EA9] dark:text-[#00C4EB] font-mono whitespace-nowrap">
                         {formatCurrency(item.valor_contratado)}
                       </td>
                       <td
-                        className={`py-2.5 px-3.5 text-right font-semibold ${
+                        className={`py-2.5 px-3.5 text-right font-semibold font-mono whitespace-nowrap ${
                           item.saldo_a_contratar < 0
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-slate-700 dark:text-slate-300'
@@ -306,13 +306,13 @@ export function OrcamentoBaseTable({
                       >
                         {formatCurrency(item.saldo_a_contratar)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                      <td className="py-2.5 px-3.5 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                         {formatCurrency(item.valor_medido)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-right font-semibold text-purple-600 dark:text-purple-400">
+                      <td className="py-2.5 px-3.5 text-right font-semibold text-purple-600 dark:text-purple-400 font-mono whitespace-nowrap">
                         {formatCurrency(item.saldo_medicao)}
                       </td>
-                      <td className="py-2.5 px-3.5 text-center">
+                      <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
                         <span
                           className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusColor.bg} ${statusColor.text} ${statusColor.border}`}
                         >

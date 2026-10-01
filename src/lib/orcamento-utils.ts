@@ -105,14 +105,34 @@ export function recalculateContratos(
 
   return contratos.map((c) => {
     const valorMedido = medidoPorContrato[c.id] || 0;
-    const saldoAMedir = Math.max(0, c.valor_contrato - valorMedido);
-    const percentualMedido = c.valor_contrato > 0 ? valorMedido / c.valor_contrato : 0;
+    
+    // Aditivos
+    const aditivos = c.aditivos || [];
+    const totalAditivos = aditivos.reduce((acc, a) => acc + (Number(a.valor) || 0), 0);
+    const valorOriginal = c.valor_original !== undefined ? c.valor_original : (c.valor_contrato - totalAditivos);
+    const valorContratoVigente = valorOriginal + totalAditivos;
+
+    // Distrato
+    const isDistratado = c.status === 'Distratado';
+    const congelar = c.distrato?.congelar_saldo !== false;
+
+    let saldoAMedir = Math.max(0, valorContratoVigente - valorMedido);
+    if (isDistratado && congelar) {
+      saldoAMedir = 0;
+    }
+
+    const percentualMedido = valorContratoVigente > 0 ? valorMedido / valorContratoVigente : 0;
 
     return {
       ...c,
+      valor_original: valorOriginal,
+      valor_aditivos: totalAditivos,
+      valor_contrato: valorContratoVigente,
       valor_medido: valorMedido,
       saldo_a_medir: saldoAMedir,
       percentual_medido: percentualMedido,
+      status: c.status || 'Ativo',
+      aditivos,
     };
   });
 }

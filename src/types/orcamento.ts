@@ -79,6 +79,36 @@ export interface ItemOrcamento {
 
 export type NovoItemOrcamento = Omit<ItemOrcamento, 'id' | 'valor_contratado' | 'saldo_a_contratar' | 'valor_medido' | 'saldo_medicao'>;
 
+export type StatusContrato = 'Ativo' | 'Distratado' | 'Concluído';
+
+export const STATUS_CONTRATO_OPCOES: StatusContrato[] = [
+  'Ativo',
+  'Distratado',
+  'Concluído',
+];
+
+export type TipoAditivo = 'Valor' | 'Prazo' | 'Escopo' | 'Misto';
+
+export interface AditivoContrato {
+  id: string;
+  contrato_id: string;
+  numero: number;
+  data: string; // ISO YYYY-MM-DD
+  tipo: TipoAditivo;
+  valor: number; // valor monetário (+ para acréscimo, - para supressão, 0 para prazo/escopo)
+  descricao: string;
+  novo_prazo?: string | null;
+  criado_em?: string;
+}
+
+export interface DistratoInfo {
+  data: string; // ISO YYYY-MM-DD
+  motivo: string;
+  valor_acerto?: number;
+  congelar_saldo?: boolean;
+  observacoes?: string;
+}
+
 export interface Contrato {
   id: string;
   num_sienge: string;
@@ -87,10 +117,15 @@ export interface Contrato {
   disciplina: string;
   subdisciplina: string;
   valor_contrato: number;
+  valor_original?: number;
+  valor_aditivos?: number;
+  aditivos?: AditivoContrato[];
   valor_medido: number;
   saldo_a_medir: number;
   percentual_medido: number; // 0 a 1
   categoria: CategoriaContrato;
+  status?: StatusContrato;
+  distrato?: DistratoInfo | null;
 }
 
 export type NovoContrato = Omit<Contrato, 'id' | 'valor_medido' | 'saldo_a_medir' | 'percentual_medido'>;
@@ -206,3 +241,25 @@ export const STATUS_ORCAMENTO_COLORS: Record<StatusOrcamento, { bg: string; text
     border: 'border-slate-500/30',
   },
 };
+
+export const STATUS_CONTRATO_COLORS: Record<StatusContrato, { bg: string; text: string; border: string; badge: string }> = {
+  'Ativo': {
+    bg: 'bg-emerald-500/10 dark:bg-emerald-500/20',
+    text: 'text-emerald-700 dark:text-emerald-400',
+    border: 'border-emerald-500/30',
+    badge: 'bg-emerald-500 text-white',
+  },
+  'Distratado': {
+    bg: 'bg-rose-500/10 dark:bg-rose-500/20',
+    text: 'text-rose-700 dark:text-rose-400',
+    border: 'border-rose-500/30',
+    badge: 'bg-rose-600 text-white',
+  },
+  'Concluído': {
+    bg: 'bg-blue-500/10 dark:bg-blue-500/20',
+    text: 'text-blue-700 dark:text-blue-400',
+    border: 'border-blue-500/30',
+    badge: 'bg-blue-600 text-white',
+  },
+};
+
