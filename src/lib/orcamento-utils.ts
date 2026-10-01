@@ -6,7 +6,6 @@ import {
   KpiOrcamento,
   Obra,
 } from '@/types/orcamento';
-import { MOCK_OBRAS } from './orcamento-mock-data';
 
 /**
  * Formatação de valores monetários em Real (BRL)
@@ -121,7 +120,7 @@ export function normalizeText(str?: string | null): string {
 export function getCanonicalObra(obraStr?: string | null, obrasList?: Obra[]): string {
   if (!obraStr) return '';
   const clean = normalizeText(obraStr);
-  const allObras = [...(obrasList || []), ...MOCK_OBRAS];
+  const allObras = obrasList || [];
   for (const o of allObras) {
     if (
       clean === normalizeText(o.codigo) ||
@@ -161,33 +160,55 @@ export function recalculateContratos(
     
     // Identificação correta e robusta do valor_original
     // Se c.valor_original já existe e é > 0, mantemos ele como o valor base imutável
-    // Se não existir, o valor original é o valor_contrato atual (se não tinha aditivos gravados) ou deduzido
+    // Se não existir, verificamos se o contrato já possuía aditivos registrados no objeto.
+    // Se possuía aditivos gravados, o valor_original é (valor_contrato - totalAditivos).
+    // Caso contrário, o valor original é o valor_contrato base atual (e os aditivos somarão a ele).
     let valorOriginal = Number(c.valor_original);
     if (!valorOriginal || isNaN(valorOriginal) || valorOriginal <= 0) {
-      if (c.valor_contrato && Number(c.valor_contrato) > 0) {
-        valorOriginal = totalAditivos > 0 ? Number(c.valor_contrato) - totalAditivos : Number(c.valor_contrato);
+      const vContrato = Number(c.valor_contrato) || 0;
+      if (Number(c.valor_aditivos) > 0 && totalAditivos > 0) {
+        valorOriginal = Math.max(0, vContrato - totalAditivos);
       } else {
-        valorOriginal = 0;
+        valorOriginal = vContrato;
       }
     }
 
     const valorContratoVigente = valorOriginal + totalAditivos;
 
     // Distrato
-    const isDistratado = c.status === 'Distratado';
+    const isDistratado = c.status === 'Distratado' || !!c.distrato;
     const congelar = c.distrato?.congelar_saldo !== false;
     const valorAcerto = Number(c.distrato?.valor_acerto) || 0;
 
-    // Se o contrato foi distratado com congelamento de saldo, o valor final efetivo do contrato
-    // reflete o que foi executado (valorMedido + valorAcerto), liberando o saldo não medido
-    // de volta para o Orçamento Base da obra.
-    const valorFinalContrato = (isDistratado && congelar)
-      ? (valorMedido + valorAcerto)
-      : valorContratoVigente;
+    let valorFinalContrato = valorContratoVigente;
+    let saldoAMedir = Math.max(0, valorContratoVigente - valorMedido);
 
-    let saldoAMedir = Math.max(0, valorFinalContrato - valorMedido);
-    if (isDistratado && congelar) {
-      saldoAMedir = Math.max(0, valorAcerto);
+    if (isDistratado) {
+      if (congelar) {
+        // Se congelar_saldo está ativo, o saldo restante não medido é cancelado.
+        // Se o valorAcerto for preenchido com o valor distratado (ex: 83.000 em contrato de 150.000):
+        // ou se valorAcerto é 0: o contrato vigente reflete apenas o que foi executado (valorMedido).
+        const saldoCancelado = Math.max(0, valorContratoVigente - valorMedido);
+        if (valorAcerto > 0 && Math.abs(valorAcerto - saldoCancelado) < 1) {
+          // valorAcerto informado é exatamente o saldo distratado/cancelado (ex: 83.000)
+          valorFinalContrato = valorMedido;
+        } else if (valorAcerto > 0 && valorAcerto > valorMedido && valorAcerto <= valorContratoVigente) {
+          // valorAcerto informado como montante da dedução/rescisão do contrato
+          valorFinalContrato = Math.max(valorMedido, valorContratoVigente - valorAcerto);
+        } else if (valorAcerto > 0 && valorAcerto < saldoCancelado) {
+          // valorAcerto é um valor residual de acerto além do já medido
+          valorFinalContrato = valorMedido + valorAcerto;
+        } else {
+          valorFinalContrato = valorMedido;
+        }
+        saldoAMedir = 0;
+      } else {
+        // Se não congelar saldo, deduz o valor do distrato se informado
+        if (valorAcerto > 0) {
+          valorFinalContrato = Math.max(valorMedido, valorContratoVigente - valorAcerto);
+          saldoAMedir = Math.max(0, valorFinalContrato - valorMedido);
+        }
+      }
     }
 
     const percentualMedido = valorFinalContrato > 0
@@ -274,7 +295,20 @@ export function isContratoMatchOrcamento(
 
     // 1.4 Se o orçamento tem subdisciplina genérica e o contrato tem subdisciplina específica
     if (oSubIsGeneric) {
-      return true;
+      // Se já existe um orçamento específico nesta mesma disciplina na obra para essa subdisciplina do contrato, NÃO vincula ao genérico
+      const temOrcEspecifico = allOrcamentosDaObra
+        ? allOrcamentosDaObra.some((item) => {
+            if (item.id === o.id) return false;
+            if (normalizeText(item.disciplina) !== cDisc) return false;
+            const sub = cleanTerm(item.subdisciplina);
+            return Boolean(sub && sub !== cDisc && (sub === cSub || sub.includes(cSub) || cSub.includes(sub)));
+          })
+        : false;
+
+      if (!temOrcEspecifico) {
+        return true;
+      }
+      return false;
     }
 
     // 1.5 Correspondência textual parcial na subdisciplina (ex: "ARQUITETURA LEGAL" e "LEGAL")
@@ -351,6 +385,41 @@ export function recalculateOrcamentos(
       status: statusAtual,
     };
   });
+}
+
+export interface ResumoAditivosOrcamento {
+  totalAditivos: number;
+  qtdAditivos: number;
+  valorOriginalTotal: number;
+  contratosCount: number;
+}
+
+/**
+ * Retorna o resumo consolidado de aditivos e valor original para um item de orçamento base
+ */
+export function getAditivosSummaryByOrcamento(
+  o: ItemOrcamento,
+  contratos: Contrato[],
+  obras?: Obra[],
+  allOrcamentosDaObra?: ItemOrcamento[]
+): ResumoAditivosOrcamento {
+  const matched = contratos.filter((c) => isContratoMatchOrcamento(c, o, obras, allOrcamentosDaObra));
+  let totalAditivos = 0;
+  let qtdAditivos = 0;
+  let valorOriginalTotal = 0;
+
+  for (const c of matched) {
+    totalAditivos += Number(c.valor_aditivos) || 0;
+    qtdAditivos += (c.aditivos || []).length;
+    valorOriginalTotal += Number(c.valor_original ?? c.valor_contrato) || 0;
+  }
+
+  return {
+    totalAditivos,
+    qtdAditivos,
+    valorOriginalTotal,
+    contratosCount: matched.length,
+  };
 }
 
 /**

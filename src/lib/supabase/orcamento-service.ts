@@ -31,16 +31,20 @@ export async function fetchOrcamentoDataFromSupabase(): Promise<{
   orcamentos: ItemOrcamento[];
   contratos: Contrato[];
   medicoes: Medicao[];
+  disciplinas: Disciplina[];
+  subdisciplinas: Subdisciplina[];
 } | null> {
   if (!isSupabaseReady() || !supabase) return null;
 
   try {
-    const [obrasRes, fornRes, orcRes, ctRes, medRes] = await Promise.all([
+    const [obrasRes, fornRes, orcRes, ctRes, medRes, discRes, subdiscRes] = await Promise.all([
       supabase.from('obras_cad').select('*').order('codigo'),
       supabase.from('fornecedores_cad').select('*').order('fornecedor'),
       supabase.from('orcamentos_base').select('*').order('id'),
       supabase.from('contratos_obras').select('*').order('id'),
       supabase.from('medicoes_contratos').select('*').order('data_prevista', { ascending: true }),
+      supabase.from('disciplinas_cad').select('*').order('disciplina'),
+      supabase.from('subdisciplinas_cad').select('*').order('subdisciplina'),
     ]);
 
     if (obrasRes.error) console.warn('Aviso ao carregar obras_cad do Supabase:', obrasRes.error.message);
@@ -118,12 +122,72 @@ export async function fetchOrcamentoDataFromSupabase(): Promise<{
       data_pagamento: m.data_pagamento || null,
     }));
 
+    // Disciplinas: do banco ou derivadas dinamicamente dos dados reais
+    let disciplinas: Disciplina[] = (discRes.data || []).map((d: any) => ({
+      id: d.id,
+      disciplina: d.disciplina,
+      codigo: d.codigo || d.disciplina?.slice(0, 4).toUpperCase(),
+    }));
+
+    if (disciplinas.length === 0) {
+      const uniqueDisc = new Set<string>();
+      orcamentos.forEach((o) => {
+        if (o.disciplina) uniqueDisc.add(o.disciplina);
+      });
+      contratos.forEach((c) => {
+        if (c.disciplina) uniqueDisc.add(c.disciplina);
+      });
+      disciplinas = Array.from(uniqueDisc).sort().map((d, idx) => ({
+        id: `DISC_${String(idx + 1).padStart(3, '0')}`,
+        disciplina: d,
+        codigo: d.slice(0, 4).toUpperCase(),
+      }));
+    }
+
+    // Subdisciplinas: do banco ou derivadas dinamicamente dos dados reais
+    let subdisciplinas: Subdisciplina[] = (subdiscRes.data || []).map((sd: any) => ({
+      id: sd.id,
+      disciplina: sd.disciplina,
+      cod_disciplina: sd.cod_disciplina || '',
+      subdisciplina: sd.subdisciplina,
+      cod_subdisciplina: sd.cod_subdisciplina || '',
+    }));
+
+    if (subdisciplinas.length === 0) {
+      const uniqueSub = new Map<string, { disciplina: string; subdisciplina: string }>();
+      orcamentos.forEach((o) => {
+        if (o.disciplina && o.subdisciplina) {
+          const key = `${o.disciplina.toUpperCase()}__${o.subdisciplina.toUpperCase()}`;
+          if (!uniqueSub.has(key)) {
+            uniqueSub.set(key, { disciplina: o.disciplina, subdisciplina: o.subdisciplina });
+          }
+        }
+      });
+      contratos.forEach((c) => {
+        if (c.disciplina && c.subdisciplina) {
+          const key = `${c.disciplina.toUpperCase()}__${c.subdisciplina.toUpperCase()}`;
+          if (!uniqueSub.has(key)) {
+            uniqueSub.set(key, { disciplina: c.disciplina, subdisciplina: c.subdisciplina });
+          }
+        }
+      });
+      subdisciplinas = Array.from(uniqueSub.values()).map((item, idx) => ({
+        id: `SUB_${String(idx + 1).padStart(3, '0')}`,
+        disciplina: item.disciplina,
+        cod_disciplina: item.disciplina.slice(0, 4).toUpperCase(),
+        subdisciplina: item.subdisciplina,
+        cod_subdisciplina: item.subdisciplina.slice(0, 4).toUpperCase(),
+      }));
+    }
+
     return {
       obras,
       fornecedores,
       orcamentos,
       contratos,
       medicoes,
+      disciplinas,
+      subdisciplinas,
     };
   } catch (err) {
     console.error('Erro ao conectar ao Supabase para orçamentos:', err);

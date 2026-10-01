@@ -31,7 +31,7 @@ interface ExportModalProps {
   curvaPontos: CurvaDesembolsoPonto[];
   isOpen: boolean;
   onClose: () => void;
-  onResetarDadosPadrao: () => void;
+  onResetarDadosPadrao?: () => void;
   onLimparContratosMedicoes?: () => void;
   onAbrirRelatorioPdf?: () => void;
   onExportarExcelConsolidado?: () => void;
@@ -413,28 +413,30 @@ export function ExportModal({
           </div>
 
           {/* Seção Restaurar Planilha Original WCC */}
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
-              <AlertTriangle className="h-4 w-4" />
-              Restaurar Dados Demo (Planilha R01)
+          {onResetarDadosPadrao && (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-2">
+              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 font-bold text-xs">
+                <AlertTriangle className="h-4 w-4" />
+                Restaurar Dados Demo (Planilha R01)
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300">
+                Recarrega os contratos e medições de exemplo da planilha original WCC para testes e demonstração.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (confirm('Deseja restaurar os dados de demonstração da planilha original WCC?')) {
+                    onResetarDadosPadrao();
+                    onClose();
+                  }
+                }}
+                className="text-xs border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 gap-2 h-8"
+              >
+                <RotateCcw className="h-3.5 w-3.5" /> Carregar Dados de Demonstração
+              </Button>
             </div>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Recarrega os contratos e medições de exemplo da planilha original WCC para testes e demonstração.
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (confirm('Deseja restaurar os dados de demonstração da planilha original WCC?')) {
-                  onResetarDadosPadrao();
-                  onClose();
-                }
-              }}
-              className="text-xs border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-500/20 gap-2 h-8"
-            >
-              <RotateCcw className="h-3.5 w-3.5" /> Carregar Dados de Demonstração
-            </Button>
-          </div>
+          )}
         </div>
 
         {/* Footer */}

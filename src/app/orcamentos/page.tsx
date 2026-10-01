@@ -17,15 +17,6 @@ import {
   DistratoInfo,
 } from '@/types/orcamento';
 import {
-  MOCK_OBRAS,
-  MOCK_DISCIPLINAS,
-  MOCK_SUBDISCIPLINAS,
-  MOCK_FORNECEDORES,
-  MOCK_ORCAMENTOS,
-  MOCK_CONTRATOS,
-  MOCK_MEDICOES,
-} from '@/lib/orcamento-mock-data';
-import {
   recalculateContratos,
   recalculateOrcamentos,
   isContratoMatchOrcamento,
@@ -95,14 +86,14 @@ const STORAGE_KEY_CLEAN_INIT = 'wcc_platform_clean_init_v2';
 export default function OrcamentosPage() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orcamentos' | 'contratos' | 'medicoes' | 'cadastros'>('dashboard');
 
-  // Cadastros base
-  const [obras, setObras] = useState<Obra[]>(MOCK_OBRAS);
-  const [disciplinas, setDisciplinas] = useState<Disciplina[]>(MOCK_DISCIPLINAS);
-  const [subdisciplinas, setSubdisciplinas] = useState<Subdisciplina[]>(MOCK_SUBDISCIPLINAS);
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>(MOCK_FORNECEDORES);
+  // Cadastros base (carregados do Supabase ou cache local)
+  const [obras, setObras] = useState<Obra[]>([]);
+  const [disciplinas, setDisciplinas] = useState<Disciplina[]>([]);
+  const [subdisciplinas, setSubdisciplinas] = useState<Subdisciplina[]>([]);
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
 
-  // Orçamentos, Contratos e Medições (Contratos e medições iniciam vazios para preenchimento direto)
-  const [orcamentos, setOrcamentos] = useState<ItemOrcamento[]>(() => recalculateOrcamentos(MOCK_ORCAMENTOS, []));
+  // Orçamentos, Contratos e Medições
+  const [orcamentos, setOrcamentos] = useState<ItemOrcamento[]>([]);
   const [contratos, setContratos] = useState<Contrato[]>([]);
   const [medicoes, setMedicoes] = useState<Medicao[]>([]);
 
@@ -135,17 +126,33 @@ export default function OrcamentosPage() {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isRelatorioPdfOpen, setIsRelatorioPdfOpen] = useState(false);
 
-  // Estados de Sincronização Supabase
+  // Estados de Sincronização Supabase & Carregamento
   const [isSupabaseOnline, setIsSupabaseOnline] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [lastSyncStatus, setLastSyncStatus] = useState<string | null>(null);
+
+  // Valores reativos recalculados com aditivos, distratos e vínculos dinâmicos
+  const contratosRecalculados = useMemo(() => {
+    return recalculateContratos(contratos, medicoes);
+  }, [contratos, medicoes]);
+
+  const orcamentosCalculados = useMemo(() => {
+    return recalculateOrcamentos(orcamentos, contratosRecalculados, obras);
+  }, [orcamentos, contratosRecalculados, obras]);
 
   // Carregar dados salvos no localStorage ou Supabase
   useEffect(() => {
     const carregarDados = async () => {
-      let dadosLocaisExistem = false;
+      let localContratosSalvos: Contrato[] = [];
+      let localMedicoesSalvos: Medicao[] = [];
+      let localOrcamentosSalvos: ItemOrcamento[] = [];
+      let localObrasSalvos: Obra[] = [];
+      let localFornecedoresSalvos: Fornecedor[] = [];
+      let localDisciplinasSalvos: Disciplina[] = [];
+      let localSubdisciplinasSalvos: Subdisciplina[] = [];
+
       try {
-        const isInit = localStorage.getItem(STORAGE_KEY_CLEAN_INIT);
         const savedOrc = localStorage.getItem(STORAGE_KEY_ORCAMENTOS);
         const savedCt = localStorage.getItem(STORAGE_KEY_CONTRATOS);
         const savedMed = localStorage.getItem(STORAGE_KEY_MEDICOES);
@@ -154,74 +161,63 @@ export default function OrcamentosPage() {
         const savedDisc = localStorage.getItem(STORAGE_KEY_DISCIPLINAS);
         const savedSubdisc = localStorage.getItem(STORAGE_KEY_SUBDISCIPLINAS);
 
-        let currentObras = obras;
         if (savedObr) {
-          currentObras = JSON.parse(savedObr);
-          setObras(currentObras);
+          localObrasSalvos = JSON.parse(savedObr);
+          setObras(localObrasSalvos);
         }
-        if (savedForn) setFornecedores(JSON.parse(savedForn));
-        if (savedDisc) setDisciplinas(JSON.parse(savedDisc));
-        if (savedSubdisc) setSubdisciplinas(JSON.parse(savedSubdisc));
-
-        let localContratosSalvos: Contrato[] = [];
-        if (savedCt && savedMed && savedOrc) {
-          dadosLocaisExistem = true;
-          const parsedCt: Contrato[] = JSON.parse(savedCt);
-          const parsedMed: Medicao[] = JSON.parse(savedMed);
-          const parsedOrc: ItemOrcamento[] = JSON.parse(savedOrc);
-          localContratosSalvos = parsedCt;
-
-          const recalcCt = recalculateContratos(parsedCt, parsedMed);
-          const recalcOrc = recalculateOrcamentos(parsedOrc, recalcCt, currentObras);
-
-          setContratos(recalcCt);
-          setMedicoes(parsedMed);
-          setOrcamentos(recalcOrc);
-        } else if (!isInit) {
-          // Primeira inicialização v2: Contratos e medições iniciam limpos (vazios) para preenchimento direto
-          localStorage.setItem(STORAGE_KEY_CLEAN_INIT, 'true');
-          const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, [], currentObras);
-          setContratos([]);
-          setMedicoes([]);
-          setOrcamentos(recalcOrc);
-          localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify([]));
-          localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify([]));
-          localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
-        } else {
-          // Se já foi inicializado mas não há contratos salvos, mantém vazio
-          const baseOrc = savedOrc ? JSON.parse(savedOrc) : MOCK_ORCAMENTOS;
-          const recalcOrc = recalculateOrcamentos(baseOrc, [], currentObras);
-          setContratos([]);
-          setMedicoes([]);
-          setOrcamentos(recalcOrc);
+        if (savedForn) {
+          localFornecedoresSalvos = JSON.parse(savedForn);
+          setFornecedores(localFornecedoresSalvos);
+        }
+        if (savedDisc) {
+          localDisciplinasSalvos = JSON.parse(savedDisc);
+          setDisciplinas(localDisciplinasSalvos);
+        }
+        if (savedSubdisc) {
+          localSubdisciplinasSalvos = JSON.parse(savedSubdisc);
+          setSubdisciplinas(localSubdisciplinasSalvos);
+        }
+        if (savedCt) {
+          localContratosSalvos = JSON.parse(savedCt);
+          setContratos(localContratosSalvos);
+        }
+        if (savedMed) {
+          localMedicoesSalvos = JSON.parse(savedMed);
+          setMedicoes(localMedicoesSalvos);
+        }
+        if (savedOrc) {
+          localOrcamentosSalvos = JSON.parse(savedOrc);
+          setOrcamentos(localOrcamentosSalvos);
         }
       } catch (err) {
         console.warn('Erro ao carregar dados locais:', err);
       }
 
-      // Supabase: carregar dados atualizados da nuvem se disponível
+      // Supabase: carregar dados atualizados da nuvem
       if (isSupabaseReady()) {
         setIsSupabaseOnline(true);
         try {
           setIsSyncing(true);
           const cloud = await fetchOrcamentoDataFromSupabase();
-          if (cloud && (cloud.orcamentos.length > 0 || cloud.contratos.length > 0)) {
-            const mergedObras = [...MOCK_OBRAS];
-            (cloud.obras || []).forEach((co) => {
-              const idx = mergedObras.findIndex((mo) => mo.id === co.id || mo.codigo === co.codigo);
-              if (idx >= 0) mergedObras[idx] = co;
-              else mergedObras.push(co);
-            });
+          if (cloud) {
+            if (cloud.obras && cloud.obras.length > 0) {
+              setObras(cloud.obras);
+              localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
+            }
 
-            let baseOrcamentos = cloud.orcamentos;
-            if (cloud.orcamentos.length < MOCK_ORCAMENTOS.length) {
-              const mergedOrc = [...cloud.orcamentos];
-              MOCK_ORCAMENTOS.forEach((mo) => {
-                if (!mergedOrc.some((co) => co.id === mo.id)) {
-                  mergedOrc.push(mo);
-                }
-              });
-              baseOrcamentos = mergedOrc;
+            if (cloud.fornecedores && cloud.fornecedores.length > 0) {
+              setFornecedores(cloud.fornecedores);
+              localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
+            }
+
+            if (cloud.disciplinas && cloud.disciplinas.length > 0) {
+              setDisciplinas(cloud.disciplinas);
+              localStorage.setItem(STORAGE_KEY_DISCIPLINAS, JSON.stringify(cloud.disciplinas));
+            }
+
+            if (cloud.subdisciplinas && cloud.subdisciplinas.length > 0) {
+              setSubdisciplinas(cloud.subdisciplinas);
+              localStorage.setItem(STORAGE_KEY_SUBDISCIPLINAS, JSON.stringify(cloud.subdisciplinas));
             }
 
             // Mescla contratos da nuvem com dados locais (aditivos e distratos) para resiliência
@@ -251,16 +247,10 @@ export default function OrcamentosPage() {
               }
             });
 
+            const obrasVigentes = cloud.obras && cloud.obras.length > 0 ? cloud.obras : (localObrasSalvos.length > 0 ? localObrasSalvos : []);
             const recalcCt = recalculateContratos(mergedContratos, cloud.medicoes);
-            const recalcOrc = recalculateOrcamentos(baseOrcamentos, recalcCt, mergedObras);
+            const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, obrasVigentes);
 
-            setObras(mergedObras);
-            localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(mergedObras));
-
-            if (cloud.fornecedores.length > 0) {
-              setFornecedores(cloud.fornecedores);
-              localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
-            }
             setContratos(recalcCt);
             setMedicoes(cloud.medicoes);
             setOrcamentos(recalcOrc);
@@ -275,7 +265,10 @@ export default function OrcamentosPage() {
           console.warn('Erro ao carregar dados do Supabase:', cloudErr);
         } finally {
           setIsSyncing(false);
+          setIsLoading(false);
         }
+      } else {
+        setIsLoading(false);
       }
     };
 
@@ -322,28 +315,6 @@ export default function OrcamentosPage() {
   const handleLimparContratosEMedicoes = useCallback(() => {
     salvarDados([], [], orcamentos);
   }, [salvarDados, orcamentos]);
-
-  // Carregar dados de demonstração da planilha original
-  const handleCarregarDadosDemo = useCallback(() => {
-    const recalcCt = recalculateContratos(MOCK_CONTRATOS, MOCK_MEDICOES);
-    const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, recalcCt, MOCK_OBRAS);
-
-    setObras(MOCK_OBRAS);
-    setFornecedores(MOCK_FORNECEDORES);
-    setDisciplinas(MOCK_DISCIPLINAS);
-    setSubdisciplinas(MOCK_SUBDISCIPLINAS);
-    setContratos(recalcCt);
-    setMedicoes(MOCK_MEDICOES);
-    setOrcamentos(recalcOrc);
-
-    localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify(recalcCt));
-    localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(MOCK_MEDICOES));
-    localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
-    localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(MOCK_OBRAS));
-    localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(MOCK_FORNECEDORES));
-    localStorage.setItem(STORAGE_KEY_DISCIPLINAS, JSON.stringify(MOCK_DISCIPLINAS));
-    localStorage.setItem(STORAGE_KEY_SUBDISCIPLINAS, JSON.stringify(MOCK_SUBDISCIPLINAS));
-  }, []);
 
   // --- SINCRONIZAÇÃO SUPABASE ---
   const handleSincronizarTudoComSupabase = useCallback(async () => {
@@ -395,13 +366,21 @@ export default function OrcamentosPage() {
       const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
       const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
 
-      if (cloud.obras.length > 0) {
+      if (cloud.obras && cloud.obras.length > 0) {
         setObras(cloud.obras);
         localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
       }
-      if (cloud.fornecedores.length > 0) {
+      if (cloud.fornecedores && cloud.fornecedores.length > 0) {
         setFornecedores(cloud.fornecedores);
         localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
+      }
+      if (cloud.disciplinas && cloud.disciplinas.length > 0) {
+        setDisciplinas(cloud.disciplinas);
+        localStorage.setItem(STORAGE_KEY_DISCIPLINAS, JSON.stringify(cloud.disciplinas));
+      }
+      if (cloud.subdisciplinas && cloud.subdisciplinas.length > 0) {
+        setSubdisciplinas(cloud.subdisciplinas);
+        localStorage.setItem(STORAGE_KEY_SUBDISCIPLINAS, JSON.stringify(cloud.subdisciplinas));
       }
 
       setContratos(recalcCt);
@@ -1019,16 +998,16 @@ export default function OrcamentosPage() {
 
   // Exportação consolidada para Excel com Dashboard & 6 Planilhas
   const handleExportarExcelConsolidado = useCallback(() => {
-    const kpis = calculateKpis(orcamentos, contratos, medicoes, filtroObra || null, null);
+    const kpis = calculateKpis(orcamentosCalculados, contratosRecalculados, medicoes, filtroObra || null, null);
     exportMultiSheetExcel({
-      orcamentos,
-      contratos,
+      orcamentos: orcamentosCalculados,
+      contratos: contratosRecalculados,
       medicoes,
       curvaPontos: curvaPontosExport,
       kpis,
       nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${filtroObra || 'Geral'}.xls`,
     });
-  }, [orcamentos, contratos, medicoes, filtroObra, curvaPontosExport]);
+  }, [orcamentosCalculados, contratosRecalculados, medicoes, filtroObra, curvaPontosExport]);
 
   return (
     <div className="flex-1 space-y-6 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
@@ -1059,7 +1038,7 @@ export default function OrcamentosPage() {
                 <Cloud className="h-3.5 w-3.5" /> Modo Local (Offline)
               </span>
             )}
-            {contratos.length === 0 && (
+            {contratosRecalculados.length === 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-400 border border-slate-500/20">
                 Base Limpa (Pronta para Entrada)
               </span>
@@ -1121,7 +1100,7 @@ export default function OrcamentosPage() {
             <FileText className="h-4 w-4 text-[#00C4EB] dark:text-white" /> Relatório Executivo PDF
           </Button>
 
-          {contratos.length > 0 && (
+          {contratosRecalculados.length > 0 && (
             <Button
               size="sm"
               variant="outline"
@@ -1171,7 +1150,7 @@ export default function OrcamentosPage() {
           }`}
         >
           <DollarSign className="h-4 w-4" />
-          Orçamento Base ({orcamentos.length})
+          Orçamento Base ({orcamentosCalculados.length})
         </button>
 
         <button
@@ -1183,7 +1162,7 @@ export default function OrcamentosPage() {
           }`}
         >
           <Briefcase className="h-4 w-4" />
-          Contratos ({contratos.length})
+          Contratos ({contratosRecalculados.length})
         </button>
 
         <button
@@ -1224,113 +1203,125 @@ export default function OrcamentosPage() {
       </div>
 
       {/* 3. CONTEÚDO DA ABA ATIVA */}
-      {activeTab === 'dashboard' && (
-        <OrcamentoDashboard
-          orcamentos={orcamentos}
-          contratos={contratos}
-          medicoes={medicoes}
-          obras={obras}
-          fornecedores={fornecedores}
-          filtroObra={filtroObra}
-          setFiltroObra={setFiltroObra}
-          filtroFornecedor={filtroFornecedor}
-          setFiltroFornecedor={setFiltroFornecedor}
-          onNavigateTab={(tab) => setActiveTab(tab as any)}
-        />
-      )}
+      {isLoading && orcamentosCalculados.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 space-y-3">
+          <RefreshCw className="h-8 w-8 text-[#00A3C4] animate-spin" />
+          <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+            Carregando base de orçamentos e contratos do Supabase...
+          </p>
+        </div>
+      ) : (
+        <>
+          {activeTab === 'dashboard' && (
+            <OrcamentoDashboard
+              orcamentos={orcamentosCalculados}
+              contratos={contratosRecalculados}
+              medicoes={medicoes}
+              obras={obras}
+              fornecedores={fornecedores}
+              filtroObra={filtroObra}
+              setFiltroObra={setFiltroObra}
+              filtroFornecedor={filtroFornecedor}
+              setFiltroFornecedor={setFiltroFornecedor}
+              onNavigateTab={(tab) => setActiveTab(tab as any)}
+            />
+          )}
 
-      {activeTab === 'orcamentos' && (
-        <OrcamentoBaseTable
-          orcamentos={orcamentos}
-          obras={obras}
-          filtroObra={filtroObra}
-          setFiltroObra={setFiltroObra}
-          onNovoItem={() => {
-            setOrcamentoParaEditar(null);
-            setIsOrcamentoModalOpen(true);
-          }}
-          onEditarItem={(item) => {
-            setOrcamentoParaEditar(item);
-            setIsOrcamentoModalOpen(true);
-          }}
-          onExcluirItem={handleExcluirOrcamento}
-        />
-      )}
+          {activeTab === 'orcamentos' && (
+            <OrcamentoBaseTable
+              orcamentos={orcamentosCalculados}
+              contratos={contratosRecalculados}
+              obras={obras}
+              filtroObra={filtroObra}
+              setFiltroObra={setFiltroObra}
+              onNovoItem={() => {
+                setOrcamentoParaEditar(null);
+                setIsOrcamentoModalOpen(true);
+              }}
+              onEditarItem={(item) => {
+                setOrcamentoParaEditar(item);
+                setIsOrcamentoModalOpen(true);
+              }}
+              onExcluirItem={handleExcluirOrcamento}
+            />
+          )}
 
-      {activeTab === 'contratos' && (
-        <ContratosTable
-          contratos={contratos}
-          medicoes={medicoes}
-          obras={obras}
-          fornecedores={fornecedores}
-          filtroObra={filtroObra}
-          setFiltroObra={setFiltroObra}
-          onNovoContrato={() => {
-            setContratoParaEditar(null);
-            setIsContratoModalOpen(true);
-          }}
-          onEditarContrato={(c) => {
-            setContratoParaEditar(c);
-            setIsContratoModalOpen(true);
-          }}
-          onExcluirContrato={handleExcluirContrato}
-          onVerMedicoesContrato={(c) => {
-            setSelectedContratoDetail(c);
-            setIsDetailModalOpen(true);
-          }}
-          onNovaMedicaoParaContrato={(c) => {
-            setContratoPreSelecionado(c);
-            setMedicaoParaEditar(null);
-            setIsMedicaoModalOpen(true);
-          }}
-          onAbrirAditivo={handleAbrirAditivo}
-          onAbrirDistrato={handleAbrirDistrato}
-        />
-      )}
+          {activeTab === 'contratos' && (
+            <ContratosTable
+              contratos={contratosRecalculados}
+              medicoes={medicoes}
+              obras={obras}
+              fornecedores={fornecedores}
+              filtroObra={filtroObra}
+              setFiltroObra={setFiltroObra}
+              onNovoContrato={() => {
+                setContratoParaEditar(null);
+                setIsContratoModalOpen(true);
+              }}
+              onEditarContrato={(c) => {
+                setContratoParaEditar(c);
+                setIsContratoModalOpen(true);
+              }}
+              onExcluirContrato={handleExcluirContrato}
+              onVerMedicoesContrato={(c) => {
+                setSelectedContratoDetail(c);
+                setIsDetailModalOpen(true);
+              }}
+              onNovaMedicaoParaContrato={(c) => {
+                setContratoPreSelecionado(c);
+                setMedicaoParaEditar(null);
+                setIsMedicaoModalOpen(true);
+              }}
+              onAbrirAditivo={handleAbrirAditivo}
+              onAbrirDistrato={handleAbrirDistrato}
+            />
+          )}
 
-      {activeTab === 'medicoes' && (
-        <MedicoesTable
-          medicoes={medicoes}
-          contratos={contratos}
-          obras={obras}
-          fornecedores={fornecedores}
-          filtroObra={filtroObra}
-          setFiltroObra={setFiltroObra}
-          filtroFornecedor={filtroFornecedor}
-          setFiltroFornecedor={setFiltroFornecedor}
-          onNovaMedicao={() => {
-            setMedicaoParaEditar(null);
-            setContratoPreSelecionado(null);
-            setIsMedicaoModalOpen(true);
-          }}
-          onEditarMedicao={(m) => {
-            setMedicaoParaEditar(m);
-            setIsMedicaoModalOpen(true);
-          }}
-          onExcluirMedicao={handleExcluirMedicao}
-          onMudarStatusMedicao={handleMudarStatusMedicao}
-        />
-      )}
+          {activeTab === 'medicoes' && (
+            <MedicoesTable
+              medicoes={medicoes}
+              contratos={contratosRecalculados}
+              obras={obras}
+              fornecedores={fornecedores}
+              filtroObra={filtroObra}
+              setFiltroObra={setFiltroObra}
+              filtroFornecedor={filtroFornecedor}
+              setFiltroFornecedor={setFiltroFornecedor}
+              onNovaMedicao={() => {
+                setMedicaoParaEditar(null);
+                setContratoPreSelecionado(null);
+                setIsMedicaoModalOpen(true);
+              }}
+              onEditarMedicao={(m) => {
+                setMedicaoParaEditar(m);
+                setIsMedicaoModalOpen(true);
+              }}
+              onExcluirMedicao={handleExcluirMedicao}
+              onMudarStatusMedicao={handleMudarStatusMedicao}
+            />
+          )}
 
-      {activeTab === 'cadastros' && (
-        <CadastrosTab
-          obras={obras}
-          fornecedores={fornecedores}
-          disciplinas={disciplinas}
-          subdisciplinas={subdisciplinas}
-          onAdicionarObra={handleAdicionarObra}
-          onEditarObra={handleEditarObra}
-          onExcluirObra={handleExcluirObra}
-          onAdicionarFornecedor={handleAdicionarFornecedor}
-          onEditarFornecedor={handleEditarFornecedor}
-          onExcluirFornecedor={handleExcluirFornecedor}
-          onAdicionarDisciplina={handleAdicionarDisciplina}
-          onEditarDisciplina={handleEditarDisciplina}
-          onExcluirDisciplina={handleExcluirDisciplina}
-          onAdicionarSubdisciplina={handleAdicionarSubdisciplina}
-          onEditarSubdisciplina={handleEditarSubdisciplina}
-          onExcluirSubdisciplina={handleExcluirSubdisciplina}
-        />
+          {activeTab === 'cadastros' && (
+            <CadastrosTab
+              obras={obras}
+              fornecedores={fornecedores}
+              disciplinas={disciplinas}
+              subdisciplinas={subdisciplinas}
+              onAdicionarObra={handleAdicionarObra}
+              onEditarObra={handleEditarObra}
+              onExcluirObra={handleExcluirObra}
+              onAdicionarFornecedor={handleAdicionarFornecedor}
+              onEditarFornecedor={handleEditarFornecedor}
+              onExcluirFornecedor={handleExcluirFornecedor}
+              onAdicionarDisciplina={handleAdicionarDisciplina}
+              onEditarDisciplina={handleEditarDisciplina}
+              onExcluirDisciplina={handleExcluirDisciplina}
+              onAdicionarSubdisciplina={handleAdicionarSubdisciplina}
+              onEditarSubdisciplina={handleEditarSubdisciplina}
+              onExcluirSubdisciplina={handleExcluirSubdisciplina}
+            />
+          )}
+        </>
       )}
 
       {/* 4. MODAIS DO SISTEMA */}
@@ -1360,7 +1351,7 @@ export default function OrcamentosPage() {
 
       <ContratoFormModal
         contratoParaEditar={contratoParaEditar}
-        contratos={contratos}
+        contratos={contratosRecalculados}
         obras={obras}
         fornecedores={fornecedores}
         disciplinas={disciplinas}
@@ -1376,7 +1367,7 @@ export default function OrcamentosPage() {
       <MedicaoFormModal
         key={medicaoParaEditar ? `edit-${medicaoParaEditar.id}` : 'novo-medicao'}
         medicaoParaEditar={medicaoParaEditar}
-        contratos={contratos}
+        contratos={contratosRecalculados}
         contratoPreSelecionado={contratoPreSelecionado}
         isOpen={isMedicaoModalOpen}
         onClose={() => {
@@ -1422,13 +1413,12 @@ export default function OrcamentosPage() {
       />
 
       <ExportModal
-        orcamentos={orcamentos}
-        contratos={contratos}
+        orcamentos={orcamentosCalculados}
+        contratos={contratosRecalculados}
         medicoes={medicoes}
         curvaPontos={curvaPontosExport}
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onResetarDadosPadrao={handleCarregarDadosDemo}
         onLimparContratosMedicoes={handleLimparContratosEMedicoes}
         onAbrirRelatorioPdf={() => setIsRelatorioPdfOpen(true)}
         onExportarExcelConsolidado={handleExportarExcelConsolidado}
@@ -1441,8 +1431,8 @@ export default function OrcamentosPage() {
       <RelatorioOrcamentoPdfModal
         isOpen={isRelatorioPdfOpen}
         onClose={() => setIsRelatorioPdfOpen(false)}
-        orcamentos={orcamentos}
-        contratos={contratos}
+        orcamentos={orcamentosCalculados}
+        contratos={contratosRecalculados}
         medicoes={medicoes}
         curvaPontos={curvaPontosExport}
         obras={obras}

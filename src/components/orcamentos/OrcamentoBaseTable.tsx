@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import {
   ItemOrcamento,
   Obra,
+  Contrato,
   StatusOrcamento,
   STATUS_ORCAMENTO_OPCOES,
   STATUS_ORCAMENTO_COLORS,
@@ -26,6 +27,7 @@ import {
 
 interface OrcamentoBaseTableProps {
   orcamentos: ItemOrcamento[];
+  contratos?: Contrato[];
   obras: Obra[];
   filtroObra: string;
   setFiltroObra: (obra: string) => void;
@@ -36,6 +38,7 @@ interface OrcamentoBaseTableProps {
 
 export function OrcamentoBaseTable({
   orcamentos,
+  contratos = [],
   obras,
   filtroObra,
   setFiltroObra,
