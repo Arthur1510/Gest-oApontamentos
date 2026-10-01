@@ -417,35 +417,77 @@ ALTER TABLE public.medicoes_contratos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.disciplinas_cad ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subdisciplinas_cad ENABLE ROW LEVEL SECURITY;
 
+-- Políticas obras_cad
+DROP POLICY IF EXISTS "Permitir leitura pública obras_cad" ON public.obras_cad;
+DROP POLICY IF EXISTS "Permitir inserção pública obras_cad" ON public.obras_cad;
+DROP POLICY IF EXISTS "Permitir atualização pública obras_cad" ON public.obras_cad;
+DROP POLICY IF EXISTS "Permitir exclusão pública obras_cad" ON public.obras_cad;
+
 CREATE POLICY "Permitir leitura pública obras_cad" ON public.obras_cad FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública obras_cad" ON public.obras_cad FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública obras_cad" ON public.obras_cad FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública obras_cad" ON public.obras_cad FOR DELETE USING (true);
+
+-- Políticas fornecedores_cad
+DROP POLICY IF EXISTS "Permitir leitura pública fornecedores_cad" ON public.fornecedores_cad;
+DROP POLICY IF EXISTS "Permitir inserção pública fornecedores_cad" ON public.fornecedores_cad;
+DROP POLICY IF EXISTS "Permitir atualização pública fornecedores_cad" ON public.fornecedores_cad;
+DROP POLICY IF EXISTS "Permitir exclusão pública fornecedores_cad" ON public.fornecedores_cad;
 
 CREATE POLICY "Permitir leitura pública fornecedores_cad" ON public.fornecedores_cad FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública fornecedores_cad" ON public.fornecedores_cad FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública fornecedores_cad" ON public.fornecedores_cad FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública fornecedores_cad" ON public.fornecedores_cad FOR DELETE USING (true);
 
+-- Políticas orcamentos_base
+DROP POLICY IF EXISTS "Permitir leitura pública orcamentos_base" ON public.orcamentos_base;
+DROP POLICY IF EXISTS "Permitir inserção pública orcamentos_base" ON public.orcamentos_base;
+DROP POLICY IF EXISTS "Permitir atualização pública orcamentos_base" ON public.orcamentos_base;
+DROP POLICY IF EXISTS "Permitir exclusão pública orcamentos_base" ON public.orcamentos_base;
+
 CREATE POLICY "Permitir leitura pública orcamentos_base" ON public.orcamentos_base FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública orcamentos_base" ON public.orcamentos_base FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública orcamentos_base" ON public.orcamentos_base FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública orcamentos_base" ON public.orcamentos_base FOR DELETE USING (true);
+
+-- Políticas contratos_obras
+DROP POLICY IF EXISTS "Permitir leitura pública contratos_obras" ON public.contratos_obras;
+DROP POLICY IF EXISTS "Permitir inserção pública contratos_obras" ON public.contratos_obras;
+DROP POLICY IF EXISTS "Permitir atualização pública contratos_obras" ON public.contratos_obras;
+DROP POLICY IF EXISTS "Permitir exclusão pública contratos_obras" ON public.contratos_obras;
 
 CREATE POLICY "Permitir leitura pública contratos_obras" ON public.contratos_obras FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública contratos_obras" ON public.contratos_obras FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública contratos_obras" ON public.contratos_obras FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública contratos_obras" ON public.contratos_obras FOR DELETE USING (true);
 
+-- Políticas medicoes_contratos
+DROP POLICY IF EXISTS "Permitir leitura pública medicoes_contratos" ON public.medicoes_contratos;
+DROP POLICY IF EXISTS "Permitir inserção pública medicoes_contratos" ON public.medicoes_contratos;
+DROP POLICY IF EXISTS "Permitir atualização pública medicoes_contratos" ON public.medicoes_contratos;
+DROP POLICY IF EXISTS "Permitir exclusão pública medicoes_contratos" ON public.medicoes_contratos;
+
 CREATE POLICY "Permitir leitura pública medicoes_contratos" ON public.medicoes_contratos FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública medicoes_contratos" ON public.medicoes_contratos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública medicoes_contratos" ON public.medicoes_contratos FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública medicoes_contratos" ON public.medicoes_contratos FOR DELETE USING (true);
 
+-- Políticas disciplinas_cad
+DROP POLICY IF EXISTS "Permitir leitura pública disciplinas_cad" ON public.disciplinas_cad;
+DROP POLICY IF EXISTS "Permitir inserção pública disciplinas_cad" ON public.disciplinas_cad;
+DROP POLICY IF EXISTS "Permitir atualização pública disciplinas_cad" ON public.disciplinas_cad;
+DROP POLICY IF EXISTS "Permitir exclusão pública disciplinas_cad" ON public.disciplinas_cad;
+
 CREATE POLICY "Permitir leitura pública disciplinas_cad" ON public.disciplinas_cad FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública disciplinas_cad" ON public.disciplinas_cad FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública disciplinas_cad" ON public.disciplinas_cad FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública disciplinas_cad" ON public.disciplinas_cad FOR DELETE USING (true);
+
+-- Políticas subdisciplinas_cad
+DROP POLICY IF EXISTS "Permitir leitura pública subdisciplinas_cad" ON public.subdisciplinas_cad;
+DROP POLICY IF EXISTS "Permitir inserção pública subdisciplinas_cad" ON public.subdisciplinas_cad;
+DROP POLICY IF EXISTS "Permitir atualização pública subdisciplinas_cad" ON public.subdisciplinas_cad;
+DROP POLICY IF EXISTS "Permitir exclusão pública subdisciplinas_cad" ON public.subdisciplinas_cad;
 
 CREATE POLICY "Permitir leitura pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR INSERT WITH CHECK (true);
