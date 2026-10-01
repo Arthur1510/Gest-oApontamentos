@@ -102,7 +102,41 @@ export function parseMesCompetencia(mesStr: string): { label: string; sortKey: s
 }
 
 /**
- * Recalcula contratos com base nas medições
+ * Normaliza textos removendo acentos e espaços extras para matching seguro
+ */
+export function normalizeText(str?: string | null): string {
+  if (!str) return '';
+  return str
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Retorna o código canônico de uma obra para comparação confiável entre tabelas
+ */
+export function getCanonicalObra(obraStr?: string | null, obrasList?: Obra[]): string {
+  if (!obraStr) return '';
+  const clean = normalizeText(obraStr);
+  if (obrasList && obrasList.length > 0) {
+    const found = obrasList.find((o) => {
+      const cod = normalizeText(o.codigo);
+      const nom = normalizeText(o.nome);
+      const cc = normalizeText(o.cc);
+      const id = normalizeText(o.id);
+      return clean === cod || clean === nom || clean === cc || clean === id;
+    });
+    if (found) {
+      return normalizeText(found.codigo);
+    }
+  }
+  return clean;
+}
+
+/**
+ * Recalcula contratos com base nas medições, aditivos e distratos
  */
 export function recalculateContratos(
   contratos: Contrato[],
@@ -113,18 +147,30 @@ export function recalculateContratos(
 
   for (const m of medicoes) {
     if (m.status === 'Pago' || m.status === 'Medido') {
-      const cid = m.contrato_id;
-      medidoPorContrato[cid] = (medidoPorContrato[cid] || 0) + (m.valor_medicao || 0);
+      const cid = String(m.contrato_id).trim();
+      medidoPorContrato[cid] = (medidoPorContrato[cid] || 0) + (Number(m.valor_medicao) || 0);
     }
   }
 
   return contratos.map((c) => {
-    const valorMedido = medidoPorContrato[c.id] || 0;
+    const valorMedido = medidoPorContrato[String(c.id).trim()] || 0;
     
     // Aditivos
     const aditivos = c.aditivos || [];
     const totalAditivos = aditivos.reduce((acc, a) => acc + (Number(a.valor) || 0), 0);
-    const valorOriginal = c.valor_original !== undefined ? c.valor_original : (c.valor_contrato - totalAditivos);
+    
+    // Identificação correta e robusta do valor_original
+    // Se c.valor_original já existe e é > 0, mantemos ele como o valor base imutável
+    // Se não existir, o valor original é o valor_contrato atual (se não tinha aditivos gravados) ou deduzido
+    let valorOriginal = Number(c.valor_original);
+    if (!valorOriginal || isNaN(valorOriginal) || valorOriginal <= 0) {
+      if (c.valor_contrato && Number(c.valor_contrato) > 0) {
+        valorOriginal = Number(c.valor_contrato);
+      } else {
+        valorOriginal = 0;
+      }
+    }
+
     const valorContratoVigente = valorOriginal + totalAditivos;
 
     // Distrato
@@ -163,28 +209,51 @@ export function recalculateContratos(
 }
 
 /**
- * Recalcula orçamentos com base nos contratos
+ * Recalcula orçamentos com base nos contratos (com suporte a aditivos, distratos e normalização de obras)
  */
 export function recalculateOrcamentos(
   orcamentos: ItemOrcamento[],
-  contratos: Contrato[]
+  contratos: Contrato[],
+  obras?: Obra[]
 ): ItemOrcamento[] {
-  // Mapa de contrato e medição acumulada por chave (OBRA + SUBDISCIPLINA)
+  // Mapa de contrato e medição acumulada por chave (CANONICAL_OBRA + SUBDISCIPLINA)
   const contratadoMap: Record<string, number> = {};
   const medidoMap: Record<string, number> = {};
 
   for (const c of contratos) {
-    const key = `${c.obra.trim().toUpperCase()}_${c.subdisciplina.trim().toUpperCase()}`;
-    contratadoMap[key] = (contratadoMap[key] || 0) + (c.valor_contrato || 0);
-    medidoMap[key] = (medidoMap[key] || 0) + (c.valor_medido || 0);
+    const obraKey = getCanonicalObra(c.obra, obras);
+    const subKey = normalizeText(c.subdisciplina || c.disciplina);
+    const key = `${obraKey}_${subKey}`;
+
+    contratadoMap[key] = (contratadoMap[key] || 0) + (Number(c.valor_contrato) || 0);
+    medidoMap[key] = (medidoMap[key] || 0) + (Number(c.valor_medido) || 0);
   }
 
   return orcamentos.map((o) => {
-    const key = `${o.obra.trim().toUpperCase()}_${o.subdisciplina.trim().toUpperCase()}`;
+    const obraKey = getCanonicalObra(o.obra || o.nome_obra, obras);
+    const subKey = normalizeText(o.subdisciplina || o.disciplina);
+    const key = `${obraKey}_${subKey}`;
+
     const valorContratado = contratadoMap[key] || 0;
     const valorMedido = medidoMap[key] || 0;
     const saldoAContratar = o.orcamento_base - valorContratado;
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
+
+    // Ajuste dinâmico de status se não for 'Cancelado' manualmente
+    let statusAtual = o.status;
+    if (statusAtual !== 'Cancelado') {
+      if (valorContratado > 0) {
+        if (saldoAContratar <= 0.01) {
+          statusAtual = 'Contratado';
+        } else {
+          statusAtual = 'Em contratação';
+        }
+      } else {
+        if (statusAtual === 'Contratado' || statusAtual === 'Em contratação') {
+          statusAtual = 'A contratar';
+        }
+      }
+    }
 
     return {
       ...o,
@@ -192,6 +261,7 @@ export function recalculateOrcamentos(
       saldo_a_contratar: saldoAContratar,
       valor_medido: valorMedido,
       saldo_medicao: saldoMedicao,
+      status: statusAtual,
     };
   });
 }

@@ -151,7 +151,11 @@ export default function OrcamentosPage() {
         const savedDisc = localStorage.getItem(STORAGE_KEY_DISCIPLINAS);
         const savedSubdisc = localStorage.getItem(STORAGE_KEY_SUBDISCIPLINAS);
 
-        if (savedObr) setObras(JSON.parse(savedObr));
+        let currentObras = obras;
+        if (savedObr) {
+          currentObras = JSON.parse(savedObr);
+          setObras(currentObras);
+        }
         if (savedForn) setFornecedores(JSON.parse(savedForn));
         if (savedDisc) setDisciplinas(JSON.parse(savedDisc));
         if (savedSubdisc) setSubdisciplinas(JSON.parse(savedSubdisc));
@@ -163,7 +167,7 @@ export default function OrcamentosPage() {
           const parsedOrc: ItemOrcamento[] = JSON.parse(savedOrc);
 
           const recalcCt = recalculateContratos(parsedCt, parsedMed);
-          const recalcOrc = recalculateOrcamentos(parsedOrc, recalcCt);
+          const recalcOrc = recalculateOrcamentos(parsedOrc, recalcCt, currentObras);
 
           setContratos(recalcCt);
           setMedicoes(parsedMed);
@@ -171,7 +175,7 @@ export default function OrcamentosPage() {
         } else if (!isInit) {
           // Primeira inicialização v2: Contratos e medições iniciam limpos (vazios) para preenchimento direto
           localStorage.setItem(STORAGE_KEY_CLEAN_INIT, 'true');
-          const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, []);
+          const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, [], currentObras);
           setContratos([]);
           setMedicoes([]);
           setOrcamentos(recalcOrc);
@@ -181,7 +185,7 @@ export default function OrcamentosPage() {
         } else {
           // Se já foi inicializado mas não há contratos salvos, mantém vazio
           const baseOrc = savedOrc ? JSON.parse(savedOrc) : MOCK_ORCAMENTOS;
-          const recalcOrc = recalculateOrcamentos(baseOrc, []);
+          const recalcOrc = recalculateOrcamentos(baseOrc, [], currentObras);
           setContratos([]);
           setMedicoes([]);
           setOrcamentos(recalcOrc);
@@ -200,7 +204,7 @@ export default function OrcamentosPage() {
             const cloud = await fetchOrcamentoDataFromSupabase();
             if (cloud && (cloud.orcamentos.length > 0 || cloud.contratos.length > 0)) {
               const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
-              const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt);
+              const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
               if (cloud.obras.length > 0) setObras(cloud.obras);
               if (cloud.fornecedores.length > 0) setFornecedores(cloud.fornecedores);
               setContratos(recalcCt);
@@ -222,10 +226,16 @@ export default function OrcamentosPage() {
 
   // Salvar no localStorage sempre que houver alteração
   const salvarDados = useCallback(
-    (newMedicoes: Medicao[], newContratos: Contrato[], newOrcamentos: ItemOrcamento[]) => {
+    (
+      newMedicoes: Medicao[],
+      newContratos: Contrato[],
+      newOrcamentos: ItemOrcamento[],
+      currentObras?: Obra[]
+    ) => {
       try {
+        const obrasVigentes = currentObras || obras;
         const recalcCt = recalculateContratos(newContratos, newMedicoes);
-        const recalcOrc = recalculateOrcamentos(newOrcamentos, recalcCt);
+        const recalcOrc = recalculateOrcamentos(newOrcamentos, recalcCt, obrasVigentes);
 
         setMedicoes(newMedicoes);
         setContratos(recalcCt);
@@ -240,11 +250,14 @@ export default function OrcamentosPage() {
         localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(newMedicoes));
         localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify(recalcCt));
         localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
+
+        return { recalcCt, recalcOrc };
       } catch (err) {
         console.error('Erro ao salvar dados:', err);
+        return { recalcCt: newContratos, recalcOrc: newOrcamentos };
       }
     },
-    [selectedContratoDetail]
+    [selectedContratoDetail, obras]
   );
 
   // Limpar todos os contratos e medições para preenchimento direto
@@ -255,7 +268,7 @@ export default function OrcamentosPage() {
   // Carregar dados de demonstração da planilha original
   const handleCarregarDadosDemo = useCallback(() => {
     const recalcCt = recalculateContratos(MOCK_CONTRATOS, MOCK_MEDICOES);
-    const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, recalcCt);
+    const recalcOrc = recalculateOrcamentos(MOCK_ORCAMENTOS, recalcCt, MOCK_OBRAS);
 
     setObras(MOCK_OBRAS);
     setFornecedores(MOCK_FORNECEDORES);
@@ -322,7 +335,7 @@ export default function OrcamentosPage() {
         throw new Error('Não foi possível carregar os dados do Supabase.');
       }
       const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
-      const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt);
+      const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
 
       if (cloud.obras.length > 0) {
         setObras(cloud.obras);
@@ -399,9 +412,11 @@ export default function OrcamentosPage() {
       contratoSalvo = novo;
       updated = [novo, ...contratos];
     }
-    salvarDados(medicoes, updated, orcamentos);
-    if (contratoSalvo) {
-      saveContratoSupabase(contratoSalvo).catch((err) =>
+    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const idParaSalvar = contratoSalvo?.id;
+    const contratoFinal = idParaSalvar ? recalcCt.find((c) => c.id === idParaSalvar) : contratoSalvo;
+    if (contratoFinal) {
+      saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao persistir contrato no Supabase:', err)
       );
     }
@@ -424,7 +439,6 @@ export default function OrcamentosPage() {
   };
 
   const handleSalvarAditivo = (contratoId: string, novoAditivo: Omit<AditivoContrato, 'id' | 'contrato_id'>) => {
-    let contratoAtualizado: Contrato | undefined;
     const updated = contratos.map((c) => {
       if (c.id === contratoId) {
         const aditivos = c.aditivos || [];
@@ -434,40 +448,39 @@ export default function OrcamentosPage() {
           contrato_id: contratoId,
         };
         const novosAditivos = [...aditivos, aditivoCompleto];
-        contratoAtualizado = {
+        return {
           ...c,
           aditivos: novosAditivos,
         };
-        return contratoAtualizado;
       }
       return c;
     });
 
-    salvarDados(medicoes, updated, orcamentos);
-    if (contratoAtualizado) {
-      saveContratoSupabase(contratoAtualizado).catch((err) =>
+    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const contratoFinal = recalcCt.find((c) => c.id === contratoId);
+    if (contratoFinal) {
+      saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao salvar aditivo no Supabase:', err)
       );
     }
   };
 
   const handleExcluirAditivo = (contratoId: string, aditivoId: string) => {
-    let contratoAtualizado: Contrato | undefined;
     const updated = contratos.map((c) => {
       if (c.id === contratoId && c.aditivos) {
         const novosAditivos = c.aditivos.filter((a) => a.id !== aditivoId);
-        contratoAtualizado = {
+        return {
           ...c,
           aditivos: novosAditivos,
         };
-        return contratoAtualizado;
       }
       return c;
     });
 
-    salvarDados(medicoes, updated, orcamentos);
-    if (contratoAtualizado) {
-      saveContratoSupabase(contratoAtualizado).catch((err) =>
+    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const contratoFinal = recalcCt.find((c) => c.id === contratoId);
+    if (contratoFinal) {
+      saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao atualizar contrato após exclusão de aditivo no Supabase:', err)
       );
     }
@@ -480,44 +493,42 @@ export default function OrcamentosPage() {
   };
 
   const handleRegistrarDistrato = (contratoId: string, distrato: DistratoInfo) => {
-    let contratoAtualizado: Contrato | undefined;
     const updated = contratos.map((c) => {
       if (c.id === contratoId) {
-        contratoAtualizado = {
+        return {
           ...c,
           status: 'Distratado' as const,
           distrato,
         };
-        return contratoAtualizado;
       }
       return c;
     });
 
-    salvarDados(medicoes, updated, orcamentos);
-    if (contratoAtualizado) {
-      saveContratoSupabase(contratoAtualizado).catch((err) =>
+    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const contratoFinal = recalcCt.find((c) => c.id === contratoId);
+    if (contratoFinal) {
+      saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao registrar distrato no Supabase:', err)
       );
     }
   };
 
   const handleReverterDistrato = (contratoId: string) => {
-    let contratoAtualizado: Contrato | undefined;
     const updated = contratos.map((c) => {
       if (c.id === contratoId) {
-        contratoAtualizado = {
+        return {
           ...c,
           status: 'Ativo' as const,
           distrato: null,
         };
-        return contratoAtualizado;
       }
       return c;
     });
 
-    salvarDados(medicoes, updated, orcamentos);
-    if (contratoAtualizado) {
-      saveContratoSupabase(contratoAtualizado).catch((err) =>
+    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const contratoFinal = recalcCt.find((c) => c.id === contratoId);
+    if (contratoFinal) {
+      saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao reverter distrato no Supabase:', err)
       );
     }
@@ -652,9 +663,11 @@ export default function OrcamentosPage() {
       orcSalvo = novo;
       updated = [novo, ...orcamentos];
     }
-    salvarDados(medicoes, contratos, updated);
-    if (orcSalvo) {
-      saveOrcamentoItemSupabase(orcSalvo).catch((err) =>
+    const { recalcOrc } = salvarDados(medicoes, contratos, updated);
+    const idParaSalvar = orcSalvo?.id;
+    const orcFinal = idParaSalvar ? recalcOrc.find((o) => o.id === idParaSalvar) : orcSalvo;
+    if (orcFinal) {
+      saveOrcamentoItemSupabase(orcFinal).catch((err) =>
         console.warn('Erro ao salvar item de orçamento no Supabase:', err)
       );
     }
@@ -675,6 +688,7 @@ export default function OrcamentosPage() {
     const updated = [...obras, novaObra];
     setObras(updated);
     localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(updated));
+    salvarDados(medicoes, contratos, orcamentos, updated);
     saveObraSupabase(novaObra).catch((err) =>
       console.warn('Erro ao salvar obra no Supabase:', err)
     );
@@ -731,10 +745,10 @@ export default function OrcamentosPage() {
         return m;
       });
 
-      salvarDados(updatedMedicoes, updatedContratos, orcamentos);
+      const { recalcCt } = salvarDados(updatedMedicoes, updatedContratos, orcamentos, updated);
 
       // Sincronizar contratos e medições afetados no Supabase
-      updatedContratos.filter((c) => pertenceAEstaObra(c.obra)).forEach((c) => {
+      recalcCt.filter((c) => pertenceAEstaObra(c.obra)).forEach((c) => {
         saveContratoSupabase(c).catch(console.warn);
       });
       updatedMedicoes.filter((m) => pertenceAEstaObra(m.obra) && m.status === 'Cancelado').forEach((m) => {
@@ -752,11 +766,13 @@ export default function OrcamentosPage() {
         return c;
       });
 
-      salvarDados(medicoes, updatedContratos, orcamentos);
+      const { recalcCt } = salvarDados(medicoes, updatedContratos, orcamentos, updated);
 
-      updatedContratos.filter((c) => pertenceAEstaObra(c.obra)).forEach((c) => {
+      recalcCt.filter((c) => pertenceAEstaObra(c.obra)).forEach((c) => {
         saveContratoSupabase(c).catch(console.warn);
       });
+    } else {
+      salvarDados(medicoes, contratos, orcamentos, updated);
     }
   };
 
