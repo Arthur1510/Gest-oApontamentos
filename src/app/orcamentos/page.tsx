@@ -28,6 +28,8 @@ import {
 import {
   recalculateContratos,
   recalculateOrcamentos,
+  getCanonicalObra,
+  normalizeText,
   calculateCurvaDesembolso,
   calculateKpis,
   isMedicaoEmAtraso,
@@ -194,29 +196,37 @@ export default function OrcamentosPage() {
         console.warn('Erro ao carregar dados locais:', err);
       }
 
-      // Supabase: verificar status e disponibilidade
+      // Supabase: carregar dados atualizados da nuvem se disponível
       if (isSupabaseReady()) {
         setIsSupabaseOnline(true);
-        // Se for um novo acesso sem nenhum dado local salvo previamente, tenta carregar do Supabase
-        if (!dadosLocaisExistem && !localStorage.getItem(STORAGE_KEY_ORCAMENTOS)) {
-          try {
-            setIsSyncing(true);
-            const cloud = await fetchOrcamentoDataFromSupabase();
-            if (cloud && (cloud.orcamentos.length > 0 || cloud.contratos.length > 0)) {
-              const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
-              const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
-              if (cloud.obras.length > 0) setObras(cloud.obras);
-              if (cloud.fornecedores.length > 0) setFornecedores(cloud.fornecedores);
-              setContratos(recalcCt);
-              setMedicoes(cloud.medicoes);
-              setOrcamentos(recalcOrc);
-              setLastSyncStatus(`Carregado do Supabase em ${new Date().toLocaleTimeString('pt-BR')}`);
+        try {
+          setIsSyncing(true);
+          const cloud = await fetchOrcamentoDataFromSupabase();
+          if (cloud && (cloud.orcamentos.length > 0 || cloud.contratos.length > 0)) {
+            const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
+            const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
+            if (cloud.obras.length > 0) {
+              setObras(cloud.obras);
+              localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
             }
-          } catch (cloudErr) {
-            console.warn('Erro ao inicializar dados do Supabase:', cloudErr);
-          } finally {
-            setIsSyncing(false);
+            if (cloud.fornecedores.length > 0) {
+              setFornecedores(cloud.fornecedores);
+              localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
+            }
+            setContratos(recalcCt);
+            setMedicoes(cloud.medicoes);
+            setOrcamentos(recalcOrc);
+
+            localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify(recalcCt));
+            localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(cloud.medicoes));
+            localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
+
+            setLastSyncStatus(`Sincronizado com Supabase em ${new Date().toLocaleTimeString('pt-BR')}`);
           }
+        } catch (cloudErr) {
+          console.warn('Erro ao carregar dados do Supabase:', cloudErr);
+        } finally {
+          setIsSyncing(false);
         }
       }
     };
@@ -412,23 +422,46 @@ export default function OrcamentosPage() {
       contratoSalvo = novo;
       updated = [novo, ...contratos];
     }
-    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
     const idParaSalvar = contratoSalvo?.id;
     const contratoFinal = idParaSalvar ? recalcCt.find((c) => c.id === idParaSalvar) : contratoSalvo;
     if (contratoFinal) {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao persistir contrato no Supabase:', err)
       );
+      const orcAfeitado = recalcOrc.find(
+        (o) =>
+          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
+          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      );
+      if (orcAfeitado) {
+        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+          console.warn('Erro ao atualizar orçamento no Supabase:', err)
+        );
+      }
     }
   };
 
   const handleExcluirContrato = (id: string) => {
     if (confirm(`Deseja realmente excluir o contrato ${id}? Todas as medições vinculadas serão mantidas ou devem ser revisadas.`)) {
+      const contratoExcluido = contratos.find((c) => c.id === id);
       const updated = contratos.filter((c) => c.id !== id);
-      salvarDados(medicoes, updated, orcamentos);
+      const { recalcOrc } = salvarDados(medicoes, updated, orcamentos);
       deleteContratoSupabase(id).catch((err) =>
         console.warn('Erro ao excluir contrato no Supabase:', err)
       );
+      if (contratoExcluido) {
+        const orcAfeitado = recalcOrc.find(
+          (o) =>
+            getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoExcluido.obra, obras) &&
+            normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoExcluido.subdisciplina || contratoExcluido.disciplina)
+        );
+        if (orcAfeitado) {
+          saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+            console.warn('Erro ao atualizar orçamento no Supabase:', err)
+          );
+        }
+      }
     }
   };
 
@@ -456,12 +489,22 @@ export default function OrcamentosPage() {
       return c;
     });
 
-    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
     const contratoFinal = recalcCt.find((c) => c.id === contratoId);
     if (contratoFinal) {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao salvar aditivo no Supabase:', err)
       );
+      const orcAfeitado = recalcOrc.find(
+        (o) =>
+          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
+          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      );
+      if (orcAfeitado) {
+        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+          console.warn('Erro ao atualizar orçamento no Supabase:', err)
+        );
+      }
     }
   };
 
@@ -477,12 +520,22 @@ export default function OrcamentosPage() {
       return c;
     });
 
-    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
     const contratoFinal = recalcCt.find((c) => c.id === contratoId);
     if (contratoFinal) {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao atualizar contrato após exclusão de aditivo no Supabase:', err)
       );
+      const orcAfeitado = recalcOrc.find(
+        (o) =>
+          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
+          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      );
+      if (orcAfeitado) {
+        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+          console.warn('Erro ao atualizar orçamento no Supabase:', err)
+        );
+      }
     }
   };
 
@@ -504,12 +557,22 @@ export default function OrcamentosPage() {
       return c;
     });
 
-    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
     const contratoFinal = recalcCt.find((c) => c.id === contratoId);
     if (contratoFinal) {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao registrar distrato no Supabase:', err)
       );
+      const orcAfeitado = recalcOrc.find(
+        (o) =>
+          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
+          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      );
+      if (orcAfeitado) {
+        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+          console.warn('Erro ao atualizar orçamento no Supabase:', err)
+        );
+      }
     }
   };
 
@@ -525,12 +588,22 @@ export default function OrcamentosPage() {
       return c;
     });
 
-    const { recalcCt } = salvarDados(medicoes, updated, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
     const contratoFinal = recalcCt.find((c) => c.id === contratoId);
     if (contratoFinal) {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao reverter distrato no Supabase:', err)
       );
+      const orcAfeitado = recalcOrc.find(
+        (o) =>
+          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
+          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      );
+      if (orcAfeitado) {
+        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+          console.warn('Erro ao atualizar orçamento no Supabase:', err)
+        );
+      }
     }
   };
 

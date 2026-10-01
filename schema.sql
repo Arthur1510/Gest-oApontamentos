@@ -378,6 +378,35 @@ BEGIN
     ) THEN
         ALTER TABLE public.contratos_obras ADD COLUMN distrato JSONB;
     END IF;
+
+    -- Colunas calculadas em Orçamentos Base (Valor Contratado, Saldos e Valor Medido)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'orcamentos_base' AND column_name = 'valor_contratado'
+    ) THEN
+        ALTER TABLE public.orcamentos_base ADD COLUMN valor_contratado NUMERIC(15, 2) DEFAULT 0;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'orcamentos_base' AND column_name = 'saldo_a_contratar'
+    ) THEN
+        ALTER TABLE public.orcamentos_base ADD COLUMN saldo_a_contratar NUMERIC(15, 2) DEFAULT 0;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'orcamentos_base' AND column_name = 'valor_medido'
+    ) THEN
+        ALTER TABLE public.orcamentos_base ADD COLUMN valor_medido NUMERIC(15, 2) DEFAULT 0;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'orcamentos_base' AND column_name = 'saldo_medicao'
+    ) THEN
+        ALTER TABLE public.orcamentos_base ADD COLUMN saldo_medicao NUMERIC(15, 2) DEFAULT 0;
+    END IF;
 END $$;
 
 -- Tabela Disciplinas

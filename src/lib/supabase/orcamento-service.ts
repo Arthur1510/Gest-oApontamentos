@@ -10,9 +10,10 @@ import {
   StatusObra,
 } from '@/types/orcamento';
 
-// Cache para detecção de colunas estendidas no Postgres (status, aditivos, distrato)
+// Cache para detecção de colunas estendidas no Postgres (status, aditivos, distrato, valores calculados)
 let hasExtendedContratoCols: boolean | null = null;
 let hasExtendedObraCols: boolean | null = null;
+let hasExtendedOrcamentoCols: boolean | null = null;
 
 /**
  * Verifica se o Supabase está configurado e disponível
@@ -71,10 +72,12 @@ export async function fetchOrcamentoDataFromSupabase(): Promise<{
       disciplina: orc.disciplina,
       subdisciplina: orc.subdisciplina,
       orcamento_base: Number(orc.orcamento_base) || 0,
-      valor_contratado: 0,
-      saldo_a_contratar: Number(orc.orcamento_base) || 0,
-      valor_medido: 0,
-      saldo_medicao: 0,
+      valor_contratado: Number(orc.valor_contratado) || 0,
+      saldo_a_contratar: orc.saldo_a_contratar !== undefined && orc.saldo_a_contratar !== null
+        ? Number(orc.saldo_a_contratar)
+        : Number(orc.orcamento_base) || 0,
+      valor_medido: Number(orc.valor_medido) || 0,
+      saldo_medicao: Number(orc.saldo_medicao) || 0,
       categoria: orc.categoria || 'Projeto',
       status: orc.status || 'A contratar',
     }));
@@ -269,7 +272,35 @@ export async function deleteMedicaoSupabase(id: string): Promise<boolean> {
 export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<boolean> {
   if (!isSupabaseReady() || !supabase) return false;
   try {
-    const payload = {
+    if (hasExtendedOrcamentoCols !== false) {
+      const fullPayload = {
+        id: item.id,
+        obra: item.obra,
+        nome_obra: item.nome_obra || item.obra,
+        disciplina: item.disciplina,
+        subdisciplina: item.subdisciplina,
+        orcamento_base: item.orcamento_base,
+        valor_contratado: item.valor_contratado ?? 0,
+        saldo_a_contratar: item.saldo_a_contratar ?? item.orcamento_base,
+        valor_medido: item.valor_medido ?? 0,
+        saldo_medicao: item.saldo_medicao ?? 0,
+        categoria: item.categoria || 'Projeto',
+        status: item.status || 'A contratar',
+      };
+      const { error } = await supabase.from('orcamentos_base').upsert(fullPayload);
+      if (!error) {
+        hasExtendedOrcamentoCols = true;
+        return true;
+      }
+      if (error.message.includes('does not exist') || error.code === '42703') {
+        hasExtendedOrcamentoCols = false;
+      } else {
+        console.error('Erro ao salvar item de orçamento estendido no Supabase:', error.message);
+        return false;
+      }
+    }
+
+    const basePayload = {
       id: item.id,
       obra: item.obra,
       nome_obra: item.nome_obra || item.obra,
@@ -279,14 +310,30 @@ export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<bo
       categoria: item.categoria || 'Projeto',
       status: item.status || 'A contratar',
     };
-    const { error } = await supabase.from('orcamentos_base').upsert(payload);
-    if (error) {
-      console.error('Erro ao salvar item de orçamento no Supabase:', error.message);
+    const { error: baseError } = await supabase.from('orcamentos_base').upsert(basePayload);
+    if (baseError) {
+      console.error('Erro ao salvar item de orçamento base no Supabase:', baseError.message);
       return false;
     }
     return true;
   } catch (err) {
     console.error('Exceção ao salvar orçamento no Supabase:', err);
+    return false;
+  }
+}
+
+/**
+ * Salva múltiplos itens de Orçamento Base no Supabase
+ */
+export async function saveOrcamentosBatchSupabase(items: ItemOrcamento[]): Promise<boolean> {
+  if (!isSupabaseReady() || !supabase || items.length === 0) return false;
+  try {
+    for (const item of items) {
+      await saveOrcamentoItemSupabase(item);
+    }
+    return true;
+  } catch (err) {
+    console.error('Exceção ao salvar lote de orçamentos no Supabase:', err);
     return false;
   }
 }
