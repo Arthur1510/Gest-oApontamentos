@@ -33,12 +33,29 @@ export const STATUS_MEDICAO_OPCOES: StatusMedicao[] = [
   'Cancelado',
 ];
 
+export type StatusObra = 'Ativa' | 'Paralisada' | 'Cancelada' | 'Concluída';
+
+export const STATUS_OBRA_OPCOES: StatusObra[] = [
+  'Ativa',
+  'Paralisada',
+  'Cancelada',
+  'Concluída',
+];
+
+export const STATUS_OBRA_COLORS: Record<StatusObra, { bg: string; text: string; border: string }> = {
+  Ativa: { bg: 'bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-500/30' },
+  Paralisada: { bg: 'bg-amber-500/15', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-500/30' },
+  Cancelada: { bg: 'bg-rose-500/15', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-500/30' },
+  Concluída: { bg: 'bg-blue-500/15', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-500/30' },
+};
+
 export interface Obra {
   id: string;
   cc: string;
   codigo: string;
   nome: string;
   endereco?: string | null;
+  status?: StatusObra;
 }
 
 export interface Disciplina {

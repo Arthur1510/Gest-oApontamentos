@@ -143,6 +143,11 @@ export function ContratoDetailModal({
                 Orig: {formatCurrency(contrato.valor_original)} (+{aditivos.length} adit.)
               </span>
             )}
+            {isDistratado && contrato.valor_original && contrato.valor_original !== contrato.valor_contrato && (
+              <span className="text-[10px] text-rose-500 font-bold block mt-0.5">
+                Orig: {formatCurrency(contrato.valor_original)} (Encerrado)
+              </span>
+            )}
           </div>
 
           <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">

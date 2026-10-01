@@ -6,6 +6,9 @@ import {
   Fornecedor,
   Disciplina,
   Subdisciplina,
+  StatusObra,
+  STATUS_OBRA_OPCOES,
+  STATUS_OBRA_COLORS,
 } from '@/types/orcamento';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +32,7 @@ interface CadastrosTabProps {
   disciplinas: Disciplina[];
   subdisciplinas: Subdisciplina[];
   onAdicionarObra: (obra: Obra) => void;
-  onEditarObra: (obra: Obra) => void;
+  onEditarObra: (obra: Obra, opcoes?: { distratarContratos?: boolean; reativarContratos?: boolean }) => void;
   onExcluirObra: (id: string) => void;
   onAdicionarFornecedor: (fornecedor: Fornecedor) => void;
   onEditarFornecedor: (fornecedor: Fornecedor) => void;
@@ -80,6 +83,9 @@ export function CadastrosTab({
   const [obraNome, setObraNome] = useState('');
   const [obraCC, setObraCC] = useState('');
   const [obraEndereco, setObraEndereco] = useState('');
+  const [obraStatus, setObraStatus] = useState<StatusObra>('Ativa');
+  const [autoDistratarContratos, setAutoDistratarContratos] = useState<boolean>(true);
+  const [autoReativarContratos, setAutoReativarContratos] = useState<boolean>(true);
 
   // 3. Disciplina / Subdisciplina Modal
   const [subdisciplinaEditando, setSubdisciplinaEditando] = useState<Subdisciplina | null>(null);
@@ -136,6 +142,9 @@ export function CadastrosTab({
     setObraNome('');
     setObraCC('');
     setObraEndereco('');
+    setObraStatus('Ativa');
+    setAutoDistratarContratos(true);
+    setAutoReativarContratos(true);
     setObraModalOpen(true);
   };
 
@@ -145,6 +154,9 @@ export function CadastrosTab({
     setObraNome(o.nome);
     setObraCC(o.cc || '');
     setObraEndereco(o.endereco || '');
+    setObraStatus(o.status || 'Ativa');
+    setAutoDistratarContratos(true);
+    setAutoReativarContratos(true);
     setObraModalOpen(true);
   };
 
@@ -153,13 +165,28 @@ export function CadastrosTab({
     if (!obraCodigo.trim() || !obraNome.trim()) return;
 
     if (obraEditando) {
-      onEditarObra({
-        ...obraEditando,
-        codigo: obraCodigo.trim().toUpperCase(),
-        nome: obraNome.trim(),
-        cc: obraCC.trim(),
-        endereco: obraEndereco.trim() || null,
-      });
+      const mudouParaParalisadaOuCancelada =
+        (obraEditando.status !== 'Paralisada' && obraEditando.status !== 'Cancelada') &&
+        (obraStatus === 'Paralisada' || obraStatus === 'Cancelada');
+
+      const mudouParaAtiva =
+        (obraEditando.status === 'Paralisada' || obraEditando.status === 'Cancelada') &&
+        obraStatus === 'Ativa';
+
+      onEditarObra(
+        {
+          ...obraEditando,
+          codigo: obraCodigo.trim().toUpperCase(),
+          nome: obraNome.trim(),
+          cc: obraCC.trim(),
+          endereco: obraEndereco.trim() || null,
+          status: obraStatus,
+        },
+        {
+          distratarContratos: mudouParaParalisadaOuCancelada && autoDistratarContratos,
+          reativarContratos: mudouParaAtiva && autoReativarContratos,
+        }
+      );
     } else {
       const nova: Obra = {
         id: `OBR${String(obras.length + 1).padStart(3, '0')}`,
@@ -167,6 +194,7 @@ export function CadastrosTab({
         nome: obraNome.trim(),
         cc: obraCC.trim(),
         endereco: obraEndereco.trim() || null,
+        status: obraStatus,
       };
       onAdicionarObra(nova);
     }
@@ -395,9 +423,16 @@ export function CadastrosTab({
               >
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="px-2.5 py-0.5 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-xs font-black">
-                      {o.codigo}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-xs font-black">
+                        {o.codigo}
+                      </span>
+                      {o.status && (
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${STATUS_OBRA_COLORS[o.status]?.bg || ''} ${STATUS_OBRA_COLORS[o.status]?.text || ''} ${STATUS_OBRA_COLORS[o.status]?.border || ''}`}>
+                          {o.status}
+                        </span>
+                      )}
+                    </div>
                     {o.cc && (
                       <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
                         CC: {o.cc}
@@ -644,6 +679,67 @@ export function CadastrosTab({
                   className="text-xs h-9 rounded-xl"
                 />
               </div>
+
+              <div>
+                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 block mb-1">
+                  Status do Empreendimento *
+                </label>
+                <select
+                  value={obraStatus}
+                  onChange={(e) => setObraStatus(e.target.value as StatusObra)}
+                  className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
+                >
+                  {STATUS_OBRA_OPCOES.map((st) => (
+                    <option key={st} value={st}>
+                      {st}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Automação de Distrato para Obras Paralisadas ou Canceladas */}
+              {obraEditando && (obraStatus === 'Paralisada' || obraStatus === 'Cancelada') && (
+                <div className="p-3 rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoDistratarContratosCheck"
+                      checked={autoDistratarContratos}
+                      onChange={(e) => setAutoDistratarContratos(e.target.checked)}
+                      className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4 mt-0.5 cursor-pointer"
+                    />
+                    <label htmlFor="autoDistratarContratosCheck" className="text-xs font-bold text-amber-900 dark:text-amber-200 cursor-pointer">
+                      Ajustar e Distratar contratos desta obra automaticamente
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-amber-800 dark:text-amber-300 ml-6 leading-tight">
+                    • <b>Contratos medidos</b>: encerra saldo a medir e fixa o valor no medido.<br />
+                    • <b>Contratos sem medição</b>: distrata com valor R$ 0,00.<br />
+                    • <b>Medições futuras ('A Medir')</b>: canceladas para despoluir a Curva S.
+                  </p>
+                </div>
+              )}
+
+              {/* Automação de Reativação para Obras que voltam a Ativa */}
+              {obraEditando && (obraEditando.status === 'Paralisada' || obraEditando.status === 'Cancelada') && obraStatus === 'Ativa' && (
+                <div className="p-3 rounded-xl border border-emerald-300/80 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 space-y-1.5">
+                  <div className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoReativarContratosCheck"
+                      checked={autoReativarContratos}
+                      onChange={(e) => setAutoReativarContratos(e.target.checked)}
+                      className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 mt-0.5 cursor-pointer"
+                    />
+                    <label htmlFor="autoReativarContratosCheck" className="text-xs font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
+                      Reativar contratos distratados desta obra
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 ml-6 leading-tight">
+                    Restaura os contratos da obra para o status Ativo e recupera os saldos originais.
+                  </p>
+                </div>
+              )}
 
               <div className="pt-3 border-t border-slate-100 dark:border-[#0B384D] flex justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setObraModalOpen(false)} className="text-xs h-9 rounded-xl">

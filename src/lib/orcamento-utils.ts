@@ -130,19 +130,29 @@ export function recalculateContratos(
     // Distrato
     const isDistratado = c.status === 'Distratado';
     const congelar = c.distrato?.congelar_saldo !== false;
+    const valorAcerto = Number(c.distrato?.valor_acerto) || 0;
 
-    let saldoAMedir = Math.max(0, valorContratoVigente - valorMedido);
+    // Se o contrato foi distratado com congelamento de saldo, o valor final efetivo do contrato
+    // reflete o que foi executado (valorMedido + valorAcerto), liberando o saldo não medido
+    // de volta para o Orçamento Base da obra.
+    const valorFinalContrato = (isDistratado && congelar)
+      ? (valorMedido + valorAcerto)
+      : valorContratoVigente;
+
+    let saldoAMedir = Math.max(0, valorFinalContrato - valorMedido);
     if (isDistratado && congelar) {
-      saldoAMedir = 0;
+      saldoAMedir = Math.max(0, valorAcerto);
     }
 
-    const percentualMedido = valorContratoVigente > 0 ? valorMedido / valorContratoVigente : 0;
+    const percentualMedido = valorFinalContrato > 0
+      ? Math.min(1, valorMedido / valorFinalContrato)
+      : (valorMedido > 0 ? 1 : 0);
 
     return {
       ...c,
       valor_original: valorOriginal,
       valor_aditivos: totalAditivos,
-      valor_contrato: valorContratoVigente,
+      valor_contrato: valorFinalContrato,
       valor_medido: valorMedido,
       saldo_a_medir: saldoAMedir,
       percentual_medido: percentualMedido,

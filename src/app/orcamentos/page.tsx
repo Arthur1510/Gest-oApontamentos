@@ -225,8 +225,19 @@ export default function OrcamentosPage() {
       // Editar existente
       updated = contratos.map((c) => (c.id === contratoData.id ? { ...c, ...contratoData } : c));
     } else {
-      // Novo Contrato
-      const novoId = contratoData.id || `CT${String(contratos.length + 1).padStart(3, '0')}`;
+      // Novo Contrato: calcular ID único para evitar colisões
+      let maxNum = 0;
+      contratos.forEach((c) => {
+        const match = c.id.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      const generatedId = `CT${String(maxNum + 1).padStart(3, '0')}`;
+      const novoId = (contratoData.id && !contratos.some((c) => c.id === contratoData.id))
+        ? contratoData.id
+        : generatedId;
       const novo: Contrato = {
         id: novoId,
         num_sienge: contratoData.num_sienge || '',
@@ -427,10 +438,69 @@ export default function OrcamentosPage() {
     localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(updated));
   };
 
-  const handleEditarObra = (obraEditada: Obra) => {
+  const handleEditarObra = (
+    obraEditada: Obra,
+    opcoes?: { distratarContratos?: boolean; reativarContratos?: boolean }
+  ) => {
+    const obraAnterior = obras.find((o) => o.id === obraEditada.id);
     const updated = obras.map((o) => (o.id === obraEditada.id ? obraEditada : o));
     setObras(updated);
     localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(updated));
+
+    const pertenceAEstaObra = (nomeOuCodigo: string) => {
+      const norm = (nomeOuCodigo || '').trim().toUpperCase();
+      return (
+        norm === obraEditada.codigo.trim().toUpperCase() ||
+        norm === obraEditada.nome.trim().toUpperCase() ||
+        (obraAnterior && (
+          norm === obraAnterior.codigo.trim().toUpperCase() ||
+          norm === obraAnterior.nome.trim().toUpperCase()
+        ))
+      );
+    };
+
+    if (opcoes?.distratarContratos) {
+      const updatedContratos = contratos.map((c) => {
+        if (pertenceAEstaObra(c.obra) && c.status !== 'Distratado') {
+          return {
+            ...c,
+            status: 'Distratado' as const,
+            distrato: {
+              data: new Date().toISOString().split('T')[0],
+              motivo: `Obra ${obraEditada.status?.toLowerCase() || 'paralisada'}`,
+              congelar_saldo: true,
+              valor_acerto: 0,
+            },
+          };
+        }
+        return c;
+      });
+
+      const updatedMedicoes = medicoes.map((m) => {
+        if (pertenceAEstaObra(m.obra) && m.status === 'A Medir') {
+          return {
+            ...m,
+            status: 'Cancelado' as const,
+          };
+        }
+        return m;
+      });
+
+      salvarDados(updatedMedicoes, updatedContratos, orcamentos);
+    } else if (opcoes?.reativarContratos) {
+      const updatedContratos = contratos.map((c) => {
+        if (pertenceAEstaObra(c.obra) && c.status === 'Distratado') {
+          return {
+            ...c,
+            status: 'Ativo' as const,
+            distrato: null,
+          };
+        }
+        return c;
+      });
+
+      salvarDados(medicoes, updatedContratos, orcamentos);
+    }
   };
 
   const handleExcluirObra = (id: string) => {
@@ -749,6 +819,8 @@ export default function OrcamentosPage() {
           fornecedores={fornecedores}
           filtroObra={filtroObra}
           setFiltroObra={setFiltroObra}
+          filtroFornecedor={filtroFornecedor}
+          setFiltroFornecedor={setFiltroFornecedor}
           onNovaMedicao={() => {
             setMedicaoParaEditar(null);
             setContratoPreSelecionado(null);
@@ -810,6 +882,7 @@ export default function OrcamentosPage() {
 
       <ContratoFormModal
         contratoParaEditar={contratoParaEditar}
+        contratos={contratos}
         obras={obras}
         fornecedores={fornecedores}
         disciplinas={disciplinas}

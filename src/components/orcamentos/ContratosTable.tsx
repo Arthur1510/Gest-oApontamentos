@@ -358,6 +358,11 @@ export function ContratosTable({
                       <span className="text-xs font-bold text-slate-900 dark:text-white font-mono block mt-0.5">
                         {formatCurrency(c.valor_contrato)}
                       </span>
+                      {isDistratado && c.valor_original && c.valor_original !== c.valor_contrato && (
+                        <span className="block text-[9px] text-rose-500 font-bold mt-0.5 line-through">
+                          Orig: {formatCurrency(c.valor_original)}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <span className="text-[10px] font-bold uppercase text-slate-400 block">Medido</span>
@@ -560,6 +565,11 @@ export function ContratosTable({
 
                       <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-mono whitespace-nowrap">
                         {formatCurrency(c.valor_contrato)}
+                        {isDistratado && c.valor_original && c.valor_original !== c.valor_contrato && (
+                          <span className="block text-[10px] text-slate-400 font-normal line-through">
+                            Orig: {formatCurrency(c.valor_original)}
+                          </span>
+                        )}
                       </td>
 
                       <td className="py-2.5 px-3 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">

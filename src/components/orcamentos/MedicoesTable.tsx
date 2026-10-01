@@ -36,6 +36,8 @@ interface MedicoesTableProps {
   fornecedores: Fornecedor[];
   filtroObra: string;
   setFiltroObra: (obra: string) => void;
+  filtroFornecedor?: string;
+  setFiltroFornecedor?: (fornecedor: string) => void;
   onNovaMedicao: () => void;
   onEditarMedicao: (medicao: Medicao) => void;
   onExcluirMedicao: (id: string) => void;
@@ -49,12 +51,23 @@ export function MedicoesTable({
   fornecedores,
   filtroObra,
   setFiltroObra,
+  filtroFornecedor,
+  setFiltroFornecedor,
   onNovaMedicao,
   onEditarMedicao,
   onExcluirMedicao,
   onMudarStatusMedicao,
 }: MedicoesTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [localFiltroFornecedor, setLocalFiltroFornecedor] = useState<string>('');
+  const filtroFornecedorAtivo = filtroFornecedor !== undefined ? filtroFornecedor : localFiltroFornecedor;
+  const handleSetFiltroFornecedor = (forn: string) => {
+    if (setFiltroFornecedor) {
+      setFiltroFornecedor(forn);
+    } else {
+      setLocalFiltroFornecedor(forn);
+    }
+  };
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroMes, setFiltroMes] = useState<string>('');
   const [filtroContrato, setFiltroContrato] = useState<string>('');
@@ -66,13 +79,26 @@ export function MedicoesTable({
   const [nfInput, setNfInput] = useState('');
   const [dataPagamentoInput, setDataPagamentoInput] = useState(new Date().toISOString().split('T')[0]);
 
+  // Lista única de fornecedores para o filtro
+  const fornecedoresOpcoes = useMemo(() => {
+    const nomes = new Set<string>();
+    fornecedores.forEach((f) => {
+      if (f.fornecedor) nomes.add(f.fornecedor);
+    });
+    medicoes.forEach((m) => {
+      if (m.empresa) nomes.add(m.empresa);
+    });
+    return Array.from(nomes).sort((a, b) => a.localeCompare(b));
+  }, [fornecedores, medicoes]);
+
   // Contagem de medições em atraso no total recebido
   const countEmAtraso = useMemo(() => {
     return medicoes.filter((m) => {
       if (filtroObra && m.obra !== filtroObra) return false;
+      if (filtroFornecedorAtivo && m.empresa !== filtroFornecedorAtivo) return false;
       return isMedicaoEmAtraso(m);
     }).length;
-  }, [medicoes, filtroObra]);
+  }, [medicoes, filtroObra, filtroFornecedorAtivo]);
 
   // Lista única de meses para o filtro
   const mesesUnicos = useMemo(() => {
@@ -87,6 +113,7 @@ export function MedicoesTable({
   const medicoesFiltradas = useMemo(() => {
     return medicoes.filter((m) => {
       if (filtroObra && m.obra !== filtroObra) return false;
+      if (filtroFornecedorAtivo && m.empresa !== filtroFornecedorAtivo) return false;
       if (filtroStatus && m.status !== filtroStatus) return false;
       if (filtroMes && m.mes_competencia !== filtroMes) return false;
       if (filtroContrato && m.contrato_id !== filtroContrato) return false;
@@ -104,7 +131,7 @@ export function MedicoesTable({
 
       return true;
     });
-  }, [medicoes, filtroObra, filtroStatus, filtroMes, filtroContrato, filtroAtrasoApenas, searchQuery]);
+  }, [medicoes, filtroObra, filtroFornecedorAtivo, filtroStatus, filtroMes, filtroContrato, filtroAtrasoApenas, searchQuery]);
 
   // Totais
   const totais = useMemo(() => {
@@ -169,6 +196,20 @@ export function MedicoesTable({
               ))}
             </select>
 
+            {/* Filtro Fornecedor */}
+            <select
+              value={filtroFornecedorAtivo}
+              onChange={(e) => handleSetFiltroFornecedor(e.target.value)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] max-w-[200px]"
+            >
+              <option value="">🤝 Fornecedores</option>
+              {fornecedoresOpcoes.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+
             {/* Filtro Status */}
             <select
               value={filtroStatus}
@@ -216,13 +257,14 @@ export function MedicoesTable({
               </button>
             )}
 
-            {(searchQuery || filtroObra || filtroStatus || filtroMes || filtroContrato || filtroAtrasoApenas) && (
+            {(searchQuery || filtroObra || filtroFornecedorAtivo || filtroStatus || filtroMes || filtroContrato || filtroAtrasoApenas) && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => {
                   setSearchQuery('');
                   setFiltroObra('');
+                  handleSetFiltroFornecedor('');
                   setFiltroStatus('');
                   setFiltroMes('');
                   setFiltroContrato('');
