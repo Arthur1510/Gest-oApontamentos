@@ -137,12 +137,16 @@ export function MedicaoFormModal({
   };
 
   const handleDataChange = (dataPrevista: string, dataMedicao: string, status: StatusMedicao) => {
-    const refData = (status === 'Pago' || status === 'Medido') && dataMedicao ? dataMedicao : dataPrevista;
+    // Se estiver pago e tiver data_pagamento, prioriza data_pagamento para desembolso; senão dataMedicao, senão dataPrevista
+    const refData = (status === 'Pago' && formData.data_pagamento)
+      ? formData.data_pagamento
+      : ((status === 'Pago' || status === 'Medido') && dataMedicao ? dataMedicao : dataPrevista);
+    
     let mesComp = formData.mes_competencia;
 
-    if (refData) {
+    if (refData && (!formData.mes_competencia || !medicaoParaEditar)) {
       const parts = refData.split('-');
-      if (parts.length === 3) {
+      if (parts.length >= 2) {
         mesComp = `${parts[0].slice(-2)}/${parts[1]}`;
       }
     }
@@ -154,6 +158,22 @@ export function MedicaoFormModal({
       data_referencia: refData,
       mes_competencia: mesComp,
       status: status,
+    }));
+  };
+
+  const handleDataPagamentoChange = (dtPag: string) => {
+    let mesComp = formData.mes_competencia;
+    // Se a medição estiver como Pago e preencher data de pagamento, sugere atualizar o mês de competência/desembolso
+    if (dtPag && (formData.status === 'Pago' || !mesComp)) {
+      const parts = dtPag.split('-');
+      if (parts.length >= 2) {
+        mesComp = `${parts[0].slice(-2)}/${parts[1]}`;
+      }
+    }
+    setFormData((prev) => ({
+      ...prev,
+      data_pagamento: dtPag,
+      mes_competencia: mesComp,
     }));
   };
 
@@ -362,6 +382,35 @@ export function MedicaoFormModal({
                 placeholder="Ex: 26/03"
                 className="text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D]"
               />
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                {formData.data_pagamento && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = formData.data_pagamento.split('-');
+                      if (p.length >= 2) setFormData((prev) => ({ ...prev, mes_competencia: `${p[0].slice(-2)}/${p[1]}` }));
+                    }}
+                    className="text-[10px] text-[#00A3C4] hover:underline"
+                  >
+                    Usar mês pagto ({formData.data_pagamento.slice(2, 4)}/{formData.data_pagamento.slice(5, 7)})
+                  </button>
+                )}
+                {formData.data_medicao && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = formData.data_medicao.split('-');
+                      if (p.length >= 2) setFormData((prev) => ({ ...prev, mes_competencia: `${p[0].slice(-2)}/${p[1]}` }));
+                    }}
+                    className="text-[10px] text-slate-500 hover:underline"
+                  >
+                    Usar mês medição ({formData.data_medicao.slice(2, 4)}/{formData.data_medicao.slice(5, 7)})
+                  </button>
+                )}
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 leading-tight">
+                Agrupador na Curva S: para <b>Fluxo de Caixa (Desembolso)</b>, use o mês do pagamento. Para <b>Avanço Físico</b>, use o mês medido. Se vazio, deduz automaticamente.
+              </p>
             </div>
           </div>
 
@@ -386,7 +435,7 @@ export function MedicaoFormModal({
               <Input
                 type="date"
                 value={formData.data_pagamento}
-                onChange={(e) => setFormData({ ...formData, data_pagamento: e.target.value })}
+                onChange={(e) => handleDataPagamentoChange(e.target.value)}
                 className="text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D]"
               />
             </div>

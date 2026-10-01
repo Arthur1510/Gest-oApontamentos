@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   Database,
   Trash2,
+  FileText,
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -28,6 +29,8 @@ interface ExportModalProps {
   onClose: () => void;
   onResetarDadosPadrao: () => void;
   onLimparContratosMedicoes?: () => void;
+  onAbrirRelatorioPdf?: () => void;
+  onExportarExcelConsolidado?: () => void;
 }
 
 export function ExportModal({
@@ -39,6 +42,8 @@ export function ExportModal({
   onClose,
   onResetarDadosPadrao,
   onLimparContratosMedicoes,
+  onAbrirRelatorioPdf,
+  onExportarExcelConsolidado,
 }: ExportModalProps) {
   if (!isOpen) return null;
 
@@ -221,10 +226,55 @@ export function ExportModal({
 
         {/* Content */}
         <div className="p-5 space-y-5">
-          {/* Seção de Exportação */}
+          {/* Seção Destaque: Relatório Executivo PDF & Excel com Dashboard */}
+          <div className="p-4 rounded-xl border-2 border-[#00A3C4]/30 bg-gradient-to-br from-[#00A3C4]/10 via-slate-50 to-slate-100 dark:from-[#00A3C4]/15 dark:via-[#072B3B] dark:to-[#072432] space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-[#00A3C4] text-white">
+                <FileSpreadsheet className="h-4 w-4" />
+              </span>
+              <div>
+                <h4 className="font-extrabold text-slate-900 dark:text-white text-xs sm:text-sm">
+                  Relatório Executivo PDF &amp; Pasta de Trabalho Excel
+                </h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Documento formal pronto para diretoria e arquivo Excel completo com Dashboard e 6 planilhas integradas.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {onAbrirRelatorioPdf && (
+                <Button
+                  onClick={() => {
+                    onAbrirRelatorioPdf();
+                    onClose();
+                  }}
+                  className="bg-[#00A3C4] hover:bg-[#008EA9] text-white font-bold text-xs h-9 rounded-xl gap-2 shadow-xs justify-start"
+                >
+                  <FileText className="h-4 w-4" />
+                  Abrir Relatório Executivo PDF (A4)
+                </Button>
+              )}
+
+              {onExportarExcelConsolidado && (
+                <Button
+                  onClick={() => {
+                    onExportarExcelConsolidado();
+                    onClose();
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-xl gap-2 shadow-xs justify-start"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Baixar Excel Completo (.xls)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Seção de Exportação CSV Individual */}
           <div className="space-y-2.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
-              Downloads CSV (Compatíveis com Microsoft Excel)
+              Tabelas Individuais CSV (Compatíveis com Microsoft Excel)
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

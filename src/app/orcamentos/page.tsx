@@ -29,8 +29,10 @@ import {
   recalculateContratos,
   recalculateOrcamentos,
   calculateCurvaDesembolso,
+  calculateKpis,
   isMedicaoEmAtraso,
 } from '@/lib/orcamento-utils';
+import { exportMultiSheetExcel } from '@/lib/excel-export';
 import { OrcamentoDashboard } from '@/components/orcamentos/OrcamentoDashboard';
 import { OrcamentoBaseTable } from '@/components/orcamentos/OrcamentoBaseTable';
 import { ContratosTable } from '@/components/orcamentos/ContratosTable';
@@ -43,6 +45,7 @@ import { OrcamentoFormModal } from '@/components/orcamentos/OrcamentoFormModal';
 import { ExportModal } from '@/components/orcamentos/ExportModal';
 import { AditivoModal } from '@/components/orcamentos/AditivoModal';
 import { DistratoModal } from '@/components/orcamentos/DistratoModal';
+import { RelatorioOrcamentoPdfModal } from '@/components/orcamentos/RelatorioOrcamentoPdfModal';
 import { Button } from '@/components/ui/button';
 import {
   LayoutDashboard,
@@ -55,6 +58,7 @@ import {
   RotateCcw,
   Sparkles,
   Trash2,
+  FileText,
 } from 'lucide-react';
 
 const STORAGE_KEY_ORCAMENTOS = 'wcc_orcamentos_data_v2';
@@ -107,6 +111,7 @@ export default function OrcamentosPage() {
 
   // Modal de Exportação / Limpeza
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isRelatorioPdfOpen, setIsRelatorioPdfOpen] = useState(false);
 
   // Carregar dados salvos no localStorage
   useEffect(() => {
@@ -496,6 +501,19 @@ export default function OrcamentosPage() {
     return calculateCurvaDesembolso(medicoes, filtroObra || null, filtroFornecedor || null);
   }, [medicoes, filtroObra, filtroFornecedor]);
 
+  // Exportação consolidada para Excel com Dashboard & 6 Planilhas
+  const handleExportarExcelConsolidado = useCallback(() => {
+    const kpis = calculateKpis(orcamentos, contratos, medicoes, filtroObra || null, null);
+    exportMultiSheetExcel({
+      orcamentos,
+      contratos,
+      medicoes,
+      curvaPontos: curvaPontosExport,
+      kpis,
+      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${filtroObra || 'Geral'}.xls`,
+    });
+  }, [orcamentos, contratos, medicoes, filtroObra, curvaPontosExport]);
+
   return (
     <div className="flex-1 space-y-6 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
       {/* 1. CABEÇALHO DO MÓDULO */}
@@ -546,6 +564,14 @@ export default function OrcamentosPage() {
             className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
           >
             <Plus className="h-4 w-4 text-[#00A3C4]" /> Nova Medição
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => setIsRelatorioPdfOpen(true)}
+            className="bg-[#072B3B] dark:bg-[#00A3C4] hover:bg-[#0B384D] dark:hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+          >
+            <FileText className="h-4 w-4 text-[#00C4EB] dark:text-white" /> Relatório Executivo PDF
           </Button>
 
           {contratos.length > 0 && (
@@ -852,6 +878,20 @@ export default function OrcamentosPage() {
         onClose={() => setIsExportModalOpen(false)}
         onResetarDadosPadrao={handleCarregarDadosDemo}
         onLimparContratosMedicoes={handleLimparContratosEMedicoes}
+        onAbrirRelatorioPdf={() => setIsRelatorioPdfOpen(true)}
+        onExportarExcelConsolidado={handleExportarExcelConsolidado}
+      />
+
+      <RelatorioOrcamentoPdfModal
+        isOpen={isRelatorioPdfOpen}
+        onClose={() => setIsRelatorioPdfOpen(false)}
+        orcamentos={orcamentos}
+        contratos={contratos}
+        medicoes={medicoes}
+        curvaPontos={curvaPontosExport}
+        obras={obras}
+        filtroObra={filtroObra}
+        filtroFornecedor={filtroFornecedor}
       />
     </div>
   );

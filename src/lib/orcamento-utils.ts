@@ -83,6 +83,21 @@ export function parseMesCompetencia(mesStr: string): { label: string; sortKey: s
     };
   }
 
+  // Formato ISO "YYYY-MM" ou "YYYY-MM-DD"
+  if (mesStr.includes('-')) {
+    const parts = mesStr.trim().split('-');
+    if (parts.length >= 2) {
+      const ano = parts[0];
+      const mesNum = parseInt(parts[1], 10);
+      const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const mesNome = mesNum >= 1 && mesNum <= 12 ? mesesNomes[mesNum - 1] : parts[1];
+      return {
+        label: `${mesNome}/${ano.slice(-2)}`,
+        sortKey: `${ano}-${String(mesNum).padStart(2, '0')}`,
+      };
+    }
+  }
+
   return { label: mesStr, sortKey: mesStr };
 }
 
@@ -172,6 +187,91 @@ export function recalculateOrcamentos(
 }
 
 /**
+ * Extrai o mês e ano no formato "AA/MM" a partir de uma data ISO (YYYY-MM-DD)
+ */
+export function extractMesAno(dataIso?: string | null): string | null {
+  if (!dataIso) return null;
+  const parts = dataIso.trim().split('-');
+  if (parts.length >= 2) {
+    const ano = parts[0].length === 4 ? parts[0].slice(-2) : parts[0];
+    const mes = parts[1].padStart(2, '0');
+    return `${ano}/${mes}`;
+  }
+  return null;
+}
+
+/**
+ * Critérios de agrupamento temporal da Curva S
+ */
+export type CriterioCurvaS = 'competencia' | 'desembolso' | 'medicao';
+
+/**
+ * Resolve o mês de referência de uma medição com fallback inteligente:
+ * - 'competencia': Prioriza o preenchimento em m.mes_competencia. Se em branco, infere pelas datas.
+ * - 'desembolso': Focado em Fluxo de Caixa / Pagamento. Se a medição estiver 'Pago' e tiver data_pagamento, usa o mês do pagamento. Se 'A Medir', usa a data prevista.
+ * - 'medicao': Focado no avanço físico da obra. Usa data_medicao ou data_prevista.
+ */
+export function resolveMesMedicao(
+  m: Medicao,
+  criterio: CriterioCurvaS = 'competencia'
+): string {
+  // 1. Se critério for 'desembolso' (Fluxo de Caixa Real)
+  if (criterio === 'desembolso') {
+    if (m.status === 'Pago' && m.data_pagamento) {
+      const extraido = extractMesAno(m.data_pagamento);
+      if (extraido) return extraido;
+    }
+    if (m.data_prevista) {
+      const extraido = extractMesAno(m.data_prevista);
+      if (extraido) return extraido;
+    }
+    if (m.mes_competencia && m.mes_competencia.trim() !== '' && m.mes_competencia !== 'Sem data') {
+      return m.mes_competencia.trim();
+    }
+  }
+
+  // 2. Se critério for 'medicao' (Avanço Físico de Obra)
+  if (criterio === 'medicao') {
+    if (m.data_medicao) {
+      const extraido = extractMesAno(m.data_medicao);
+      if (extraido) return extraido;
+    }
+    if (m.data_prevista) {
+      const extraido = extractMesAno(m.data_prevista);
+      if (extraido) return extraido;
+    }
+    if (m.mes_competencia && m.mes_competencia.trim() !== '' && m.mes_competencia !== 'Sem data') {
+      return m.mes_competencia.trim();
+    }
+  }
+
+  // 3. Critério 'competencia' (Padrão) - Prioriza mes_competencia explícito
+  if (m.mes_competencia && m.mes_competencia.trim() !== '' && m.mes_competencia !== 'Sem data') {
+    return m.mes_competencia.trim();
+  }
+
+  // Fallbacks automáticos se mes_competencia estiver vazio:
+  if (m.status === 'Pago' && m.data_pagamento) {
+    const extraido = extractMesAno(m.data_pagamento);
+    if (extraido) return extraido;
+  }
+  if (m.data_medicao) {
+    const extraido = extractMesAno(m.data_medicao);
+    if (extraido) return extraido;
+  }
+  if (m.data_prevista) {
+    const extraido = extractMesAno(m.data_prevista);
+    if (extraido) return extraido;
+  }
+  if (m.data_referencia) {
+    const extraido = extractMesAno(m.data_referencia);
+    if (extraido) return extraido;
+  }
+
+  return 'Sem data';
+}
+
+/**
  * Gera pontos para o gráfico e tabela da Curva de Desembolso (Curva S)
  */
 export function calculateCurvaDesembolso(
@@ -179,7 +279,8 @@ export function calculateCurvaDesembolso(
   filtroObra?: string | null,
   filtroEmpresa?: string | null,
   contratos?: Contrato[] | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null
+  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  criterio: CriterioCurvaS = 'competencia'
 ): CurvaDesembolsoPonto[] {
   // Mapa de categoria por contrato_id
   const catPorContrato: Record<string, string> = {};
@@ -202,7 +303,7 @@ export function calculateCurvaDesembolso(
   const mesMap: Record<string, { previsto: number; realizado: number }> = {};
 
   for (const m of filtered) {
-    const mesKey = m.mes_competencia || 'Sem data';
+    const mesKey = resolveMesMedicao(m, criterio);
     if (!mesMap[mesKey]) {
       mesMap[mesKey] = { previsto: 0, realizado: 0 };
     }

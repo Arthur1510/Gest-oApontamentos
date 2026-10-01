@@ -16,6 +16,7 @@ import {
   calculateCurvaDesembolso,
   calculateKpis,
   getObraLabel,
+  CriterioCurvaS,
 } from '@/lib/orcamento-utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -78,6 +79,7 @@ export function OrcamentoDashboard({
   onNavigateTab,
 }: OrcamentoDashboardProps) {
   const [showTabelaCurva, setShowTabelaCurva] = useState(false);
+  const [criterioCurva, setCriterioCurva] = useState<CriterioCurvaS>('competencia');
   const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
 
   const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
@@ -100,9 +102,10 @@ export function OrcamentoDashboard({
       filtroObra || null,
       filtroFornecedor || null,
       contratos,
-      catParam
+      catParam,
+      criterioCurva
     );
-  }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam]);
+  }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam, criterioCurva]);
 
   const countProjetos = useMemo(() => contratos.filter((c) => c.categoria === 'Projeto').length, [contratos]);
   const countLegalizacao = useMemo(() => contratos.filter((c) => c.categoria === 'Legalização').length, [contratos]);
@@ -428,19 +431,63 @@ export function OrcamentoDashboard({
                 </CardTitle>
               </div>
               <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Acompanhamento financeiro por competência mensal: barras representam o desembolso mensal e a linha traça o avanço acumulado.
+                {criterioCurva === 'competencia' && 'Agrupamento padrão por Mês de Competência (com dedução automática por data quando em branco).'}
+                {criterioCurva === 'desembolso' && 'Fluxo de Caixa Real: medições pagas alocadas no mês efetivo de pagamento (data_pagamento) e futuras na data prevista.'}
+                {criterioCurva === 'medicao' && 'Avanço Físico de Obra: aloca os serviços no mês em que foram medidos e atestados em campo (data_medicao).'}
               </CardDescription>
             </div>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTabelaCurva(!showTabelaCurva)}
-              className="text-xs gap-1.5 border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
-            >
-              {showTabelaCurva ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-              {showTabelaCurva ? 'Ocultar Tabela Mensal' : 'Ver Tabela Mensal'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Seletor de Critério */}
+              <div className="inline-flex rounded-lg p-0.5 bg-slate-100 dark:bg-[#072432] border border-slate-200 dark:border-[#0B384D]">
+                <button
+                  type="button"
+                  onClick={() => setCriterioCurva('competencia')}
+                  className={`px-2.5 py-1 text-[11px] rounded-md transition-all ${
+                    criterioCurva === 'competencia'
+                      ? 'bg-white dark:bg-[#00A3C4] text-slate-900 dark:text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+                  }`}
+                  title="Agrupa pelo campo Mês Competência (com fallback dinâmico)"
+                >
+                  Competência
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCriterioCurva('desembolso')}
+                  className={`px-2.5 py-1 text-[11px] rounded-md transition-all ${
+                    criterioCurva === 'desembolso'
+                      ? 'bg-white dark:bg-[#00A3C4] text-slate-900 dark:text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+                  }`}
+                  title="Visão Financeira / Caixa: agrupa no mês da data de pagamento"
+                >
+                  Pagamento (Caixa)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCriterioCurva('medicao')}
+                  className={`px-2.5 py-1 text-[11px] rounded-md transition-all ${
+                    criterioCurva === 'medicao'
+                      ? 'bg-white dark:bg-[#00A3C4] text-slate-900 dark:text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+                  }`}
+                  title="Visão Física: agrupa no mês da data de medição"
+                >
+                  Medição (Físico)
+                </button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTabelaCurva(!showTabelaCurva)}
+                className="text-xs gap-1.5 border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
+              >
+                {showTabelaCurva ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                {showTabelaCurva ? 'Ocultar Tabela' : 'Ver Tabela'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
