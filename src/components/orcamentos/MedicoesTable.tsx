@@ -109,6 +109,15 @@ export function MedicoesTable({
     return Array.from(set).sort();
   }, [medicoes]);
 
+  // Mapa de contratos indexado por ID para consultas rápidas
+  const contratosMap = useMemo(() => {
+    const map: Record<string, Contrato> = {};
+    contratos.forEach((c) => {
+      map[c.id] = c;
+    });
+    return map;
+  }, [contratos]);
+
   // Medições filtradas
   const medicoesFiltradas = useMemo(() => {
     return medicoes.filter((m) => {
@@ -398,12 +407,31 @@ export function MedicoesTable({
                         {formatCurrency(m.valor_medicao)}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">% Marco</span>
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono block mt-0.5">
-                        {formatPercent(m.percentual)}
-                      </span>
-                    </div>
+                    {(() => {
+                      const c = contratosMap[m.contrato_id];
+                      const pctExibido = (m.percentual && m.percentual > 0)
+                        ? m.percentual
+                        : (c && c.valor_contrato > 0 ? (m.valor_medicao / c.valor_contrato) : 0);
+                      return (
+                        <div className="text-right">
+                          <span className="text-[10px] font-bold uppercase text-slate-400 block">% Marco</span>
+                          <span
+                            className="text-xs font-bold text-slate-700 dark:text-slate-300 font-mono block mt-0.5 cursor-help"
+                            title={
+                              c
+                                ? `Contrato Vigente: ${formatCurrency(c.valor_contrato)}${
+                                    (c.valor_aditivos || 0) !== 0
+                                      ? ` (Aditivos: ${formatCurrency(c.valor_aditivos || 0)})`
+                                      : ''
+                                  }`
+                                : undefined
+                            }
+                          >
+                            {formatPercent(pctExibido)}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Datas e NF */}
@@ -540,9 +568,30 @@ export function MedicoesTable({
                         {m.etapa}
                       </td>
 
-                      <td className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">
-                        {formatPercent(m.percentual)}
-                      </td>
+                      {(() => {
+                        const c = contratosMap[m.contrato_id];
+                        const pctExibido = (m.percentual && m.percentual > 0)
+                          ? m.percentual
+                          : (c && c.valor_contrato > 0 ? (m.valor_medicao / c.valor_contrato) : 0);
+                        return (
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-700 dark:text-slate-300 font-mono whitespace-nowrap">
+                            <span
+                              className="cursor-help"
+                              title={
+                                c
+                                  ? `Contrato Vigente: ${formatCurrency(c.valor_contrato)}${
+                                      (c.valor_aditivos || 0) !== 0
+                                        ? ` (Original: ${formatCurrency(c.valor_original ?? c.valor_contrato)} | Aditivos: ${formatCurrency(c.valor_aditivos || 0)})`
+                                        : ''
+                                    }`
+                                  : undefined
+                              }
+                            >
+                              {formatPercent(pctExibido)}
+                            </span>
+                          </td>
+                        );
+                      })()}
 
                       <td className="py-2.5 px-3 text-right font-bold text-slate-900 dark:text-white font-mono whitespace-nowrap">
                         {formatCurrency(m.valor_medicao)}

@@ -18,6 +18,10 @@ import {
   Database,
   Trash2,
   FileText,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  RefreshCw,
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -31,6 +35,10 @@ interface ExportModalProps {
   onLimparContratosMedicoes?: () => void;
   onAbrirRelatorioPdf?: () => void;
   onExportarExcelConsolidado?: () => void;
+  isSupabaseConfigured?: boolean;
+  isSyncing?: boolean;
+  onSubirParaSupabase?: () => void;
+  onBaixarDoSupabase?: () => void;
 }
 
 export function ExportModal({
@@ -44,6 +52,10 @@ export function ExportModal({
   onLimparContratosMedicoes,
   onAbrirRelatorioPdf,
   onExportarExcelConsolidado,
+  isSupabaseConfigured = false,
+  isSyncing = false,
+  onSubirParaSupabase,
+  onBaixarDoSupabase,
 }: ExportModalProps) {
   if (!isOpen) return null;
 
@@ -321,13 +333,56 @@ export function ExportModal({
           </div>
 
           {/* Seção Supabase Database */}
-          <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 space-y-2">
-            <div className="flex items-center gap-2 text-[#008EA9] dark:text-[#00C4EB] font-bold text-xs">
-              <Database className="h-4 w-4" />
-              Banco de Dados Supabase (Schema & Seed SQL)
+          <div className="p-4 rounded-xl bg-cyan-500/10 border border-cyan-500/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-[#008EA9] dark:text-[#00C4EB] font-bold text-xs">
+                <Database className="h-4 w-4" />
+                Banco de Dados Supabase (Nuvem em Tempo Real)
+              </div>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                  isSupabaseConfigured
+                    ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400'
+                    : 'bg-slate-500/20 text-slate-600'
+                }`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                {isSupabaseConfigured ? 'Conectado' : 'Offline'}
+              </span>
             </div>
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              O schema relacional atualizado com categorias (<strong className="text-slate-800 dark:text-slate-100">Projeto</strong> e <strong className="text-slate-800 dark:text-slate-100">Legalização</strong>) e status simplificados (<code className="text-[11px] font-mono">A Medir, Medido, Pago, Cancelado</code>) está em <code className="text-[11px] font-mono font-bold">schema.sql</code>. A carga completa idempotente dos dados saneados está em <code className="text-[11px] font-mono font-bold">seed_orcamentos.sql</code>.
+              O sistema sincroniza automaticamente todas as alterações (criação, edição e exclusão de contratos, medições e cadastros) no Supabase. Você também pode sincronizar em lote manualmente abaixo:
+            </p>
+            {isSupabaseConfigured && (
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {onSubirParaSupabase && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isSyncing}
+                    onClick={onSubirParaSupabase}
+                    className="text-xs border-[#00A3C4]/40 text-[#008EA9] dark:text-[#00C4EB] hover:bg-[#00A3C4]/15 gap-1.5 h-8 font-bold"
+                  >
+                    <CloudUpload className="h-3.5 w-3.5" />
+                    {isSyncing ? 'Sincronizando...' : 'Subir Base Local para Supabase'}
+                  </Button>
+                )}
+                {onBaixarDoSupabase && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isSyncing}
+                    onClick={onBaixarDoSupabase}
+                    className="text-xs border-slate-300 dark:border-[#0B384D] hover:bg-slate-100 dark:hover:bg-[#0B384D] gap-1.5 h-8 font-semibold text-slate-700 dark:text-slate-300"
+                  >
+                    <CloudDownload className="h-3.5 w-3.5 text-slate-500" />
+                    Baixar Base do Supabase
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+              Schema SQL atualizado em <code className="text-[10px] font-mono font-bold bg-slate-200 dark:bg-[#0B384D] px-1 py-0.5 rounded">schema.sql</code>. Carga inicial em <code className="text-[10px] font-mono font-bold bg-slate-200 dark:bg-[#0B384D] px-1 py-0.5 rounded">seed_orcamentos.sql</code>.
             </p>
           </div>
 

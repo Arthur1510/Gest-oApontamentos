@@ -317,9 +317,10 @@ CREATE TABLE IF NOT EXISTS public.medicoes_contratos (
     data_pagamento DATE
 );
 
--- Garantir adição de categoria se as tabelas já tiverem sido criadas
+-- Garantir adição de categoria e colunas estendidas (status, aditivos, distrato)
 DO $$
 BEGIN
+    -- Categoria em orçamentos e contratos
     IF NOT EXISTS (
         SELECT 1 FROM information_schema.columns 
         WHERE table_name = 'orcamentos_base' AND column_name = 'categoria'
@@ -333,7 +334,69 @@ BEGIN
     ) THEN
         ALTER TABLE public.contratos_obras ADD COLUMN categoria TEXT NOT NULL DEFAULT 'Projeto';
     END IF;
+
+    -- Status em Obras
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'obras_cad' AND column_name = 'status'
+    ) THEN
+        ALTER TABLE public.obras_cad ADD COLUMN status TEXT DEFAULT 'Ativa';
+    END IF;
+
+    -- Campos estendidos em Contratos (Status, Aditivos e Distrato)
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'status'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN status TEXT DEFAULT 'Ativo';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'valor_original'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN valor_original NUMERIC(15, 2);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'valor_aditivos'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN valor_aditivos NUMERIC(15, 2) DEFAULT 0;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'aditivos'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN aditivos JSONB DEFAULT '[]';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'contratos_obras' AND column_name = 'distrato'
+    ) THEN
+        ALTER TABLE public.contratos_obras ADD COLUMN distrato JSONB;
+    END IF;
 END $$;
+
+-- Tabela Disciplinas
+CREATE TABLE IF NOT EXISTS public.disciplinas_cad (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    codigo TEXT NOT NULL,
+    disciplina TEXT NOT NULL
+);
+
+-- Tabela Subdisciplinas
+CREATE TABLE IF NOT EXISTS public.subdisciplinas_cad (
+    id TEXT PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    disciplina TEXT NOT NULL,
+    cod_disciplina TEXT NOT NULL,
+    subdisciplina TEXT NOT NULL,
+    cod_subdisciplina TEXT NOT NULL
+);
 
 -- Índices de performance
 CREATE INDEX IF NOT EXISTS idx_orcamentos_obra ON public.orcamentos_base(obra);
@@ -351,6 +414,8 @@ ALTER TABLE public.fornecedores_cad ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.orcamentos_base ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contratos_obras ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medicoes_contratos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.disciplinas_cad ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subdisciplinas_cad ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Permitir leitura pública obras_cad" ON public.obras_cad FOR SELECT USING (true);
 CREATE POLICY "Permitir inserção pública obras_cad" ON public.obras_cad FOR INSERT WITH CHECK (true);
@@ -376,5 +441,15 @@ CREATE POLICY "Permitir leitura pública medicoes_contratos" ON public.medicoes_
 CREATE POLICY "Permitir inserção pública medicoes_contratos" ON public.medicoes_contratos FOR INSERT WITH CHECK (true);
 CREATE POLICY "Permitir atualização pública medicoes_contratos" ON public.medicoes_contratos FOR UPDATE USING (true);
 CREATE POLICY "Permitir exclusão pública medicoes_contratos" ON public.medicoes_contratos FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública disciplinas_cad" ON public.disciplinas_cad FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública disciplinas_cad" ON public.disciplinas_cad FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública disciplinas_cad" ON public.disciplinas_cad FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública disciplinas_cad" ON public.disciplinas_cad FOR DELETE USING (true);
+
+CREATE POLICY "Permitir leitura pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR SELECT USING (true);
+CREATE POLICY "Permitir inserção pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR INSERT WITH CHECK (true);
+CREATE POLICY "Permitir atualização pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR UPDATE USING (true);
+CREATE POLICY "Permitir exclusão pública subdisciplinas_cad" ON public.subdisciplinas_cad FOR DELETE USING (true);
 
 
