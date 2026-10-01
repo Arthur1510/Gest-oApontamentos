@@ -162,7 +162,12 @@ export async function saveContratoSupabase(contrato: Contrato): Promise<boolean>
       }
 
       // Se falhou por coluna não existente, desativa o cache estendido e tenta colunas base
-      if (error.message.includes('does not exist') || error.code === '42703') {
+      if (
+        error.message.includes('does not exist') ||
+        error.message.includes('Could not find') ||
+        error.code === '42703' ||
+        error.code === 'PGRST204'
+      ) {
         hasExtendedContratoCols = false;
       } else {
         console.error('Erro ao salvar contrato no Supabase:', error.message);
@@ -292,7 +297,12 @@ export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<bo
         hasExtendedOrcamentoCols = true;
         return true;
       }
-      if (error.message.includes('does not exist') || error.code === '42703') {
+      if (
+        error.message.includes('does not exist') ||
+        error.message.includes('Could not find') ||
+        error.code === '42703' ||
+        error.code === 'PGRST204'
+      ) {
         hasExtendedOrcamentoCols = false;
       } else {
         console.error('Erro ao salvar item de orçamento estendido no Supabase:', error.message);

@@ -28,6 +28,7 @@ import {
 import {
   recalculateContratos,
   recalculateOrcamentos,
+  isContratoMatchOrcamento,
   getCanonicalObra,
   normalizeText,
   calculateCurvaDesembolso,
@@ -162,11 +163,13 @@ export default function OrcamentosPage() {
         if (savedDisc) setDisciplinas(JSON.parse(savedDisc));
         if (savedSubdisc) setSubdisciplinas(JSON.parse(savedSubdisc));
 
+        let localContratosSalvos: Contrato[] = [];
         if (savedCt && savedMed && savedOrc) {
           dadosLocaisExistem = true;
           const parsedCt: Contrato[] = JSON.parse(savedCt);
           const parsedMed: Medicao[] = JSON.parse(savedMed);
           const parsedOrc: ItemOrcamento[] = JSON.parse(savedOrc);
+          localContratosSalvos = parsedCt;
 
           const recalcCt = recalculateContratos(parsedCt, parsedMed);
           const recalcOrc = recalculateOrcamentos(parsedOrc, recalcCt, currentObras);
@@ -203,12 +206,57 @@ export default function OrcamentosPage() {
           setIsSyncing(true);
           const cloud = await fetchOrcamentoDataFromSupabase();
           if (cloud && (cloud.orcamentos.length > 0 || cloud.contratos.length > 0)) {
-            const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
-            const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
-            if (cloud.obras.length > 0) {
-              setObras(cloud.obras);
-              localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
+            const mergedObras = [...MOCK_OBRAS];
+            (cloud.obras || []).forEach((co) => {
+              const idx = mergedObras.findIndex((mo) => mo.id === co.id || mo.codigo === co.codigo);
+              if (idx >= 0) mergedObras[idx] = co;
+              else mergedObras.push(co);
+            });
+
+            let baseOrcamentos = cloud.orcamentos;
+            if (cloud.orcamentos.length < MOCK_ORCAMENTOS.length) {
+              const mergedOrc = [...cloud.orcamentos];
+              MOCK_ORCAMENTOS.forEach((mo) => {
+                if (!mergedOrc.some((co) => co.id === mo.id)) {
+                  mergedOrc.push(mo);
+                }
+              });
+              baseOrcamentos = mergedOrc;
             }
+
+            // Mescla contratos da nuvem com dados locais (aditivos e distratos) para resiliência
+            const localCtMap = new Map<string, Contrato>();
+            (localContratosSalvos || []).forEach((lc: Contrato) => {
+              if (lc && lc.id) localCtMap.set(String(lc.id).trim().toUpperCase(), lc);
+            });
+
+            const mergedContratos = (cloud.contratos || []).map((cc) => {
+              const local = localCtMap.get(String(cc.id).trim().toUpperCase());
+              if (!local) return cc;
+              const hasCloudAditivos = Array.isArray(cc.aditivos) && cc.aditivos.length > 0;
+              const hasLocalAditivos = Array.isArray(local.aditivos) && local.aditivos.length > 0;
+              return {
+                ...cc,
+                valor_original: cc.valor_original ?? local.valor_original ?? cc.valor_contrato,
+                aditivos: hasCloudAditivos ? cc.aditivos : (hasLocalAditivos ? local.aditivos : []),
+                distrato: cc.distrato || local.distrato || null,
+                status: (cc.status && cc.status !== 'Ativo') ? cc.status : (local.status || cc.status || 'Ativo'),
+              };
+            });
+
+            // Preserva contratos criados localmente que ainda não foram para a nuvem
+            (localContratosSalvos || []).forEach((lc: Contrato) => {
+              if (lc && lc.id && !mergedContratos.some((mc) => String(mc.id).trim().toUpperCase() === String(lc.id).trim().toUpperCase())) {
+                mergedContratos.push(lc);
+              }
+            });
+
+            const recalcCt = recalculateContratos(mergedContratos, cloud.medicoes);
+            const recalcOrc = recalculateOrcamentos(baseOrcamentos, recalcCt, mergedObras);
+
+            setObras(mergedObras);
+            localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(mergedObras));
+
             if (cloud.fornecedores.length > 0) {
               setFornecedores(cloud.fornecedores);
               localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
@@ -382,7 +430,14 @@ export default function OrcamentosPage() {
       // Editar existente
       updated = contratos.map((c) => {
         if (c.id === contratoData.id) {
-          const mod = { ...c, ...contratoData };
+          const novoValorContrato = Number(contratoData.valor_contrato);
+          const totalAditivos = (c.aditivos || []).reduce((acc, a) => acc + (Number(a.valor) || 0), 0);
+          const novoValorOriginal = novoValorContrato - totalAditivos > 0 ? novoValorContrato - totalAditivos : novoValorContrato;
+          const mod = {
+            ...c,
+            ...contratoData,
+            valor_original: novoValorOriginal,
+          };
           contratoSalvo = mod;
           return mod;
         }
@@ -429,16 +484,14 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao persistir contrato no Supabase:', err)
       );
-      const orcAfeitado = recalcOrc.find(
-        (o) =>
-          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
-          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      const orcsAfetados = recalcOrc.filter((o) =>
+        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
       );
-      if (orcAfeitado) {
-        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+      orcsAfetados.forEach((item) => {
+        saveOrcamentoItemSupabase(item).catch((err) =>
           console.warn('Erro ao atualizar orçamento no Supabase:', err)
         );
-      }
+      });
     }
   };
 
@@ -451,16 +504,14 @@ export default function OrcamentosPage() {
         console.warn('Erro ao excluir contrato no Supabase:', err)
       );
       if (contratoExcluido) {
-        const orcAfeitado = recalcOrc.find(
-          (o) =>
-            getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoExcluido.obra, obras) &&
-            normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoExcluido.subdisciplina || contratoExcluido.disciplina)
+        const orcsAfetados = recalcOrc.filter((o) =>
+          isContratoMatchOrcamento(contratoExcluido, o, obras, recalcOrc)
         );
-        if (orcAfeitado) {
-          saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+        orcsAfetados.forEach((item) => {
+          saveOrcamentoItemSupabase(item).catch((err) =>
             console.warn('Erro ao atualizar orçamento no Supabase:', err)
           );
-        }
+        });
       }
     }
   };
@@ -495,16 +546,14 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao salvar aditivo no Supabase:', err)
       );
-      const orcAfeitado = recalcOrc.find(
-        (o) =>
-          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
-          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      const orcsAfetados = recalcOrc.filter((o) =>
+        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
       );
-      if (orcAfeitado) {
-        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+      orcsAfetados.forEach((item) => {
+        saveOrcamentoItemSupabase(item).catch((err) =>
           console.warn('Erro ao atualizar orçamento no Supabase:', err)
         );
-      }
+      });
     }
   };
 
@@ -526,16 +575,14 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao atualizar contrato após exclusão de aditivo no Supabase:', err)
       );
-      const orcAfeitado = recalcOrc.find(
-        (o) =>
-          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
-          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      const orcsAfetados = recalcOrc.filter((o) =>
+        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
       );
-      if (orcAfeitado) {
-        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+      orcsAfetados.forEach((item) => {
+        saveOrcamentoItemSupabase(item).catch((err) =>
           console.warn('Erro ao atualizar orçamento no Supabase:', err)
         );
-      }
+      });
     }
   };
 
@@ -563,16 +610,14 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao registrar distrato no Supabase:', err)
       );
-      const orcAfeitado = recalcOrc.find(
-        (o) =>
-          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
-          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      const orcsAfetados = recalcOrc.filter((o) =>
+        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
       );
-      if (orcAfeitado) {
-        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+      orcsAfetados.forEach((item) => {
+        saveOrcamentoItemSupabase(item).catch((err) =>
           console.warn('Erro ao atualizar orçamento no Supabase:', err)
         );
-      }
+      });
     }
   };
 
@@ -594,16 +639,14 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao reverter distrato no Supabase:', err)
       );
-      const orcAfeitado = recalcOrc.find(
-        (o) =>
-          getCanonicalObra(o.obra || o.nome_obra, obras) === getCanonicalObra(contratoFinal.obra, obras) &&
-          normalizeText(o.subdisciplina || o.disciplina) === normalizeText(contratoFinal.subdisciplina || contratoFinal.disciplina)
+      const orcsAfetados = recalcOrc.filter((o) =>
+        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
       );
-      if (orcAfeitado) {
-        saveOrcamentoItemSupabase(orcAfeitado).catch((err) =>
+      orcsAfetados.forEach((item) => {
+        saveOrcamentoItemSupabase(item).catch((err) =>
           console.warn('Erro ao atualizar orçamento no Supabase:', err)
         );
-      }
+      });
     }
   };
 
@@ -664,21 +707,52 @@ export default function OrcamentosPage() {
       medicaoSalva = novo;
       updated = [novo, ...medicoes];
     }
-    salvarDados(updated, contratos, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(updated, contratos, orcamentos);
     if (medicaoSalva) {
       saveMedicaoSupabase(medicaoSalva).catch((err) =>
         console.warn('Erro ao salvar medição no Supabase:', err)
       );
+      const ctAfetado = recalcCt.find((c) => String(c.id).trim().toUpperCase() === String(medicaoSalva?.contrato_id).trim().toUpperCase());
+      if (ctAfetado) {
+        saveContratoSupabase(ctAfetado).catch((err) =>
+          console.warn('Erro ao atualizar contrato após medição:', err)
+        );
+        const orcsAfetados = recalcOrc.filter((o) =>
+          isContratoMatchOrcamento(ctAfetado, o, obras, recalcOrc)
+        );
+        orcsAfetados.forEach((item) => {
+          saveOrcamentoItemSupabase(item).catch((err) =>
+            console.warn('Erro ao atualizar orçamento após medição:', err)
+          );
+        });
+      }
     }
   };
 
   const handleExcluirMedicao = (id: string) => {
     if (confirm(`Deseja excluir a medição ${id}?`)) {
+      const medicaoExcluida = medicoes.find((m) => m.id === id);
       const updated = medicoes.filter((m) => m.id !== id);
-      salvarDados(updated, contratos, orcamentos);
+      const { recalcCt, recalcOrc } = salvarDados(updated, contratos, orcamentos);
       deleteMedicaoSupabase(id).catch((err) =>
         console.warn('Erro ao excluir medição no Supabase:', err)
       );
+      if (medicaoExcluida) {
+        const ctAfetado = recalcCt.find((c) => String(c.id).trim().toUpperCase() === String(medicaoExcluida.contrato_id).trim().toUpperCase());
+        if (ctAfetado) {
+          saveContratoSupabase(ctAfetado).catch((err) =>
+            console.warn('Erro ao atualizar contrato após exclusão de medição:', err)
+          );
+          const orcsAfetados = recalcOrc.filter((o) =>
+            isContratoMatchOrcamento(ctAfetado, o, obras, recalcOrc)
+          );
+          orcsAfetados.forEach((item) => {
+            saveOrcamentoItemSupabase(item).catch((err) =>
+              console.warn('Erro ao atualizar orçamento após exclusão de medição:', err)
+            );
+          });
+        }
+      }
     }
   };
 
@@ -697,11 +771,25 @@ export default function OrcamentosPage() {
       }
       return m;
     });
-    salvarDados(updated, contratos, orcamentos);
+    const { recalcCt, recalcOrc } = salvarDados(updated, contratos, orcamentos);
     if (medicaoSalva) {
       saveMedicaoSupabase(medicaoSalva).catch((err) =>
         console.warn('Erro ao atualizar status da medição no Supabase:', err)
       );
+      const ctAfetado = recalcCt.find((c) => String(c.id).trim().toUpperCase() === String(medicaoSalva?.contrato_id).trim().toUpperCase());
+      if (ctAfetado) {
+        saveContratoSupabase(ctAfetado).catch((err) =>
+          console.warn('Erro ao atualizar contrato após mudança de status de medição:', err)
+        );
+        const orcsAfetados = recalcOrc.filter((o) =>
+          isContratoMatchOrcamento(ctAfetado, o, obras, recalcOrc)
+        );
+        orcsAfetados.forEach((item) => {
+          saveOrcamentoItemSupabase(item).catch((err) =>
+            console.warn('Erro ao atualizar orçamento após mudança de status de medição:', err)
+          );
+        });
+      }
     }
   };
 

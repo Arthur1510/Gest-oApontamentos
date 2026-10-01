@@ -6,6 +6,7 @@ import {
   KpiOrcamento,
   Obra,
 } from '@/types/orcamento';
+import { MOCK_OBRAS } from './orcamento-mock-data';
 
 /**
  * Formatação de valores monetários em Real (BRL)
@@ -120,16 +121,15 @@ export function normalizeText(str?: string | null): string {
 export function getCanonicalObra(obraStr?: string | null, obrasList?: Obra[]): string {
   if (!obraStr) return '';
   const clean = normalizeText(obraStr);
-  if (obrasList && obrasList.length > 0) {
-    const found = obrasList.find((o) => {
-      const cod = normalizeText(o.codigo);
-      const nom = normalizeText(o.nome);
-      const cc = normalizeText(o.cc);
-      const id = normalizeText(o.id);
-      return clean === cod || clean === nom || clean === cc || clean === id;
-    });
-    if (found) {
-      return normalizeText(found.codigo);
+  const allObras = [...(obrasList || []), ...MOCK_OBRAS];
+  for (const o of allObras) {
+    if (
+      clean === normalizeText(o.codigo) ||
+      clean === normalizeText(o.nome) ||
+      clean === normalizeText(o.cc) ||
+      clean === normalizeText(o.id)
+    ) {
+      return normalizeText(o.codigo);
     }
   }
   return clean;
@@ -165,7 +165,7 @@ export function recalculateContratos(
     let valorOriginal = Number(c.valor_original);
     if (!valorOriginal || isNaN(valorOriginal) || valorOriginal <= 0) {
       if (c.valor_contrato && Number(c.valor_contrato) > 0) {
-        valorOriginal = Number(c.valor_contrato);
+        valorOriginal = totalAditivos > 0 ? Number(c.valor_contrato) - totalAditivos : Number(c.valor_contrato);
       } else {
         valorOriginal = 0;
       }
@@ -209,33 +209,120 @@ export function recalculateContratos(
 }
 
 /**
- * Recalcula orçamentos com base nos contratos (com suporte a aditivos, distratos e normalização de obras)
+ * Normaliza e limpa termos comuns para correspondência robusta
+ */
+function cleanTerm(str?: string | null): string {
+  if (!str) return '';
+  return normalizeText(str)
+    .replace(/\bARQUITERURA\b/g, 'ARQUITETURA')
+    .trim();
+}
+
+/**
+ * Verifica se um contrato pertence a uma linha de orçamento base
+ */
+export function isContratoMatchOrcamento(
+  c: Contrato,
+  o: ItemOrcamento,
+  obras?: Obra[],
+  allOrcamentosDaObra?: ItemOrcamento[]
+): boolean {
+  const cObra = getCanonicalObra(c.obra, obras);
+  const oObra = getCanonicalObra(o.obra || o.nome_obra, obras);
+  if (cObra !== oObra) return false;
+
+  const cDisc = normalizeText(c.disciplina);
+  const oDisc = normalizeText(o.disciplina);
+  const cSub = cleanTerm(c.subdisciplina);
+  const oSub = cleanTerm(o.subdisciplina);
+
+  // 1. Quando as disciplinas são iguais
+  if (cDisc && oDisc && cDisc === oDisc) {
+    // 1.1 Se as subdisciplinas são iguais (e ambas preenchidas)
+    if (cSub && oSub && cSub === oSub) {
+      return true;
+    }
+
+    const cSubIsGeneric = !cSub || cSub === cDisc;
+    const oSubIsGeneric = !oSub || oSub === oDisc;
+
+    // 1.2 Se ambos são genéricos da disciplina (ex: subdisciplina vazia ou igual à disciplina)
+    if (cSubIsGeneric && oSubIsGeneric) {
+      return true;
+    }
+
+    // 1.3 Se o contrato é genérico na disciplina (não especificou subdisciplina):
+    if (cSubIsGeneric) {
+      const itensMesmaDisc = allOrcamentosDaObra
+        ? allOrcamentosDaObra.filter((item) => normalizeText(item.disciplina) === cDisc)
+        : [];
+      // Se há apenas 1 item da disciplina na obra, vincula a ele
+      if (itensMesmaDisc.length <= 1) {
+        return itensMesmaDisc.length === 1 ? itensMesmaDisc[0].id === o.id : true;
+      }
+      // Se há um item com subdisciplina genérica, vincula a ele
+      const itemGenerico = itensMesmaDisc.find((item) => {
+        const sub = cleanTerm(item.subdisciplina);
+        return !sub || sub === cDisc;
+      });
+      if (itemGenerico) {
+        return itemGenerico.id === o.id;
+      }
+      // Se não há item genérico, vincula unicamente ao primeiro item da disciplina para não duplicar
+      return itensMesmaDisc[0].id === o.id;
+    }
+
+    // 1.4 Se o orçamento tem subdisciplina genérica e o contrato tem subdisciplina específica
+    if (oSubIsGeneric) {
+      return true;
+    }
+
+    // 1.5 Correspondência textual parcial na subdisciplina (ex: "ARQUITETURA LEGAL" e "LEGAL")
+    if (cSub && oSub && (cSub.includes(oSub) || oSub.includes(cSub))) {
+      return true;
+    }
+
+    // Mesma disciplina com subdisciplinas diferentes e não correlacionadas
+    return false;
+  }
+
+  // 2. Casos em que subdisciplina e disciplina se cruzam (ex: "COMPLEMENTARES" vs "HIDROSSANITÁRIO")
+  if (cSub && oDisc && cSub === oDisc) return true;
+  if (cDisc && oSub && cDisc === oSub) return true;
+
+  return false;
+}
+
+/**
+ * Recalcula orçamentos com base nos contratos (com suporte a aditivos, distratos e normalização inteligente)
  */
 export function recalculateOrcamentos(
   orcamentos: ItemOrcamento[],
   contratos: Contrato[],
   obras?: Obra[]
 ): ItemOrcamento[] {
-  // Mapa de contrato e medição acumulada por chave (CANONICAL_OBRA + SUBDISCIPLINA)
-  const contratadoMap: Record<string, number> = {};
-  const medidoMap: Record<string, number> = {};
-
-  for (const c of contratos) {
-    const obraKey = getCanonicalObra(c.obra, obras);
-    const subKey = normalizeText(c.subdisciplina || c.disciplina);
-    const key = `${obraKey}_${subKey}`;
-
-    contratadoMap[key] = (contratadoMap[key] || 0) + (Number(c.valor_contrato) || 0);
-    medidoMap[key] = (medidoMap[key] || 0) + (Number(c.valor_medido) || 0);
+  // Pré-agrupar orçamentos por obra canônica
+  const orcamentosPorObra: Record<string, ItemOrcamento[]> = {};
+  for (const o of orcamentos) {
+    const oKey = getCanonicalObra(o.obra || o.nome_obra, obras);
+    if (!orcamentosPorObra[oKey]) orcamentosPorObra[oKey] = [];
+    orcamentosPorObra[oKey].push(o);
   }
 
   return orcamentos.map((o) => {
-    const obraKey = getCanonicalObra(o.obra || o.nome_obra, obras);
-    const subKey = normalizeText(o.subdisciplina || o.disciplina);
-    const key = `${obraKey}_${subKey}`;
+    const oObraKey = getCanonicalObra(o.obra || o.nome_obra, obras);
+    const itensDaObra = orcamentosPorObra[oObraKey] || [];
 
-    const valorContratado = contratadoMap[key] || 0;
-    const valorMedido = medidoMap[key] || 0;
+    let valorContratado = 0;
+    let valorMedido = 0;
+
+    for (const c of contratos) {
+      if (isContratoMatchOrcamento(c, o, obras, itensDaObra)) {
+        valorContratado += Number(c.valor_contrato) || 0;
+        valorMedido += Number(c.valor_medido) || 0;
+      }
+    }
+
     const saldoAContratar = o.orcamento_base - valorContratado;
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
