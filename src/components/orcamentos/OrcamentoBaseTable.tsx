@@ -34,6 +34,7 @@ interface OrcamentoBaseTableProps {
   onNovoItem: () => void;
   onEditarItem: (item: ItemOrcamento) => void;
   onExcluirItem: (id: string) => void;
+  onMudarStatusItem?: (item: ItemOrcamento, novoStatus: StatusOrcamento) => void;
 }
 
 export function OrcamentoBaseTable({
@@ -45,6 +46,7 @@ export function OrcamentoBaseTable({
   onNovoItem,
   onEditarItem,
   onExcluirItem,
+  onMudarStatusItem,
 }: OrcamentoBaseTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
@@ -316,11 +318,18 @@ export function OrcamentoBaseTable({
                         {formatCurrency(item.saldo_medicao)}
                       </td>
                       <td className="py-2.5 px-3.5 text-center whitespace-nowrap">
-                        <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${statusColor.bg} ${statusColor.text} ${statusColor.border}`}
+                        <select
+                          value={item.status}
+                          onChange={(e) => onMudarStatusItem?.(item, e.target.value as StatusOrcamento)}
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00A3C4] ${statusColor.bg} ${statusColor.text} ${statusColor.border}`}
+                          title="Alterar status do orçamento"
                         >
-                          {item.status}
-                        </span>
+                          {STATUS_ORCAMENTO_OPCOES.map((st) => (
+                            <option key={st} value={st} className="bg-white dark:bg-[#072B3B] text-slate-800 dark:text-slate-100 font-semibold">
+                              {st}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="py-2.5 px-3.5 text-center">
                         <div className="flex items-center justify-center gap-1">

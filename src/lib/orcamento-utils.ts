@@ -5,6 +5,7 @@ import {
   CurvaDesembolsoPonto,
   KpiOrcamento,
   Obra,
+  StatusOrcamento,
 } from '@/types/orcamento';
 
 /**
@@ -364,21 +365,9 @@ export function recalculateOrcamentos(
     const saldoAContratar = o.orcamento_base - valorContratado;
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
-    // Ajuste dinâmico de status se não for 'Cancelado' manualmente
-    let statusAtual = o.status;
-    if (statusAtual !== 'Cancelado') {
-      if (valorContratado > 0) {
-        if (saldoAContratar <= 0.01) {
-          statusAtual = 'Contratado';
-        } else {
-          statusAtual = 'Em contratação';
-        }
-      } else {
-        if (statusAtual === 'Contratado' || statusAtual === 'Em contratação') {
-          statusAtual = 'A contratar';
-        }
-      }
-    }
+    // Preserva o status definido no item (inclusive escolhas manuais do usuário como 'Em cotação', 'Em contratação', 'Cancelado', etc.)
+    // Apenas infere automaticamente caso o item não possua status definido
+    const statusAtual: StatusOrcamento = o.status || (valorContratado > 0 ? (saldoAContratar <= 0.01 ? 'Contratado' : 'Em contratação') : 'A contratar');
 
     return {
       ...o,

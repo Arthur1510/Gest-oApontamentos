@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ItemOrcamento,
   NovoItemOrcamento,
@@ -54,13 +54,14 @@ export function OrcamentoFormModal({
   });
 
   useEffect(() => {
+    if (!isOpen) return;
     if (itemParaEditar) {
       setFormData({
         id: itemParaEditar.id,
         obra: itemParaEditar.obra,
         disciplina: itemParaEditar.disciplina,
         subdisciplina: itemParaEditar.subdisciplina,
-        orcamento_base: itemParaEditar.orcamento_base,
+        orcamento_base: Number(itemParaEditar.orcamento_base) || 0,
         status: itemParaEditar.status,
         categoria: itemParaEditar.categoria || 'Projeto',
       });
@@ -75,22 +76,48 @@ export function OrcamentoFormModal({
         categoria: 'Projeto',
       });
     }
-  }, [itemParaEditar, obras, disciplinas, isOpen]);
+  }, [itemParaEditar, isOpen, obras, disciplinas]);
+
+  const obrasDisponiveis = useMemo(() => {
+    const list = [...obras];
+    if (formData.obra && !list.some((o: Obra) => o.codigo.toUpperCase() === formData.obra.toUpperCase())) {
+      list.push({
+        id: `OBR_CUSTOM`,
+        codigo: formData.obra,
+        nome: formData.obra,
+        cc: '',
+        status: 'Ativa',
+      });
+    }
+    return list;
+  }, [obras, formData.obra]);
+
+  const disciplinasDisponiveis = useMemo(() => {
+    const list = [...disciplinas];
+    if (formData.disciplina && !list.some((d: Disciplina) => d.disciplina.toUpperCase() === formData.disciplina.toUpperCase())) {
+      list.push({
+        id: `DISC_CUSTOM`,
+        disciplina: formData.disciplina,
+        codigo: formData.disciplina.slice(0, 4).toUpperCase(),
+      });
+    }
+    return list;
+  }, [disciplinas, formData.disciplina]);
+
+  const subdisciplinasFiltradas = subdisciplinas.filter(
+    (s: Subdisciplina) => !formData.disciplina || s.disciplina.toUpperCase() === formData.disciplina.toUpperCase()
+  );
 
   if (!isOpen) return null;
 
-  const subdisciplinasFiltradas = subdisciplinas.filter(
-    (s) => !formData.disciplina || s.disciplina.toUpperCase() === formData.disciplina.toUpperCase()
-  );
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.obra || !formData.disciplina || formData.orcamento_base <= 0) {
-      alert('Por favor, selecione a obra, disciplina e um orçamento base válido.');
+    if (!formData.obra || !formData.disciplina || isNaN(formData.orcamento_base) || formData.orcamento_base < 0) {
+      alert('Por favor, selecione a obra, disciplina e informe um orçamento base válido (maior ou igual a zero).');
       return;
     }
 
-    const obraObj = obras.find((o) => o.codigo === formData.obra);
+    const obraObj = obrasDisponiveis.find((o: Obra) => o.codigo === formData.obra);
 
     setIsSubmitting(true);
     try {
@@ -100,7 +127,7 @@ export function OrcamentoFormModal({
         nome_obra: obraObj?.nome || formData.obra,
         disciplina: formData.disciplina,
         subdisciplina: formData.subdisciplina || formData.disciplina,
-        orcamento_base: Number(formData.orcamento_base),
+        orcamento_base: Number(formData.orcamento_base) || 0,
         status: formData.status,
         categoria: formData.categoria,
       });
@@ -157,7 +184,7 @@ export function OrcamentoFormModal({
               className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9"
               required
             >
-              {obras.map((o) => (
+              {obrasDisponiveis.map((o: Obra) => (
                 <option key={o.id} value={o.codigo}>
                   {o.codigo} - {o.nome}
                 </option>
@@ -185,7 +212,7 @@ export function OrcamentoFormModal({
               className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9"
               required
             >
-              {disciplinas.map((d) => (
+              {disciplinasDisponiveis.map((d: Disciplina) => (
                 <option key={d.id} value={d.disciplina}>
                   {d.disciplina}
                 </option>
@@ -225,7 +252,7 @@ export function OrcamentoFormModal({
                 type="number"
                 step="0.01"
                 min="0"
-                value={formData.orcamento_base || ''}
+                value={formData.orcamento_base !== undefined ? formData.orcamento_base : ''}
                 onChange={(e) => setFormData({ ...formData, orcamento_base: parseFloat(e.target.value) || 0 })}
                 placeholder="0.00"
                 className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] font-bold"

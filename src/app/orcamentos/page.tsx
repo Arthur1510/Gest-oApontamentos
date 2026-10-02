@@ -13,6 +13,7 @@ import {
   Disciplina,
   Subdisciplina,
   StatusMedicao,
+  StatusOrcamento,
   AditivoContrato,
   DistratoInfo,
 } from '@/types/orcamento';
@@ -381,14 +382,31 @@ export default function OrcamentosPage() {
       saveContratoSupabase(contratoFinal).catch((err) =>
         console.warn('Erro ao persistir contrato no Supabase:', err)
       );
-      const orcsAfetados = recalcOrc.filter((o) =>
-        isContratoMatchOrcamento(contratoFinal, o, obras, recalcOrc)
-      );
-      orcsAfetados.forEach((item) => {
-        saveOrcamentoItemSupabase(item).catch((err) =>
-          console.warn('Erro ao atualizar orçamento no Supabase:', err)
-        );
+      let orcsModified = false;
+      const updatedOrcs = recalcOrc.map((item) => {
+        if (isContratoMatchOrcamento(contratoFinal, item, obras, recalcOrc)) {
+          let newStatus = item.status;
+          if (item.status === 'A contratar') {
+            newStatus = item.saldo_a_contratar <= 0.01 ? 'Contratado' : 'Em contratação';
+          } else if (item.status === 'Em contratação' && item.saldo_a_contratar <= 0.01) {
+            newStatus = 'Contratado';
+          }
+
+          const targetItem = newStatus !== item.status ? { ...item, status: newStatus } : item;
+          if (newStatus !== item.status) orcsModified = true;
+
+          saveOrcamentoItemSupabase(targetItem).catch((err) =>
+            console.warn('Erro ao propagar status ajustado do orçamento no Supabase:', err)
+          );
+          return targetItem;
+        }
+        return item;
       });
+
+      if (orcsModified) {
+        setOrcamentos(updatedOrcs);
+        localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(updatedOrcs));
+      }
     }
   };
 
@@ -396,19 +414,36 @@ export default function OrcamentosPage() {
     if (confirm(`Deseja realmente excluir o contrato ${id}? Todas as medições vinculadas serão mantidas ou devem ser revisadas.`)) {
       const contratoExcluido = contratos.find((c) => c.id === id);
       const updated = contratos.filter((c) => c.id !== id);
-      const { recalcOrc } = salvarDados(medicoes, updated, orcamentos);
+      const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
       deleteContratoSupabase(id).catch((err) =>
         console.warn('Erro ao excluir contrato no Supabase:', err)
       );
       if (contratoExcluido) {
-        const orcsAfetados = recalcOrc.filter((o) =>
-          isContratoMatchOrcamento(contratoExcluido, o, obras, recalcOrc)
-        );
-        orcsAfetados.forEach((item) => {
-          saveOrcamentoItemSupabase(item).catch((err) =>
-            console.warn('Erro ao atualizar orçamento no Supabase:', err)
-          );
+        let orcsModified = false;
+        const updatedOrcs = recalcOrc.map((item) => {
+          if (isContratoMatchOrcamento(contratoExcluido, item, obras, recalcOrc)) {
+            let newStatus = item.status;
+            if (item.valor_contratado <= 0 && (item.status === 'Contratado' || item.status === 'Em contratação')) {
+              newStatus = 'A contratar';
+            } else if (item.valor_contratado > 0 && item.saldo_a_contratar > 0.01 && item.status === 'Contratado') {
+              newStatus = 'Em contratação';
+            }
+
+            const targetItem = newStatus !== item.status ? { ...item, status: newStatus } : item;
+            if (newStatus !== item.status) orcsModified = true;
+
+            saveOrcamentoItemSupabase(targetItem).catch((err) =>
+              console.warn('Erro ao propagar status ajustado após exclusão no Supabase:', err)
+            );
+            return targetItem;
+          }
+          return item;
         });
+
+        if (orcsModified) {
+          setOrcamentos(updatedOrcs);
+          localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(updatedOrcs));
+        }
       }
     }
   };
@@ -700,7 +735,14 @@ export default function OrcamentosPage() {
       // Editar existente
       updated = orcamentos.map((o) => {
         if (String(o.id).trim().toUpperCase() === cleanEditId) {
-          orcSalvo = { ...o, ...itemData, id: o.id };
+          orcSalvo = {
+            ...o,
+            ...itemData,
+            id: o.id,
+            orcamento_base: Number(itemData.orcamento_base) || 0,
+            status: itemData.status || o.status || 'A contratar',
+            categoria: itemData.categoria || o.categoria || 'Projeto',
+          };
           return orcSalvo;
         }
         return o;
@@ -715,7 +757,12 @@ export default function OrcamentosPage() {
           if (num > maxNum) maxNum = num;
         }
       });
-      const generatedId = `ORC${String(maxNum + 1).padStart(3, '0')}`;
+      let nextNum = maxNum + 1;
+      let generatedId = `ORC${String(nextNum).padStart(3, '0')}`;
+      while (orcamentos.some((o) => String(o.id).trim().toUpperCase() === generatedId.toUpperCase())) {
+        nextNum++;
+        generatedId = `ORC${String(nextNum).padStart(3, '0')}`;
+      }
       const novoId = (itemData.id && !orcamentos.some((o) => String(o.id).trim().toUpperCase() === String(itemData.id).trim().toUpperCase()))
         ? itemData.id.trim()
         : generatedId;
@@ -740,7 +787,14 @@ export default function OrcamentosPage() {
 
     const { recalcOrc } = salvarDados(medicoes, contratos, updated);
     const idParaSalvar = orcSalvo?.id;
-    const orcFinal = idParaSalvar ? recalcOrc.find((o) => String(o.id).trim().toUpperCase() === String(idParaSalvar).trim().toUpperCase()) : orcSalvo;
+    const orcFinal = idParaSalvar
+      ? recalcOrc.find((o) => String(o.id).trim().toUpperCase() === String(idParaSalvar).trim().toUpperCase()) || orcSalvo
+      : orcSalvo;
+
+    // Assegura preservação explícita do status escolhido
+    if (orcSalvo?.status && orcFinal) {
+      orcFinal.status = orcSalvo.status;
+    }
 
     if (orcFinal && isSupabaseReady()) {
       const res = await saveOrcamentoItemSupabase(orcFinal);
@@ -749,10 +803,18 @@ export default function OrcamentosPage() {
         return false;
       }
 
-      // Propaga atualizações para outros orçamentos da mesma obra cujos valores calculados foram alterados pelo vínculo
-      const outrosAfetados = recalcOrc.filter(
-        (o) => o.obra === orcFinal.obra && String(o.id).trim().toUpperCase() !== String(orcFinal.id).trim().toUpperCase()
-      );
+      // Propaga atualizações para outros orçamentos da mesma obra cujos valores foram alterados
+      const outrosAfetados = recalcOrc.filter((o) => {
+        if (o.obra !== orcFinal.obra || String(o.id).trim().toUpperCase() === String(orcFinal.id).trim().toUpperCase()) return false;
+        const anterior = orcamentos.find((prev) => String(prev.id).trim().toUpperCase() === String(o.id).trim().toUpperCase());
+        if (!anterior) return false;
+        return (
+          anterior.valor_contratado !== o.valor_contratado ||
+          anterior.valor_medido !== o.valor_medido ||
+          anterior.saldo_a_contratar !== o.saldo_a_contratar ||
+          anterior.saldo_medicao !== o.saldo_medicao
+        );
+      });
       for (const outro of outrosAfetados) {
         saveOrcamentoItemSupabase(outro).catch((err) =>
           console.warn('Erro ao atualizar orçamento relacionado na nuvem:', err)
@@ -762,6 +824,13 @@ export default function OrcamentosPage() {
       setLastSyncStatus(`Orçamento ${orcFinal.id} salvo no banco às ${new Date().toLocaleTimeString('pt-BR')}`);
     }
     return true;
+  };
+
+  const handleMudarStatusOrcamento = async (item: ItemOrcamento, novoStatus: StatusOrcamento) => {
+    await handleSalvarOrcamento({
+      ...item,
+      status: novoStatus,
+    });
   };
 
   const handleExcluirOrcamento = async (id: string) => {
@@ -1173,6 +1242,7 @@ export default function OrcamentosPage() {
                 setIsOrcamentoModalOpen(true);
               }}
               onExcluirItem={handleExcluirOrcamento}
+              onMudarStatusItem={handleMudarStatusOrcamento}
             />
           )}
 
