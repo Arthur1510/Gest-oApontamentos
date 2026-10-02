@@ -22,7 +22,7 @@ interface OrcamentoFormModalProps {
   subdisciplinas: Subdisciplina[];
   isOpen: boolean;
   onClose: () => void;
-  onSalvar: (item: ItemOrcamento | (NovoItemOrcamento & { id?: string })) => void;
+  onSalvar: (item: ItemOrcamento | (NovoItemOrcamento & { id?: string })) => Promise<boolean | void> | void;
 }
 
 export function OrcamentoFormModal({
@@ -34,6 +34,7 @@ export function OrcamentoFormModal({
   onClose,
   onSalvar,
 }: OrcamentoFormModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<{
     id: string;
     obra: string;
@@ -82,7 +83,7 @@ export function OrcamentoFormModal({
     (s) => !formData.disciplina || s.disciplina.toUpperCase() === formData.disciplina.toUpperCase()
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.obra || !formData.disciplina || formData.orcamento_base <= 0) {
       alert('Por favor, selecione a obra, disciplina e um orçamento base válido.');
@@ -91,17 +92,27 @@ export function OrcamentoFormModal({
 
     const obraObj = obras.find((o) => o.codigo === formData.obra);
 
-    onSalvar({
-      id: formData.id || undefined,
-      obra: formData.obra,
-      nome_obra: obraObj?.nome || formData.obra,
-      disciplina: formData.disciplina,
-      subdisciplina: formData.subdisciplina || formData.disciplina,
-      orcamento_base: Number(formData.orcamento_base),
-      status: formData.status,
-      categoria: formData.categoria,
-    });
-    onClose();
+    setIsSubmitting(true);
+    try {
+      const res = await onSalvar({
+        id: formData.id || undefined,
+        obra: formData.obra,
+        nome_obra: obraObj?.nome || formData.obra,
+        disciplina: formData.disciplina,
+        subdisciplina: formData.subdisciplina || formData.disciplina,
+        orcamento_base: Number(formData.orcamento_base),
+        status: formData.status,
+        categoria: formData.categoria,
+      });
+      if (res !== false) {
+        onClose();
+      }
+    } catch (err: any) {
+      console.error('Erro ao salvar item:', err);
+      alert(`Erro ao salvar: ${err?.message || 'Falha ao processar operação'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -265,6 +276,7 @@ export function OrcamentoFormModal({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isSubmitting}
               onClick={onClose}
               className="text-xs"
             >
@@ -273,9 +285,10 @@ export function OrcamentoFormModal({
             <Button
               type="submit"
               size="sm"
-              className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold"
+              disabled={isSubmitting}
+              className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-2"
             >
-              {itemParaEditar ? 'Atualizar Item' : 'Salvar Item'}
+              {isSubmitting ? 'Salvando no Banco...' : itemParaEditar ? 'Atualizar Item' : 'Salvar Item'}
             </Button>
           </div>
         </form>

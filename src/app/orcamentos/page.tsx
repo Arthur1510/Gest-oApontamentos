@@ -49,13 +49,10 @@ import {
   Building,
   FileSpreadsheet,
   Plus,
-  RotateCcw,
   Sparkles,
   Trash2,
   FileText,
   Cloud,
-  CloudUpload,
-  CloudDownload,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -71,7 +68,6 @@ import {
   deleteObraSupabase,
   saveFornecedorSupabase,
   deleteFornecedorSupabase,
-  syncAllLocalToSupabase,
 } from '@/lib/supabase/orcamento-service';
 
 const STORAGE_KEY_ORCAMENTOS = 'wcc_orcamentos_data_v2';
@@ -247,9 +243,21 @@ export default function OrcamentosPage() {
               }
             });
 
+            // Preserva orçamentos criados localmente que ainda não foram para a nuvem
+            const cloudOrcMap = new Set((cloud.orcamentos || []).map((co) => String(co.id).trim().toUpperCase()));
+            const mergedOrcamentos = [...(cloud.orcamentos || [])];
+            (localOrcamentosSalvos || []).forEach((lo: ItemOrcamento) => {
+              if (lo && lo.id && !cloudOrcMap.has(String(lo.id).trim().toUpperCase())) {
+                mergedOrcamentos.push(lo);
+                saveOrcamentoItemSupabase(lo).catch((err) =>
+                  console.warn('Propagando orçamento pendente para o banco:', err)
+                );
+              }
+            });
+
             const obrasVigentes = cloud.obras && cloud.obras.length > 0 ? cloud.obras : (localObrasSalvos.length > 0 ? localObrasSalvos : []);
             const recalcCt = recalculateContratos(mergedContratos, cloud.medicoes);
-            const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, obrasVigentes);
+            const recalcOrc = recalculateOrcamentos(mergedOrcamentos, recalcCt, obrasVigentes);
 
             setContratos(recalcCt);
             setMedicoes(cloud.medicoes);
@@ -259,7 +267,7 @@ export default function OrcamentosPage() {
             localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(cloud.medicoes));
             localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
 
-            setLastSyncStatus(`Sincronizado com Supabase em ${new Date().toLocaleTimeString('pt-BR')}`);
+            setLastSyncStatus(`Banco de dados conectado às ${new Date().toLocaleTimeString('pt-BR')}`);
           }
         } catch (cloudErr) {
           console.warn('Erro ao carregar dados do Supabase:', cloudErr);
@@ -310,96 +318,6 @@ export default function OrcamentosPage() {
     },
     [selectedContratoDetail, obras]
   );
-
-  // Limpar todos os contratos e medições para preenchimento direto
-  const handleLimparContratosEMedicoes = useCallback(() => {
-    salvarDados([], [], orcamentos);
-  }, [salvarDados, orcamentos]);
-
-  // --- SINCRONIZAÇÃO SUPABASE ---
-  const handleSincronizarTudoComSupabase = useCallback(async () => {
-    if (!isSupabaseReady()) {
-      alert('Supabase não está configurado nas variáveis de ambiente.');
-      return;
-    }
-    setIsSyncing(true);
-    setLastSyncStatus('Sincronizando...');
-    try {
-      const res = await syncAllLocalToSupabase({
-        obras,
-        fornecedores,
-        orcamentos,
-        contratos,
-        medicoes,
-      });
-      if (res.success) {
-        const timeStr = new Date().toLocaleTimeString('pt-BR');
-        setLastSyncStatus(`Sincronizado às ${timeStr}`);
-        alert(`✅ Sucesso! Todos os dados (${contratos.length} contratos, ${medicoes.length} medições, ${orcamentos.length} orçamentos) foram sincronizados com o banco Supabase na nuvem.`);
-      } else {
-        setLastSyncStatus('Erro na sincronização');
-        alert(`Aviso ao sincronizar com Supabase: ${res.message}`);
-      }
-    } catch (err: any) {
-      console.error('Erro na sincronização com Supabase:', err);
-      setLastSyncStatus('Erro na sincronização');
-      alert(`Falha ao sincronizar com o Supabase: ${err?.message || 'Erro de conexão'}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [obras, fornecedores, orcamentos, contratos, medicoes]);
-
-  const handleBaixarDoSupabase = useCallback(async () => {
-    if (!isSupabaseReady()) {
-      alert('Supabase não está configurado nas variáveis de ambiente.');
-      return;
-    }
-    if (!confirm('Deseja realmente baixar os dados do Supabase? Isso atualizará a tela e o armazenamento local com as informações da nuvem.')) {
-      return;
-    }
-    setIsSyncing(true);
-    try {
-      const cloud = await fetchOrcamentoDataFromSupabase();
-      if (!cloud) {
-        throw new Error('Não foi possível carregar os dados do Supabase.');
-      }
-      const recalcCt = recalculateContratos(cloud.contratos, cloud.medicoes);
-      const recalcOrc = recalculateOrcamentos(cloud.orcamentos, recalcCt, cloud.obras);
-
-      if (cloud.obras && cloud.obras.length > 0) {
-        setObras(cloud.obras);
-        localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
-      }
-      if (cloud.fornecedores && cloud.fornecedores.length > 0) {
-        setFornecedores(cloud.fornecedores);
-        localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
-      }
-      if (cloud.disciplinas && cloud.disciplinas.length > 0) {
-        setDisciplinas(cloud.disciplinas);
-        localStorage.setItem(STORAGE_KEY_DISCIPLINAS, JSON.stringify(cloud.disciplinas));
-      }
-      if (cloud.subdisciplinas && cloud.subdisciplinas.length > 0) {
-        setSubdisciplinas(cloud.subdisciplinas);
-        localStorage.setItem(STORAGE_KEY_SUBDISCIPLINAS, JSON.stringify(cloud.subdisciplinas));
-      }
-
-      setContratos(recalcCt);
-      setMedicoes(cloud.medicoes);
-      setOrcamentos(recalcOrc);
-
-      localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify(recalcCt));
-      localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(cloud.medicoes));
-      localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
-
-      setLastSyncStatus(`Atualizado da nuvem às ${new Date().toLocaleTimeString('pt-BR')}`);
-      alert(`✅ Dados baixados do Supabase com sucesso!\n- ${cloud.contratos.length} Contratos\n- ${cloud.medicoes.length} Medições\n- ${cloud.orcamentos.length} Orçamentos\n- ${cloud.obras.length} Obras\n- ${cloud.fornecedores.length} Fornecedores`);
-    } catch (err: any) {
-      console.error('Erro ao baixar do Supabase:', err);
-      alert(`Falha ao baixar dados do Supabase: ${err?.message || 'Erro de conexão'}`);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, []);
 
   // --- CRUD CONTRATOS ---
   const handleSalvarContrato = (contratoData: Contrato | (NovoContrato & { id?: string })) => {
@@ -772,54 +690,96 @@ export default function OrcamentosPage() {
     }
   };
 
-  // --- CRUD ORÇAMENTO BASE ---
-  const handleSalvarOrcamento = (itemData: ItemOrcamento | (NovoItemOrcamento & { id?: string })) => {
+  // --- CRUD ORÇAMENTO BASE (DIRETO NO SUPABASE) ---
+  const handleSalvarOrcamento = async (itemData: ItemOrcamento | (NovoItemOrcamento & { id?: string })): Promise<boolean> => {
     let updated: ItemOrcamento[];
     let orcSalvo: ItemOrcamento | undefined;
-    if ('id' in itemData && itemData.id && orcamentos.some((o) => o.id === itemData.id)) {
+    const cleanEditId = itemData.id ? String(itemData.id).trim().toUpperCase() : null;
+
+    if (cleanEditId && orcamentos.some((o) => String(o.id).trim().toUpperCase() === cleanEditId)) {
+      // Editar existente
       updated = orcamentos.map((o) => {
-        if (o.id === itemData.id) {
-          orcSalvo = { ...o, ...itemData };
+        if (String(o.id).trim().toUpperCase() === cleanEditId) {
+          orcSalvo = { ...o, ...itemData, id: o.id };
           return orcSalvo;
         }
         return o;
       });
     } else {
-      const novoId = itemData.id || `ORC${String(orcamentos.length + 1).padStart(3, '0')}`;
+      // Novo Item: calcular maior número de ID para evitar qualquer colisão
+      let maxNum = 0;
+      orcamentos.forEach((o) => {
+        const match = o.id.match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
+      const generatedId = `ORC${String(maxNum + 1).padStart(3, '0')}`;
+      const novoId = (itemData.id && !orcamentos.some((o) => String(o.id).trim().toUpperCase() === String(itemData.id).trim().toUpperCase()))
+        ? itemData.id.trim()
+        : generatedId;
+
       const novo: ItemOrcamento = {
         id: novoId,
         obra: itemData.obra,
         nome_obra: itemData.nome_obra || itemData.obra,
         disciplina: itemData.disciplina,
-        subdisciplina: itemData.subdisciplina,
-        orcamento_base: itemData.orcamento_base,
+        subdisciplina: itemData.subdisciplina || itemData.disciplina,
+        orcamento_base: Number(itemData.orcamento_base) || 0,
         valor_contratado: 0,
-        saldo_a_contratar: itemData.orcamento_base,
+        saldo_a_contratar: Number(itemData.orcamento_base) || 0,
         valor_medido: 0,
         saldo_medicao: 0,
-        status: itemData.status,
+        status: itemData.status || 'A contratar',
         categoria: itemData.categoria || 'Projeto',
       };
       orcSalvo = novo;
       updated = [novo, ...orcamentos];
     }
+
     const { recalcOrc } = salvarDados(medicoes, contratos, updated);
     const idParaSalvar = orcSalvo?.id;
-    const orcFinal = idParaSalvar ? recalcOrc.find((o) => o.id === idParaSalvar) : orcSalvo;
-    if (orcFinal) {
-      saveOrcamentoItemSupabase(orcFinal).catch((err) =>
-        console.warn('Erro ao salvar item de orçamento no Supabase:', err)
+    const orcFinal = idParaSalvar ? recalcOrc.find((o) => String(o.id).trim().toUpperCase() === String(idParaSalvar).trim().toUpperCase()) : orcSalvo;
+
+    if (orcFinal && isSupabaseReady()) {
+      const res = await saveOrcamentoItemSupabase(orcFinal);
+      if (!res.success) {
+        alert(`Erro ao salvar orçamento no banco de dados: ${res.error || 'Falha de comunicação'}`);
+        return false;
+      }
+
+      // Propaga atualizações para outros orçamentos da mesma obra cujos valores calculados foram alterados pelo vínculo
+      const outrosAfetados = recalcOrc.filter(
+        (o) => o.obra === orcFinal.obra && String(o.id).trim().toUpperCase() !== String(orcFinal.id).trim().toUpperCase()
       );
+      for (const outro of outrosAfetados) {
+        saveOrcamentoItemSupabase(outro).catch((err) =>
+          console.warn('Erro ao atualizar orçamento relacionado na nuvem:', err)
+        );
+      }
+
+      setLastSyncStatus(`Orçamento ${orcFinal.id} salvo no banco às ${new Date().toLocaleTimeString('pt-BR')}`);
     }
+    return true;
   };
 
-  const handleExcluirOrcamento = (id: string) => {
-    if (confirm('Deseja excluir este item de orçamento?')) {
-      const updated = orcamentos.filter((o) => o.id !== id);
+  const handleExcluirOrcamento = async (id: string) => {
+    const cleanId = String(id).trim();
+    if (confirm(`Deseja realmente excluir o item de orçamento ${cleanId}?`)) {
+      const updated = orcamentos.filter((o) => String(o.id).trim().toUpperCase() !== cleanId.toUpperCase());
       salvarDados(medicoes, contratos, updated);
-      deleteOrcamentoItemSupabase(id).catch((err) =>
-        console.warn('Erro ao excluir orçamento no Supabase:', err)
-      );
+
+      if (isSupabaseReady()) {
+        const res = await deleteOrcamentoItemSupabase(cleanId);
+        if (!res.success) {
+          alert(`Erro ao excluir orçamento no banco de dados: ${res.error || 'Falha de comunicação'}`);
+          // Reverte exclusão local para manter integridade
+          salvarDados(medicoes, contratos, orcamentos);
+          return;
+        }
+        setLastSyncStatus(`Orçamento ${cleanId} excluído do banco às ${new Date().toLocaleTimeString('pt-BR')}`);
+      }
     }
   };
 
@@ -1054,20 +1014,6 @@ export default function OrcamentosPage() {
 
         {/* Botões de Ação Rápida */}
         <div className="flex flex-wrap items-center gap-2">
-          {isSupabaseOnline && (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isSyncing}
-              onClick={handleSincronizarTudoComSupabase}
-              title={lastSyncStatus || 'Sincronizar dados locais com o Supabase'}
-              className="text-xs font-bold gap-1.5 h-9 rounded-xl border-emerald-500/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Sincronizando...' : 'Sincronizar Nuvem'}
-            </Button>
-          )}
-
           <Button
             size="sm"
             onClick={() => {
@@ -1100,29 +1046,13 @@ export default function OrcamentosPage() {
             <FileText className="h-4 w-4 text-[#00C4EB] dark:text-white" /> Relatório Executivo PDF
           </Button>
 
-          {contratosRecalculados.length > 0 && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (confirm('Deseja realmente limpar todos os contratos e medições para preencher do zero na plataforma?')) {
-                  handleLimparContratosEMedicoes();
-                }
-              }}
-              title="Excluir base de contratos e medições atuais para preencher do zero"
-              className="text-xs font-bold gap-1.5 h-9 rounded-xl border-rose-200 dark:border-rose-900/40 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
-            >
-              <Trash2 className="h-4 w-4 text-rose-500" /> Limpar Base
-            </Button>
-          )}
-
           <Button
             size="sm"
             variant="outline"
             onClick={() => setIsExportModalOpen(true)}
             className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar / Restaurar
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar Relatórios
           </Button>
         </div>
       </div>
@@ -1419,13 +1349,9 @@ export default function OrcamentosPage() {
         curvaPontos={curvaPontosExport}
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
-        onLimparContratosMedicoes={handleLimparContratosEMedicoes}
         onAbrirRelatorioPdf={() => setIsRelatorioPdfOpen(true)}
         onExportarExcelConsolidado={handleExportarExcelConsolidado}
         isSupabaseConfigured={isSupabaseOnline}
-        isSyncing={isSyncing}
-        onSubirParaSupabase={handleSincronizarTudoComSupabase}
-        onBaixarDoSupabase={handleBaixarDoSupabase}
       />
 
       <RelatorioOrcamentoPdfModal

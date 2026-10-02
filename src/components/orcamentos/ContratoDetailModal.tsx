@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Contrato,
   Medicao,
   STATUS_MEDICAO_COLORS,
   STATUS_CONTRATO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent, formatDateBR } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, formatDateBR, parseMesCompetencia } from '@/lib/orcamento-utils';
 import { Button } from '@/components/ui/button';
 import {
   X,
@@ -25,6 +25,7 @@ import {
   Trash2,
   TrendingUp,
   TrendingDown,
+  ArrowUpDown,
 } from 'lucide-react';
 
 interface ContratoDetailModalProps {
@@ -40,6 +41,28 @@ interface ContratoDetailModalProps {
   onReverterDistrato?: (contratoId: string) => void;
 }
 
+function getMedicaoSortKey(m: Medicao): string {
+  if (m.data_prevista && m.data_prevista.trim()) {
+    return m.data_prevista.trim();
+  }
+  if (m.data_medicao && m.data_medicao.trim()) {
+    return m.data_medicao.trim();
+  }
+  if (m.data_referencia && m.data_referencia.trim()) {
+    return m.data_referencia.trim();
+  }
+  if (m.data_pagamento && m.data_pagamento.trim()) {
+    return m.data_pagamento.trim();
+  }
+  if (m.mes_competencia && m.mes_competencia.trim()) {
+    const parsed = parseMesCompetencia(m.mes_competencia);
+    if (parsed.sortKey && parsed.sortKey !== '9999-99') {
+      return parsed.sortKey;
+    }
+  }
+  return '';
+}
+
 export function ContratoDetailModal({
   contrato,
   medicoes,
@@ -53,10 +76,38 @@ export function ContratoDetailModal({
   onReverterDistrato,
 }: ContratoDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'medicoes' | 'aditivos'>('medicoes');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Medições ordenadas cronologicamente (data prevista / medição / competência)
+  const medicoesDoContrato = useMemo(() => {
+    if (!contrato) return [];
+    const cId = String(contrato.id).trim().toUpperCase();
+    return [...medicoes]
+      .filter((m) => String(m.contrato_id).trim().toUpperCase() === cId)
+      .sort((a, b) => {
+        const keyA = getMedicaoSortKey(a);
+        const keyB = getMedicaoSortKey(b);
+
+        if (!keyA && keyB) return 1;
+        if (keyA && !keyB) return -1;
+
+        if (keyA && keyB && keyA !== keyB) {
+          return sortDirection === 'asc'
+            ? keyA.localeCompare(keyB)
+            : keyB.localeCompare(keyA);
+        }
+
+        const etapaComp = (a.etapa || '').localeCompare(b.etapa || '', undefined, { numeric: true });
+        if (etapaComp !== 0) {
+          return sortDirection === 'asc' ? etapaComp : -etapaComp;
+        }
+
+        return a.id.localeCompare(b.id);
+      });
+  }, [medicoes, contrato?.id, sortDirection]);
 
   if (!isOpen || !contrato) return null;
 
-  const medicoesDoContrato = medicoes.filter((m) => m.contrato_id === contrato.id);
   const pct = contrato.percentual_medido || 0;
   const isDistratado = contrato.status === 'Distratado';
   const statusColor = STATUS_CONTRATO_COLORS[contrato.status || 'Ativo'] || STATUS_CONTRATO_COLORS['Ativo'];
@@ -263,10 +314,23 @@ export function ContratoDetailModal({
           {/* 1. ABA DE MEDIÇÕES */}
           {activeTab === 'medicoes' && (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
-                  Histórico de Etapas Cadastradas
-                </span>
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                    Histórico de Etapas Cadastradas
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-[#0B384D] dark:hover:bg-[#0E4660] transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
+                    title={`Ordenado por data cronológica (${sortDirection === 'asc' ? 'mais antigas primeiro' : 'mais recentes primeiro'}). Clique para inverter.`}
+                  >
+                    <ArrowUpDown className="h-3 w-3 text-[#00A3C4]" />
+                    <span>
+                      {sortDirection === 'asc' ? 'Cronológica (1ª → Última)' : 'Cronológica (Última → 1ª)'}
+                    </span>
+                  </button>
+                </div>
                 {!isDistratado && (
                   <Button
                     size="sm"
@@ -299,8 +363,26 @@ export function ContratoDetailModal({
                         <th className="py-2.5 px-3">Etapa / Descrição</th>
                         <th className="py-2.5 px-3 text-center">% Etapa</th>
                         <th className="py-2.5 px-3 text-right">Valor</th>
-                        <th className="py-2.5 px-3">Previsão</th>
-                        <th className="py-2.5 px-3">Medição</th>
+                        <th
+                          className="py-2.5 px-3 cursor-pointer select-none hover:text-[#00A3C4] transition-colors"
+                          onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          title="Clique para alternar ordem cronológica"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Previsão</span>
+                            <ArrowUpDown className="h-3 w-3 opacity-60" />
+                          </div>
+                        </th>
+                        <th
+                          className="py-2.5 px-3 cursor-pointer select-none hover:text-[#00A3C4] transition-colors"
+                          onClick={() => setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+                          title="Clique para alternar ordem cronológica"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Medição</span>
+                            <ArrowUpDown className="h-3 w-3 opacity-60" />
+                          </div>
+                        </th>
                         <th className="py-2.5 px-3 text-center">Status</th>
                         <th className="py-2.5 px-3">NF</th>
                         <th className="py-2.5 px-3 text-center">Ação</th>

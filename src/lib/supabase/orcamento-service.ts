@@ -338,28 +338,44 @@ export async function deleteMedicaoSupabase(id: string): Promise<boolean> {
 /**
  * Salva ou atualiza um item de Orçamento Base no Supabase
  */
-export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<boolean> {
-  if (!isSupabaseReady() || !supabase) return false;
+export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseReady() || !supabase) {
+    return { success: false, error: 'Supabase não está configurado ou cliente indisponível.' };
+  }
   try {
+    const cleanId = String(item.id).trim();
+    const cleanObra = String(item.obra).trim();
+    const cleanDisc = String(item.disciplina).trim();
+    const cleanSub = String(item.subdisciplina || item.disciplina).trim();
+    const cleanBase = Number(item.orcamento_base) || 0;
+    const cleanContratado = Number(item.valor_contratado) || 0;
+    const cleanSaldoContratar = item.saldo_a_contratar !== undefined && item.saldo_a_contratar !== null
+      ? Number(item.saldo_a_contratar)
+      : cleanBase - cleanContratado;
+    const cleanMedido = Number(item.valor_medido) || 0;
+    const cleanSaldoMedicao = item.saldo_medicao !== undefined && item.saldo_medicao !== null
+      ? Number(item.saldo_medicao)
+      : Math.max(0, cleanContratado - cleanMedido);
+
     if (hasExtendedOrcamentoCols !== false) {
       const fullPayload = {
-        id: item.id,
-        obra: item.obra,
-        nome_obra: item.nome_obra || item.obra,
-        disciplina: item.disciplina,
-        subdisciplina: item.subdisciplina,
-        orcamento_base: item.orcamento_base,
-        valor_contratado: item.valor_contratado ?? 0,
-        saldo_a_contratar: item.saldo_a_contratar ?? item.orcamento_base,
-        valor_medido: item.valor_medido ?? 0,
-        saldo_medicao: item.saldo_medicao ?? 0,
+        id: cleanId,
+        obra: cleanObra,
+        nome_obra: item.nome_obra || cleanObra,
+        disciplina: cleanDisc,
+        subdisciplina: cleanSub,
+        orcamento_base: cleanBase,
+        valor_contratado: cleanContratado,
+        saldo_a_contratar: cleanSaldoContratar,
+        valor_medido: cleanMedido,
+        saldo_medicao: cleanSaldoMedicao,
         categoria: item.categoria || 'Projeto',
         status: item.status || 'A contratar',
       };
       const { error } = await supabase.from('orcamentos_base').upsert(fullPayload);
       if (!error) {
         hasExtendedOrcamentoCols = true;
-        return true;
+        return { success: true };
       }
       if (
         error.message.includes('does not exist') ||
@@ -370,63 +386,71 @@ export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<bo
         hasExtendedOrcamentoCols = false;
       } else {
         console.error('Erro ao salvar item de orçamento estendido no Supabase:', error.message);
-        return false;
+        return { success: false, error: error.message };
       }
     }
 
     const basePayload = {
-      id: item.id,
-      obra: item.obra,
-      nome_obra: item.nome_obra || item.obra,
-      disciplina: item.disciplina,
-      subdisciplina: item.subdisciplina,
-      orcamento_base: item.orcamento_base,
+      id: cleanId,
+      obra: cleanObra,
+      nome_obra: item.nome_obra || cleanObra,
+      disciplina: cleanDisc,
+      subdisciplina: cleanSub,
+      orcamento_base: cleanBase,
       categoria: item.categoria || 'Projeto',
       status: item.status || 'A contratar',
     };
     const { error: baseError } = await supabase.from('orcamentos_base').upsert(basePayload);
     if (baseError) {
       console.error('Erro ao salvar item de orçamento base no Supabase:', baseError.message);
-      return false;
+      return { success: false, error: baseError.message };
     }
-    return true;
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error('Exceção ao salvar orçamento no Supabase:', err);
-    return false;
+    return { success: false, error: err?.message || 'Falha de comunicação com o Supabase' };
   }
 }
 
 /**
  * Salva múltiplos itens de Orçamento Base no Supabase
  */
-export async function saveOrcamentosBatchSupabase(items: ItemOrcamento[]): Promise<boolean> {
-  if (!isSupabaseReady() || !supabase || items.length === 0) return false;
+export async function saveOrcamentosBatchSupabase(items: ItemOrcamento[]): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseReady() || !supabase || items.length === 0) {
+    return { success: false, error: 'Supabase não disponível ou lista vazia.' };
+  }
   try {
     for (const item of items) {
-      await saveOrcamentoItemSupabase(item);
+      const res = await saveOrcamentoItemSupabase(item);
+      if (!res.success) {
+        return res;
+      }
     }
-    return true;
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error('Exceção ao salvar lote de orçamentos no Supabase:', err);
-    return false;
+    return { success: false, error: err?.message || 'Erro ao persistir lote' };
   }
 }
 
 /**
  * Exclui um item de Orçamento Base do Supabase
  */
-export async function deleteOrcamentoItemSupabase(id: string): Promise<boolean> {
-  if (!isSupabaseReady() || !supabase) return false;
+export async function deleteOrcamentoItemSupabase(id: string): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseReady() || !supabase) {
+    return { success: false, error: 'Supabase não está configurado ou cliente indisponível.' };
+  }
   try {
-    const { error } = await supabase.from('orcamentos_base').delete().eq('id', id);
+    const cleanId = String(id).trim();
+    const { error } = await supabase.from('orcamentos_base').delete().eq('id', cleanId);
     if (error) {
       console.error('Erro ao excluir orçamento no Supabase:', error.message);
-      return false;
+      return { success: false, error: error.message };
     }
-    return true;
-  } catch (err) {
+    return { success: true };
+  } catch (err: any) {
     console.error('Exceção ao excluir orçamento no Supabase:', err);
-    return false;
+    return { success: false, error: err?.message || 'Erro ao excluir orçamento' };
   }
 }
 
