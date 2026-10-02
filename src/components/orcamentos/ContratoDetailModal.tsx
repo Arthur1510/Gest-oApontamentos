@@ -41,26 +41,114 @@ interface ContratoDetailModalProps {
   onReverterDistrato?: (contratoId: string) => void;
 }
 
-function getMedicaoSortKey(m: Medicao): string {
-  if (m.data_prevista && m.data_prevista.trim()) {
-    return m.data_prevista.trim();
-  }
-  if (m.data_medicao && m.data_medicao.trim()) {
-    return m.data_medicao.trim();
-  }
-  if (m.data_referencia && m.data_referencia.trim()) {
-    return m.data_referencia.trim();
-  }
-  if (m.data_pagamento && m.data_pagamento.trim()) {
-    return m.data_pagamento.trim();
-  }
-  if (m.mes_competencia && m.mes_competencia.trim()) {
-    const parsed = parseMesCompetencia(m.mes_competencia);
-    if (parsed.sortKey && parsed.sortKey !== '9999-99') {
-      return parsed.sortKey;
+/**
+ * Normaliza qualquer formato de data ou competência para um timestamp em milissegundos (UTC).
+ * Lida com:
+ * - ISO "YYYY-MM-DD" e "YYYY-MM-DDTHH:mm:ss"
+ * - Padrão brasileiro "DD/MM/AAAA" e "DD-MM-AAAA"
+ * - Padrão brasileiro abreviado "DD/MM/AA"
+ * - Ano-mês "YYYY-MM"
+ * - Competência "AA/MM" (ex: "25/05", "26/02") ou "MM/AA" (ex: "05/25")
+ * Ignora valores sentinelas como "00/01", "-", "N/I".
+ */
+function normalizeDateToTimestamp(raw: string | null | undefined): number | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const s = raw.trim();
+  if (!s || s === '-' || s === 'N/I' || s === '00/01' || s.startsWith('00/')) return null;
+
+  // 1. Formato ISO completo ou com timestamp: "YYYY-MM-DD" ou "YYYY-MM-DDTHH:mm:ss"
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    const parts = s.split('T')[0].split('-').map(Number);
+    const ano = parts[0];
+    const mes = parts[1];
+    const dia = parts[2];
+    if (ano > 1990 && mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      return Date.UTC(ano, mes - 1, dia);
     }
   }
-  return '';
+
+  // 2. Formato brasileiro de data completa: "DD/MM/YYYY" ou "DD-MM-YYYY"
+  if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}$/.test(s)) {
+    const parts = s.split(/[\/\-]/).map(Number);
+    const dia = parts[0];
+    const mes = parts[1];
+    const ano = parts[2];
+    if (ano > 1990 && mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      return Date.UTC(ano, mes - 1, dia);
+    }
+  }
+
+  // 3. Formato brasileiro abreviado: "DD/MM/YY"
+  if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2}$/.test(s)) {
+    const parts = s.split(/[\/\-]/).map(Number);
+    const dia = parts[0];
+    const mes = parts[1];
+    const ano = 2000 + parts[2];
+    if (mes >= 1 && mes <= 12 && dia >= 1 && dia <= 31) {
+      return Date.UTC(ano, mes - 1, dia);
+    }
+  }
+
+  // 4. Formato "YYYY-MM"
+  if (/^\d{4}-\d{2}$/.test(s)) {
+    const parts = s.split('-').map(Number);
+    const ano = parts[0];
+    const mes = parts[1];
+    if (ano > 1990 && mes >= 1 && mes <= 12) {
+      return Date.UTC(ano, mes - 1, 1);
+    }
+  }
+
+  // 5. Formato de competência "AA/MM" ou "MM/AA" (ex: "26/02", "25/05")
+  if (/^\d{2}\/\d{2}$/.test(s)) {
+    const [p1, p2] = s.split('/').map(Number);
+    if (p1 === 0 && p2 === 1) return null; // "00/01" não é data válida
+    let ano = p1;
+    let mes = p2;
+    // Se invertido: ex "05/25" -> mes 05, ano 25
+    if (p1 <= 12 && p2 > 12) {
+      mes = p1;
+      ano = p2;
+    }
+    const anoCompleto = ano < 100 ? 2000 + ano : ano;
+    if (anoCompleto > 1990 && mes >= 1 && mes <= 12) {
+      return Date.UTC(anoCompleto, mes - 1, 1);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Retorna o timestamp representativo da medição em ordem cronológica de ocorrência/previsão:
+ * 1. data_medicao: se a medição já ocorreu, a data real é o marco cronológico primário.
+ * 2. data_prevista: se ainda não ocorreu, o marco planejado é a previsão.
+ * 3. data_referencia: data de referência caso definida.
+ * 4. data_pagamento: data de pagamento caso informada.
+ * 5. mes_competencia: competência (convertida com ano e mês válidos).
+ */
+function getMedicaoTimestamp(m: Medicao): number | null {
+  if (m.data_medicao) {
+    const ts = normalizeDateToTimestamp(m.data_medicao);
+    if (ts !== null) return ts;
+  }
+  if (m.data_prevista) {
+    const ts = normalizeDateToTimestamp(m.data_prevista);
+    if (ts !== null) return ts;
+  }
+  if (m.data_referencia) {
+    const ts = normalizeDateToTimestamp(m.data_referencia);
+    if (ts !== null) return ts;
+  }
+  if (m.data_pagamento) {
+    const ts = normalizeDateToTimestamp(m.data_pagamento);
+    if (ts !== null) return ts;
+  }
+  if (m.mes_competencia && m.mes_competencia !== '00/01' && !m.mes_competencia.startsWith('00/')) {
+    const ts = normalizeDateToTimestamp(m.mes_competencia);
+    if (ts !== null) return ts;
+  }
+  return null;
 }
 
 export function ContratoDetailModal({
@@ -78,25 +166,25 @@ export function ContratoDetailModal({
   const [activeTab, setActiveTab] = useState<'medicoes' | 'aditivos'>('medicoes');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Medições ordenadas cronologicamente (data prevista / medição / competência)
+  // Medições ordenadas cronologicamente de forma real por Ano, Mês e Dia
   const medicoesDoContrato = useMemo(() => {
     if (!contrato) return [];
     const cId = String(contrato.id).trim().toUpperCase();
     return [...medicoes]
       .filter((m) => String(m.contrato_id).trim().toUpperCase() === cId)
       .sort((a, b) => {
-        const keyA = getMedicaoSortKey(a);
-        const keyB = getMedicaoSortKey(b);
+        const tsA = getMedicaoTimestamp(a);
+        const tsB = getMedicaoTimestamp(b);
 
-        if (!keyA && keyB) return 1;
-        if (keyA && !keyB) return -1;
+        // Itens sem data válida são posicionados ao final da lista
+        if (tsA === null && tsB !== null) return 1;
+        if (tsA !== null && tsB === null) return -1;
 
-        if (keyA && keyB && keyA !== keyB) {
-          return sortDirection === 'asc'
-            ? keyA.localeCompare(keyB)
-            : keyB.localeCompare(keyA);
+        if (tsA !== null && tsB !== null && tsA !== tsB) {
+          return sortDirection === 'asc' ? tsA - tsB : tsB - tsA;
         }
 
+        // Desempate por etapa (ex: "1ª Parcela", "Etapa 01", "Etapa 02") com ordenação numérica natural
         const etapaComp = (a.etapa || '').localeCompare(b.etapa || '', undefined, { numeric: true });
         if (etapaComp !== 0) {
           return sortDirection === 'asc' ? etapaComp : -etapaComp;

@@ -72,6 +72,10 @@ export function parseMesCompetencia(mesStr: string): { label: string; sortKey: s
       ano = mes;
       mes = tmp;
     }
+    // Sentinela "00/01" ou ano/mês zero
+    if (parseInt(ano, 10) === 0 || parseInt(mes, 10) === 0) {
+      return { label: 'A Definir', sortKey: '9999-99' };
+    }
     const anoCompleto = ano.length === 2 ? `20${ano}` : ano;
     const mesNum = parseInt(mes, 10);
     const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
