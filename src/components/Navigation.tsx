@@ -64,14 +64,26 @@ export function Navigation() {
     }
   };
 
-  const navLinks = [
-    { href: '/projetos', label: 'Projetos', icon: FolderKanban },
-    { href: '/', label: 'Apontamentos', icon: ListFilter },
-    { href: '/dashboard', label: 'Dashboard WCC', icon: LayoutDashboard },
-    { href: '/orcamentos', label: 'Orçamentos & Medições', icon: Calculator },
-    { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
-    { href: '/arcis', label: 'Módulo ARCIS (RSC)', icon: ShieldAlert },
-    { href: '/apresentacao', label: 'Resumo', icon: Presentation },
+  const navSections = [
+    {
+      id: 'apontamentos',
+      title: 'Gestão de Apontamentos',
+      items: [
+        { href: '/projetos', label: 'Projetos', icon: FolderKanban },
+        { href: '/', label: 'Apontamentos', icon: ListFilter },
+        { href: '/dashboard', label: 'Dashboard WCC', icon: LayoutDashboard },
+        { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
+        { href: '/arcis', label: 'Módulo ARCIS (RSC)', icon: ShieldAlert },
+        { href: '/apresentacao', label: 'Resumo', icon: Presentation },
+      ],
+    },
+    {
+      id: 'orcamentos',
+      title: 'Orçamentos & Medições',
+      items: [
+        { href: '/orcamentos', label: 'Orçamentos & Medições', icon: Calculator, badge: 'Módulo' },
+      ],
+    },
   ];
 
   const isLoginPage = pathname === '/login';
@@ -170,45 +182,69 @@ export function Navigation() {
             )}
           </div>
 
-          {/* Links de Navegação Lateral */}
-          <nav className="space-y-1.5 w-full">
-            {!isDesktopCollapsed && (
-              <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block mb-2 px-3 truncate">
-                Navegação
-              </span>
-            )}
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href;
+          {/* Links de Navegação Lateral Agrupados */}
+          <nav className="space-y-4 w-full">
+            {navSections.map((section, sIdx) => (
+              <div key={section.id} className="space-y-1 w-full">
+                {sIdx > 0 && (
+                  <div
+                    className={cn(
+                      "border-t border-slate-200/80 dark:border-[#0B384D] my-3",
+                      isDesktopCollapsed ? "w-8 mx-auto" : "mx-2"
+                    )}
+                  />
+                )}
 
-              return (
-                <Link
-                  key={`desktop-side-${link.href}`}
-                  href={link.href}
-                  title={isDesktopCollapsed ? link.label : undefined}
-                  className={cn(
-                    "flex items-center rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 relative group",
-                    isDesktopCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5",
-                    isActive
-                      ? "bg-[#00A3C4]/10 text-[#008EA9] dark:bg-[#00A3C4]/20 dark:text-[#00C4EB] font-bold border border-[#00A3C4]/30 dark:border-[#00A3C4]/40 shadow-xs"
-                      : "text-slate-600 hover:text-[#072B3B] hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#0B384D]/70"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#00A3C4] dark:text-[#00C4EB]" : "text-slate-400")} />
-                    {!isDesktopCollapsed && <span className="truncate">{link.label}</span>}
+                {!isDesktopCollapsed && (
+                  <div className="flex items-center justify-between px-3 py-1 mb-1">
+                    <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider truncate">
+                      {section.title}
+                    </span>
+                    {section.id === 'orcamentos' && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB]">
+                        Módulo
+                      </span>
+                    )}
                   </div>
-                  {!isDesktopCollapsed && isActive && <ChevronRight className="h-4 w-4 text-[#00A3C4] dark:text-[#00C4EB] shrink-0" />}
+                )}
 
-                  {/* Tooltip flutuante quando o menu estiver recolhido */}
-                  {isDesktopCollapsed && (
-                    <div className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-[#072B3B] text-white text-xs font-semibold whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 border border-[#0B384D]">
-                      {link.label}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
+                <div className="space-y-1">
+                  {section.items.map((link) => {
+                    const Icon = link.icon;
+                    const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+
+                    return (
+                      <Link
+                        key={`desktop-side-${link.href}`}
+                        href={link.href}
+                        title={isDesktopCollapsed ? `${link.label} (${section.title})` : undefined}
+                        className={cn(
+                          "flex items-center rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 relative group",
+                          isDesktopCollapsed ? "justify-center p-3" : "justify-between px-3.5 py-2.5",
+                          isActive
+                            ? "bg-[#00A3C4]/10 text-[#008EA9] dark:bg-[#00A3C4]/20 dark:text-[#00C4EB] font-bold border border-[#00A3C4]/30 dark:border-[#00A3C4]/40 shadow-xs"
+                            : "text-slate-600 hover:text-[#072B3B] hover:bg-slate-100 dark:text-slate-300 dark:hover:text-white dark:hover:bg-[#0B384D]/70"
+                        )}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-[#00A3C4] dark:text-[#00C4EB]" : "text-slate-400")} />
+                          {!isDesktopCollapsed && <span className="truncate">{link.label}</span>}
+                        </div>
+                        {!isDesktopCollapsed && isActive && <ChevronRight className="h-4 w-4 text-[#00A3C4] dark:text-[#00C4EB] shrink-0" />}
+
+                        {/* Tooltip flutuante quando o menu estiver recolhido */}
+                        {isDesktopCollapsed && (
+                          <div className="absolute left-full ml-3 px-2.5 py-1 rounded-md bg-[#072B3B] text-white text-xs font-semibold whitespace-nowrap shadow-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 border border-[#0B384D]">
+                            <span>{link.label}</span>
+                            <span className="text-[10px] text-[#00A3C4] block font-normal">{section.title}</span>
+                          </div>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </nav>
         </div>
 
@@ -283,34 +319,48 @@ export function Navigation() {
                 </Button>
               </div>
 
-              <nav className="space-y-1.5">
-                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-400 uppercase tracking-wider block mb-2 px-3">
-                  Seções do Sistema
-                </span>
-                {navLinks.map((link) => {
-                  const Icon = link.icon;
-                  const isActive = pathname === link.href;
-
-                  return (
-                    <Link
-                      key={`mobile-drawer-${link.href}`}
-                      href={link.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all",
-                        isActive
-                          ? "bg-[#00A3C4]/10 text-[#008EA9] dark:bg-[#00A3C4]/20 dark:text-[#00C4EB] border border-[#00A3C4]/40"
-                          : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0B384D]/60"
+              <nav className="space-y-4 overflow-y-auto max-h-[calc(100vh-220px)] pr-1">
+                {navSections.map((section, sIdx) => (
+                  <div key={`mobile-section-${section.id}`} className="space-y-1.5">
+                    {sIdx > 0 && (
+                      <div className="border-t border-slate-200/80 dark:border-[#0B384D] my-2 mx-1" />
+                    )}
+                    <div className="flex items-center justify-between px-3 mb-1">
+                      <span className="text-[10px] font-extrabold text-slate-400 dark:text-slate-400 uppercase tracking-wider block">
+                        {section.title}
+                      </span>
+                      {section.id === 'orcamentos' && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB]">
+                          Módulo
+                        </span>
                       )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className={cn("h-4 w-4", isActive ? "text-[#00A3C4] dark:text-[#00C4EB]" : "text-slate-400")} />
-                        <span>{link.label}</span>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </Link>
-                  );
-                })}
+                    </div>
+                    {section.items.map((link) => {
+                      const Icon = link.icon;
+                      const isActive = link.href === '/' ? pathname === '/' : pathname.startsWith(link.href);
+
+                      return (
+                        <Link
+                          key={`mobile-drawer-${link.href}`}
+                          href={link.href}
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className={cn(
+                            "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all",
+                            isActive
+                              ? "bg-[#00A3C4]/10 text-[#008EA9] dark:bg-[#00A3C4]/20 dark:text-[#00C4EB] border border-[#00A3C4]/40 font-bold"
+                              : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#0B384D]/60"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className={cn("h-4 w-4", isActive ? "text-[#00A3C4] dark:text-[#00C4EB]" : "text-slate-400")} />
+                            <span>{link.label}</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-400" />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
               </nav>
             </div>
 

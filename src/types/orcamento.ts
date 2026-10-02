@@ -23,12 +23,14 @@ export const CATEGORIA_CONTRATO_OPCOES: CategoriaContrato[] = [
 export type StatusMedicao =
   | 'A Medir'
   | 'Medido'
+  | 'A Pagar'
   | 'Pago'
   | 'Cancelado';
 
 export const STATUS_MEDICAO_OPCOES: StatusMedicao[] = [
   'A Medir',
   'Medido',
+  'A Pagar',
   'Pago',
   'Cancelado',
 ];
@@ -216,6 +218,12 @@ export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: st
     text: 'text-cyan-700 dark:text-cyan-400',
     border: 'border-cyan-500/30',
     badge: 'bg-cyan-500 text-white',
+  },
+  'A Pagar': {
+    bg: 'bg-indigo-500/10 dark:bg-indigo-500/20',
+    text: 'text-indigo-700 dark:text-indigo-400',
+    border: 'border-indigo-500/30',
+    badge: 'bg-indigo-500 text-white',
   },
   'A Medir': {
     bg: 'bg-amber-500/10 dark:bg-amber-500/20',

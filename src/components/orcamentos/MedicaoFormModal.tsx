@@ -52,6 +52,11 @@ export function MedicaoFormModal({
         ? Number((medicaoParaEditar.percentual * 100).toFixed(2))
         : (c && c.valor_contrato > 0 ? Number(((medicaoParaEditar.valor_medicao / c.valor_contrato) * 100).toFixed(2)) : 0);
 
+      let initialStatus = medicaoParaEditar.status || 'A Medir';
+      if (medicaoParaEditar.data_pagamento && initialStatus !== 'Pago' && initialStatus !== 'Cancelado') {
+        initialStatus = 'A Pagar';
+      }
+
       return {
         id: medicaoParaEditar.id || '',
         contrato_id: medicaoParaEditar.contrato_id || '',
@@ -64,7 +69,7 @@ export function MedicaoFormModal({
         data_medicao: medicaoParaEditar.data_medicao || '',
         data_referencia: medicaoParaEditar.data_referencia || '',
         mes_competencia: medicaoParaEditar.mes_competencia || '',
-        status: medicaoParaEditar.status || 'A Medir',
+        status: initialStatus,
         nf: medicaoParaEditar.nf || '',
         data_pagamento: medicaoParaEditar.data_pagamento || '',
       };
@@ -99,6 +104,11 @@ export function MedicaoFormModal({
         ? Number((medicaoParaEditar.percentual * 100).toFixed(2))
         : (c && c.valor_contrato > 0 ? Number(((medicaoParaEditar.valor_medicao / c.valor_contrato) * 100).toFixed(2)) : 0);
 
+      let initialStatus = medicaoParaEditar.status || 'A Medir';
+      if (medicaoParaEditar.data_pagamento && initialStatus !== 'Pago' && initialStatus !== 'Cancelado') {
+        initialStatus = 'A Pagar';
+      }
+
       setFormData({
         id: medicaoParaEditar.id || '',
         contrato_id: medicaoParaEditar.contrato_id || '',
@@ -111,7 +121,7 @@ export function MedicaoFormModal({
         data_medicao: medicaoParaEditar.data_medicao || '',
         data_referencia: medicaoParaEditar.data_referencia || '',
         mes_competencia: medicaoParaEditar.mes_competencia || '',
-        status: medicaoParaEditar.status || 'A Medir',
+        status: initialStatus,
         nf: medicaoParaEditar.nf || '',
         data_pagamento: medicaoParaEditar.data_pagamento || '',
       });
@@ -215,17 +225,30 @@ export function MedicaoFormModal({
 
   const handleDataPagamentoChange = (dtPag: string) => {
     let mesComp = formData.mes_competencia;
-    // Se a medição estiver como Pago e preencher data de pagamento, sugere atualizar o mês de competência/desembolso
-    if (dtPag && (formData.status === 'Pago' || !mesComp)) {
+    // Se a medição estiver como Pago, A Pagar ou sem competência e preencher data de pagamento, sugere atualizar o mês de competência/desembolso
+    if (dtPag && (formData.status === 'Pago' || formData.status === 'A Pagar' || !mesComp)) {
       const parts = dtPag.split('-');
       if (parts.length >= 2) {
         mesComp = `${parts[0].slice(-2)}/${parts[1]}`;
       }
     }
+
+    let novoStatus = formData.status;
+    if (dtPag.trim()) {
+      // Se preencheu data de pagamento e ainda não está como 'Pago' (nem 'Cancelado'), define como 'A Pagar'
+      if (novoStatus !== 'Pago' && novoStatus !== 'Cancelado') {
+        novoStatus = 'A Pagar';
+      }
+    } else if (novoStatus === 'A Pagar') {
+      // Se limpou a data de pagamento e estava como 'A Pagar', volta para 'Medido' se tiver data_medicao, senão 'A Medir'
+      novoStatus = formData.data_medicao ? 'Medido' : 'A Medir';
+    }
+
     setFormData((prev) => ({
       ...prev,
       data_pagamento: dtPag,
       mes_competencia: mesComp,
+      status: novoStatus,
     }));
   };
 
@@ -234,6 +257,11 @@ export function MedicaoFormModal({
     if (!formData.contrato_id || !formData.etapa || formData.valor_medicao <= 0) {
       alert('Por favor, informe o contrato, etapa e valor da medição.');
       return;
+    }
+
+    let statusFinal = formData.status;
+    if (formData.data_pagamento && statusFinal !== 'Pago' && statusFinal !== 'Cancelado') {
+      statusFinal = 'A Pagar';
     }
 
     const targetId = formData.id || medicaoParaEditar?.id || undefined;
@@ -249,7 +277,7 @@ export function MedicaoFormModal({
       data_medicao: formData.data_medicao || null,
       data_referencia: formData.data_referencia || formData.data_medicao || formData.data_prevista || null,
       mes_competencia: formData.mes_competencia,
-      status: formData.status,
+      status: statusFinal,
       nf: formData.nf || null,
       data_pagamento: formData.data_pagamento || null,
     });

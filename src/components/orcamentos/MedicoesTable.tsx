@@ -146,6 +146,7 @@ export function MedicoesTable({
   const totais = useMemo(() => {
     let totalValor = 0;
     let pago = 0;
+    let aPagar = 0;
     let medido = 0;
     let aMedir = 0;
     let totalAtraso = 0;
@@ -154,6 +155,7 @@ export function MedicoesTable({
     for (const m of medicoesFiltradas) {
       totalValor += m.valor_medicao || 0;
       if (m.status === 'Pago') pago += m.valor_medicao || 0;
+      else if (m.status === 'A Pagar') aPagar += m.valor_medicao || 0;
       else if (m.status === 'Medido') medido += m.valor_medicao || 0;
       else if (m.status === 'A Medir') aMedir += m.valor_medicao || 0;
 
@@ -163,12 +165,12 @@ export function MedicoesTable({
       }
     }
 
-    return { totalValor, pago, medido, aMedir, totalAtraso, countAtraso };
+    return { totalValor, pago, aPagar, medido, aMedir, totalAtraso, countAtraso };
   }, [medicoesFiltradas]);
 
-  const handleConfirmarPagamento = () => {
+  const handleConfirmarPagamento = (status: 'Pago' | 'A Pagar' = 'Pago') => {
     if (pagamentoModalItem) {
-      onMudarStatusMedicao(pagamentoModalItem.id, 'Pago', nfInput, dataPagamentoInput);
+      onMudarStatusMedicao(pagamentoModalItem.id, status, nfInput, dataPagamentoInput);
       setPagamentoModalItem(null);
       setNfInput('');
     }
@@ -469,17 +471,22 @@ export function MedicoesTable({
                         <Check className="h-3.5 w-3.5" /> Medir
                       </Button>
                     )}
-                    {(m.status === 'Medido' || m.status === 'A Medir') && (
+                    {(m.status === 'Medido' || m.status === 'A Medir' || m.status === 'A Pagar') && (
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => {
                           setPagamentoModalItem(m);
                           setNfInput(m.nf || '');
+                          setDataPagamentoInput(m.data_pagamento || new Date().toISOString().split('T')[0]);
                         }}
-                        className="h-7 text-xs font-bold text-emerald-600 px-2 rounded-lg gap-1"
+                        className={`h-7 text-xs font-bold px-2 rounded-lg gap-1 ${
+                          m.status === 'A Pagar'
+                            ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50/60 dark:bg-indigo-950/20'
+                            : 'text-emerald-600'
+                        }`}
                       >
-                        <CreditCard className="h-3.5 w-3.5" /> Pagar
+                        <CreditCard className="h-3.5 w-3.5" /> {m.status === 'A Pagar' ? 'Quitar' : 'Pagar'}
                       </Button>
                     )}
                   </div>
@@ -647,14 +654,19 @@ export function MedicoesTable({
                               <Check className="h-3.5 w-3.5" />
                             </button>
                           )}
-                          {(m.status === 'Medido' || m.status === 'A Medir') && (
+                          {(m.status === 'Medido' || m.status === 'A Medir' || m.status === 'A Pagar') && (
                             <button
                               onClick={() => {
                                 setPagamentoModalItem(m);
                                 setNfInput(m.nf || '');
+                                setDataPagamentoInput(m.data_pagamento || new Date().toISOString().split('T')[0]);
                               }}
-                              title="Registrar Pagamento / Nota Fiscal"
-                              className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors"
+                              title={m.status === 'A Pagar' ? 'Confirmar Quitação (Pago)' : 'Registrar Pagamento / Nota Fiscal'}
+                              className={`p-1 rounded-md transition-colors ${
+                                m.status === 'A Pagar'
+                                  ? 'text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/30'
+                                  : 'text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+                              }`}
                             >
                               <CreditCard className="h-3.5 w-3.5" />
                             </button>
@@ -692,6 +704,10 @@ export function MedicoesTable({
                   <td colSpan={3} className="py-3 px-3 text-right text-xs text-slate-500 dark:text-slate-400">
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
                       Pago: {formatCurrency(totais.pago)}
+                    </span>
+                    {' | '}
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold whitespace-nowrap">
+                      A Pagar: {formatCurrency(totais.aPagar)}
                     </span>
                     {' | '}
                     <span className="text-cyan-600 dark:text-cyan-400 font-bold whitespace-nowrap">
@@ -759,7 +775,7 @@ export function MedicoesTable({
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#0B384D]">
+            <div className="flex flex-wrap items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-[#0B384D]">
               <Button
                 variant="outline"
                 size="sm"
@@ -770,10 +786,19 @@ export function MedicoesTable({
               </Button>
               <Button
                 size="sm"
-                onClick={handleConfirmarPagamento}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 rounded-xl shadow-xs"
+                onClick={() => handleConfirmarPagamento('A Pagar')}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold h-9 rounded-xl shadow-xs"
+                title="Salva a data de pagamento prevista e define o status como A Pagar"
               >
-                Confirmar Pagamento
+                Salvar como A Pagar
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleConfirmarPagamento('Pago')}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold h-9 rounded-xl shadow-xs"
+                title="Confirma a quitação e define o status como Pago"
+              >
+                Confirmar Pagamento (Pago)
               </Button>
             </div>
           </div>

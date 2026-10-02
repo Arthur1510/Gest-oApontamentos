@@ -141,6 +141,7 @@ export function OrcamentoDashboard({
     const filteredMed = filtroObra ? medicoes.filter((m) => m.obra === filtroObra) : medicoes;
     const map: Record<string, { count: number; valor: number }> = {
       'Pago': { count: 0, valor: 0 },
+      'A Pagar': { count: 0, valor: 0 },
       'Medido': { count: 0, valor: 0 },
       'A Medir': { count: 0, valor: 0 },
       'Cancelado': { count: 0, valor: 0 },
@@ -165,6 +166,7 @@ export function OrcamentoDashboard({
 
   const PIE_COLORS: Record<string, string> = {
     'Pago': '#10b981', // emerald
+    'A Pagar': '#6366f1', // indigo
     'Medido': '#00a3c4', // cyan WCC
     'A Medir': '#f59e0b', // amber
     'Cancelado': '#94a3b8', // slate

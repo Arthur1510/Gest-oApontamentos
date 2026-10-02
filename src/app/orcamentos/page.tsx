@@ -179,7 +179,13 @@ export default function OrcamentosPage() {
           setContratos(localContratosSalvos);
         }
         if (savedMed) {
-          localMedicoesSalvos = JSON.parse(savedMed);
+          const parsedMed: Medicao[] = JSON.parse(savedMed);
+          localMedicoesSalvos = parsedMed.map((m) => {
+            if (m.data_pagamento && m.status !== 'Pago' && m.status !== 'Cancelado' && (m.status as any) !== 'Cancelada') {
+              return { ...m, status: 'A Pagar' as StatusMedicao };
+            }
+            return m;
+          });
           setMedicoes(localMedicoesSalvos);
         }
         if (savedOrc) {
@@ -257,15 +263,24 @@ export default function OrcamentosPage() {
             });
 
             const obrasVigentes = cloud.obras && cloud.obras.length > 0 ? cloud.obras : (localObrasSalvos.length > 0 ? localObrasSalvos : []);
-            const recalcCt = recalculateContratos(mergedContratos, cloud.medicoes);
+            
+            // Normaliza medições: se tiver data_pagamento e não for 'Pago' nem 'Cancelado', define como 'A Pagar'
+            const cloudMedicoes = (cloud.medicoes || []).map((m: Medicao) => {
+              if (m.data_pagamento && m.status !== 'Pago' && m.status !== 'Cancelado' && (m.status as any) !== 'Cancelada') {
+                return { ...m, status: 'A Pagar' as StatusMedicao };
+              }
+              return m;
+            });
+
+            const recalcCt = recalculateContratos(mergedContratos, cloudMedicoes);
             const recalcOrc = recalculateOrcamentos(mergedOrcamentos, recalcCt, obrasVigentes);
 
             setContratos(recalcCt);
-            setMedicoes(cloud.medicoes);
+            setMedicoes(cloudMedicoes);
             setOrcamentos(recalcOrc);
 
             localStorage.setItem(STORAGE_KEY_CONTRATOS, JSON.stringify(recalcCt));
-            localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(cloud.medicoes));
+            localStorage.setItem(STORAGE_KEY_MEDICOES, JSON.stringify(cloudMedicoes));
             localStorage.setItem(STORAGE_KEY_ORCAMENTOS, JSON.stringify(recalcOrc));
 
             setLastSyncStatus(`Banco de dados conectado às ${new Date().toLocaleTimeString('pt-BR')}`);
@@ -585,6 +600,11 @@ export default function OrcamentosPage() {
   // --- CRUD MEDIÇÕES ---
   const handleSalvarMedicao = (medicaoData: Medicao | (NovaMedicao & { id?: string })) => {
     const targetId = medicaoData.id || medicaoParaEditar?.id;
+    let statusFinal = medicaoData.status;
+    if (medicaoData.data_pagamento && statusFinal !== 'Pago' && statusFinal !== 'Cancelado' && (statusFinal as any) !== 'Cancelada') {
+      statusFinal = 'A Pagar';
+    }
+
     const existingIndex = targetId
       ? medicoes.findIndex((m) => String(m.id).trim().toUpperCase() === String(targetId).trim().toUpperCase())
       : -1;
@@ -598,6 +618,7 @@ export default function OrcamentosPage() {
           const mod = {
             ...m,
             ...medicaoData,
+            status: statusFinal,
             id: m.id,
           };
           medicaoSalva = mod;
@@ -632,7 +653,7 @@ export default function OrcamentosPage() {
         data_referencia: medicaoData.data_referencia,
         mes_competencia: medicaoData.mes_competencia,
         valor_medicao: medicaoData.valor_medicao,
-        status: medicaoData.status,
+        status: statusFinal,
         nf: medicaoData.nf || null,
         data_pagamento: medicaoData.data_pagamento || null,
       };
@@ -692,12 +713,17 @@ export default function OrcamentosPage() {
     let medicaoSalva: Medicao | undefined;
     const updated = medicoes.map((m) => {
       if (m.id === id) {
+        const finalDtPagamento = dataPagamento !== undefined ? dataPagamento : m.data_pagamento;
+        let finalStatus = novoStatus;
+        if (finalDtPagamento && finalStatus !== 'Pago' && finalStatus !== 'Cancelado' && (finalStatus as any) !== 'Cancelada') {
+          finalStatus = 'A Pagar';
+        }
         medicaoSalva = {
           ...m,
-          status: novoStatus,
+          status: finalStatus,
           nf: nf !== undefined ? nf : m.nf,
-          data_pagamento: dataPagamento !== undefined ? dataPagamento : m.data_pagamento,
-          data_medicao: novoStatus === 'Medido' && !m.data_medicao ? new Date().toISOString().split('T')[0] : m.data_medicao,
+          data_pagamento: finalDtPagamento,
+          data_medicao: (finalStatus === 'Medido' || finalStatus === 'A Pagar') && !m.data_medicao ? new Date().toISOString().split('T')[0] : m.data_medicao,
         };
         return medicaoSalva;
       }

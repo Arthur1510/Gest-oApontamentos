@@ -150,7 +150,7 @@ export function recalculateContratos(
   const medidoPorContrato: Record<string, number> = {};
 
   for (const m of medicoes) {
-    if (m.status === 'Pago' || m.status === 'Medido') {
+    if (m.status === 'Pago' || m.status === 'Medido' || m.status === 'A Pagar') {
       const cid = String(m.contrato_id).trim();
       medidoPorContrato[cid] = (medidoPorContrato[cid] || 0) + (Number(m.valor_medicao) || 0);
     }
@@ -537,7 +537,7 @@ export function calculateCurvaDesembolso(
       mesMap[mesKey] = { previsto: 0, realizado: 0 };
     }
 
-    if (m.status === 'Pago' || m.status === 'Medido') {
+    if (m.status === 'Pago' || m.status === 'Medido' || m.status === 'A Pagar') {
       mesMap[mesKey].realizado += m.valor_medicao;
     } else {
       // 'A Medir'
@@ -638,7 +638,7 @@ export function calculateKpis(
   for (const m of filteredMed) {
     if (m.status === 'Pago') {
       totalPago += m.valor_medicao;
-    } else if (m.status === 'Medido') {
+    } else if (m.status === 'Medido' || m.status === 'A Pagar') {
       totalMedidoPendente += m.valor_medicao;
       if (isMedicaoEmAtraso(m)) {
         totalEmAtraso += m.valor_medicao;
@@ -702,7 +702,8 @@ export function calculateKpis(
  * (Prevista para uma data/mês no passado, mas ainda não paga)
  */
 export function isMedicaoEmAtraso(m: Medicao, dataReferencia?: string): boolean {
-  if (m.status === 'Pago' || m.status === 'Cancelado' || (m.status as any) === 'Cancelada') {
+  // O atraso é considerado exclusivamente quando o status da medição for 'A Medir'
+  if (m.status !== 'A Medir') {
     return false;
   }
 
