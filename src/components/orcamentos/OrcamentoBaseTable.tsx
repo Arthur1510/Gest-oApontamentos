@@ -22,6 +22,8 @@ import {
   Edit2,
   Trash2,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Building,
 } from 'lucide-react';
 
@@ -36,6 +38,20 @@ interface OrcamentoBaseTableProps {
   onExcluirItem: (id: string) => void;
   onMudarStatusItem?: (item: ItemOrcamento, novoStatus: StatusOrcamento) => void;
 }
+
+type SortField =
+  | 'obra'
+  | 'categoria'
+  | 'disciplina'
+  | 'subdisciplina'
+  | 'orcamento_base'
+  | 'valor_contratado'
+  | 'saldo_a_contratar'
+  | 'valor_medido'
+  | 'saldo_medicao'
+  | 'status';
+
+type SortDirection = 'asc' | 'desc';
 
 export function OrcamentoBaseTable({
   orcamentos,
@@ -52,6 +68,38 @@ export function OrcamentoBaseTable({
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroDisciplina, setFiltroDisciplina] = useState<string>('');
   const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
+
+  // Estados de ordenação
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else {
+        // Terceiro clique reseta para o padrão multinível
+        setSortField(null);
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const renderSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return (
+        <ArrowUpDown className="h-3 w-3 text-slate-400/40 group-hover:text-slate-600 dark:group-hover:text-slate-300 shrink-0 transition-colors" />
+      );
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3.5 w-3.5 text-[#00A3C4] font-bold shrink-0" />
+    ) : (
+      <ArrowDown className="h-3.5 w-3.5 text-[#00A3C4] font-bold shrink-0" />
+    );
+  };
 
   const countProjetos = useMemo(() => orcamentos.filter((o) => o.categoria === 'Projeto').length, [orcamentos]);
   const countLegalizacao = useMemo(() => orcamentos.filter((o) => o.categoria === 'Legalização').length, [orcamentos]);
@@ -84,6 +132,75 @@ export function OrcamentoBaseTable({
       return true;
     });
   }, [orcamentos, filtroObra, filtroStatus, filtroDisciplina, filtroCategoria, searchQuery]);
+
+  // Lista ordenada: padrão hierárquico (Obra ➔ Disciplina ➔ Subdisciplina) ou pela coluna ativa
+  const orcamentosOrdenados = useMemo(() => {
+    const list = [...orcamentosFiltrados];
+
+    if (!sortField) {
+      // 🌟 ORDENAÇÃO PADRÃO MULTINÍVEL (Hierárquica):
+      // 1º Obra (A-Z) ➔ 2º Disciplina (A-Z) ➔ 3º Subdisciplina (A-Z)
+      return list.sort((a, b) => {
+        const cmpObra = (a.obra || '').localeCompare(b.obra || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+        if (cmpObra !== 0) return cmpObra;
+
+        const cmpDisc = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR', { sensitivity: 'base' });
+        if (cmpDisc !== 0) return cmpDisc;
+
+        return (a.subdisciplina || '').localeCompare(b.subdisciplina || '', 'pt-BR', { sensitivity: 'base' });
+      });
+    }
+
+    return list.sort((a, b) => {
+      let cmp = 0;
+
+      switch (sortField) {
+        case 'obra':
+          cmp = (a.obra || '').localeCompare(b.obra || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
+          if (cmp === 0) {
+            cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
+          }
+          break;
+        case 'categoria':
+          cmp = (a.categoria || '').localeCompare(b.categoria || '', 'pt-BR');
+          if (cmp === 0) {
+            cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
+          }
+          break;
+        case 'disciplina':
+          cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
+          if (cmp === 0) {
+            cmp = (a.subdisciplina || '').localeCompare(b.subdisciplina || '', 'pt-BR');
+          }
+          break;
+        case 'subdisciplina':
+          cmp = (a.subdisciplina || '').localeCompare(b.subdisciplina || '', 'pt-BR');
+          break;
+        case 'orcamento_base':
+          cmp = (a.orcamento_base || 0) - (b.orcamento_base || 0);
+          break;
+        case 'valor_contratado':
+          cmp = (a.valor_contratado || 0) - (b.valor_contratado || 0);
+          break;
+        case 'saldo_a_contratar':
+          cmp = (a.saldo_a_contratar || 0) - (b.saldo_a_contratar || 0);
+          break;
+        case 'valor_medido':
+          cmp = (a.valor_medido || 0) - (b.valor_medido || 0);
+          break;
+        case 'saldo_medicao':
+          cmp = (a.saldo_medicao || 0) - (b.saldo_medicao || 0);
+          break;
+        case 'status':
+          cmp = (a.status || '').localeCompare(b.status || '', 'pt-BR');
+          break;
+        default:
+          cmp = 0;
+      }
+
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+  }, [orcamentosFiltrados, sortField, sortDirection]);
 
   // Totais da tabela filtrada
   const totais = useMemo(() => {
@@ -205,7 +322,7 @@ export function OrcamentoBaseTable({
             </button>
           </div>
 
-          {(searchQuery || filtroObra || filtroDisciplina || filtroStatus || filtroCategoria !== 'Todos') && (
+          {(searchQuery || filtroObra || filtroDisciplina || filtroStatus || filtroCategoria !== 'Todos' || sortField !== null) && (
             <Button
               variant="ghost"
               size="sm"
@@ -215,6 +332,8 @@ export function OrcamentoBaseTable({
                 setFiltroDisciplina('');
                 setFiltroStatus('');
                 setFiltroCategoria('Todos');
+                setSortField(null);
+                setSortDirection('asc');
               }}
               className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-9 px-2.5"
             >
@@ -237,32 +356,161 @@ export function OrcamentoBaseTable({
 
       {/* Tabela de Orçamentos */}
       <div className="rounded-2xl border border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] overflow-hidden shadow-sm">
+        {/* Barra informativa de ordenação atual */}
+        <div className="px-4 py-2 bg-slate-50/70 dark:bg-[#083042]/50 border-b border-slate-200/80 dark:border-[#0B384D] flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-1.5 font-medium">
+            <span>Ordem:</span>
+            {!sortField ? (
+              <span className="font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-[#072B3B] px-2 py-0.5 rounded-md border border-slate-200 dark:border-[#0B384D]">
+                🏢 Obra ➔ 📑 Disciplina ➔ 📝 Subdisciplina (A–Z)
+              </span>
+            ) : (
+              <span className="font-bold text-[#008EA9] dark:text-[#00C4EB] bg-[#00A3C4]/10 px-2 py-0.5 rounded-md border border-[#00A3C4]/30">
+                Coluna: {sortField === 'obra' ? 'Obra' : sortField === 'categoria' ? 'Tipo' : sortField === 'disciplina' ? 'Disciplina' : sortField === 'subdisciplina' ? 'Subdisciplina' : sortField === 'orcamento_base' ? 'Orçamento Base' : sortField === 'valor_contratado' ? 'Valor Contratado' : sortField === 'saldo_a_contratar' ? 'Saldo a Contratar' : sortField === 'valor_medido' ? 'Valor Medido' : sortField === 'saldo_medicao' ? 'Saldo Medição' : 'Status'} ({sortDirection === 'asc' ? 'Crescente / A–Z' : 'Decrescente / Z–A'})
+              </span>
+            )}
+          </div>
+
+          {sortField && (
+            <button
+              type="button"
+              onClick={() => {
+                setSortField(null);
+                setSortDirection('asc');
+              }}
+              className="text-[10px] font-bold text-slate-500 hover:text-[#00A3C4] dark:hover:text-[#00C4EB] underline transition-colors"
+            >
+              Restaurar ordem padrão hierárquica
+            </button>
+          )}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead className="bg-slate-50 dark:bg-[#0B384D] text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-[#0B384D]">
               <tr>
-                <th className="py-3 px-3.5">Obra</th>
-                <th className="py-3 px-3.5">Tipo</th>
-                <th className="py-3 px-3.5">Disciplina</th>
-                <th className="py-3 px-3.5">Subdisciplina</th>
-                <th className="py-3 px-3.5 text-right">Orçamento Base</th>
-                <th className="py-3 px-3.5 text-right">Valor Contratado</th>
-                <th className="py-3 px-3.5 text-right">Saldo a Contratar</th>
-                <th className="py-3 px-3.5 text-right">Valor Medido</th>
-                <th className="py-3 px-3.5 text-right">Saldo Medição</th>
-                <th className="py-3 px-3.5 text-center">Status</th>
+                <th
+                  onClick={() => handleSort('obra')}
+                  className="py-3 px-3.5 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Obra"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Obra</span>
+                    {renderSortIcon('obra')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('categoria')}
+                  className="py-3 px-3.5 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Tipo (Projeto / Legalização)"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Tipo</span>
+                    {renderSortIcon('categoria')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('disciplina')}
+                  className="py-3 px-3.5 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Disciplina (A–Z)"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Disciplina</span>
+                    {renderSortIcon('disciplina')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('subdisciplina')}
+                  className="py-3 px-3.5 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Subdisciplina (A–Z)"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span>Subdisciplina</span>
+                    {renderSortIcon('subdisciplina')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('orcamento_base')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Orçamento Base"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Orçamento Base</span>
+                    {renderSortIcon('orcamento_base')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('valor_contratado')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Valor Contratado"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Valor Contratado</span>
+                    {renderSortIcon('valor_contratado')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('saldo_a_contratar')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Saldo a Contratar"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Saldo a Contratar</span>
+                    {renderSortIcon('saldo_a_contratar')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('valor_medido')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Valor Medido"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Valor Medido</span>
+                    {renderSortIcon('valor_medido')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('saldo_medicao')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Saldo Medição"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Saldo Medição</span>
+                    {renderSortIcon('saldo_medicao')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('status')}
+                  className="py-3 px-3.5 text-center cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Clique para ordenar por Status"
+                >
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span>Status</span>
+                    {renderSortIcon('status')}
+                  </div>
+                </th>
+
                 <th className="py-3 px-3.5 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#0B384D]/60 text-slate-700 dark:text-slate-200">
-              {orcamentosFiltrados.length === 0 ? (
+              {orcamentosOrdenados.length === 0 ? (
                 <tr>
                   <td colSpan={11} className="py-10 text-center text-slate-400">
                     Nenhum item de orçamento encontrado para os filtros selecionados.
                   </td>
                 </tr>
               ) : (
-                orcamentosFiltrados.map((item) => {
+                orcamentosOrdenados.map((item) => {
                   const statusColor = STATUS_ORCAMENTO_COLORS[item.status] || {
                     bg: 'bg-slate-100 dark:bg-slate-800',
                     text: 'text-slate-700 dark:text-slate-300',
