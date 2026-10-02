@@ -50,10 +50,8 @@ import {
   Building,
   FileSpreadsheet,
   Plus,
-  Sparkles,
   Trash2,
   FileText,
-  Cloud,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -605,6 +603,15 @@ export default function OrcamentosPage() {
       statusFinal = 'A Pagar';
     }
 
+    const targetRef = medicaoData.data_referencia || medicaoData.data_medicao || medicaoData.data_prevista || null;
+    let finalMesComp = medicaoData.mes_competencia?.trim() || '';
+    if (!finalMesComp && targetRef) {
+      const parts = targetRef.split('-');
+      if (parts.length >= 2) {
+        finalMesComp = `${parts[0].slice(-2)}/${parts[1]}`;
+      }
+    }
+
     const existingIndex = targetId
       ? medicoes.findIndex((m) => String(m.id).trim().toUpperCase() === String(targetId).trim().toUpperCase())
       : -1;
@@ -615,9 +622,11 @@ export default function OrcamentosPage() {
       // Editar existente: substitui in-place garantindo que não cria duplicata
       updated = medicoes.map((m, idx) => {
         if (idx === existingIndex) {
-          const mod = {
+          const mod: Medicao = {
             ...m,
             ...medicaoData,
+            data_referencia: targetRef,
+            mes_competencia: finalMesComp,
             status: statusFinal,
             id: m.id,
           };
@@ -650,8 +659,8 @@ export default function OrcamentosPage() {
         percentual: medicaoData.percentual,
         data_prevista: medicaoData.data_prevista,
         data_medicao: medicaoData.data_medicao,
-        data_referencia: medicaoData.data_referencia,
-        mes_competencia: medicaoData.mes_competencia,
+        data_referencia: targetRef,
+        mes_competencia: finalMesComp,
         valor_medicao: medicaoData.valor_medicao,
         status: statusFinal,
         nf: medicaoData.nf || null,
@@ -1067,55 +1076,28 @@ export default function OrcamentosPage() {
   return (
     <div className="flex-1 space-y-6 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
       {/* 1. CABEÇALHO DO MÓDULO */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-[#0B384D] pb-5">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-200 dark:border-[#0B384D] pb-4">
         <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="px-2.5 py-1 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-xs font-black tracking-wider uppercase">
-              WCC Gestão de Custos & Medições
-            </span>
-            <span className="flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-[#0B384D] px-2 py-0.5 rounded-full">
-              <Sparkles className="h-3 w-3 text-[#00A3C4]" /> Plataforma Direta
-            </span>
-            {isSupabaseOnline ? (
-              <span
-                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
-                title={lastSyncStatus || 'Supabase conectado em tempo real'}
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <Cloud className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span>{isSyncing ? 'Sincronizando...' : 'Supabase Conectado'}</span>
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">
-                <Cloud className="h-3.5 w-3.5" /> Modo Local (Offline)
-              </span>
-            )}
-            {contratosRecalculados.length === 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/10 text-slate-700 dark:text-slate-400 border border-slate-500/20">
-                Base Limpa (Pronta para Entrada)
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1.5">
-            Controle de Orçamentos & Medições
+          <span className="px-2.5 py-0.5 rounded-md bg-[#00A3C4]/10 text-[#008EA9] dark:text-[#00C4EB] text-[11px] font-bold tracking-wider uppercase">
+            Módulo Financeiro
+          </span>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+            Orçamentos & Medições
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-3xl leading-relaxed">
-            Gestão integrada de Orçamento Base, Contratos, Aditivos, Distratos, Medições de Marco e Curva de Desembolso S sincronizados na nuvem.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            Gestão integrada de orçamento base, contratos, aditivos, medições de marco e curva de desembolso.
           </p>
         </div>
 
         {/* Botões de Ação Rápida */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
           <Button
             size="sm"
             onClick={() => {
               setContratoParaEditar(null);
               setIsContratoModalOpen(true);
             }}
-            className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+            className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 px-3 rounded-xl shadow-xs"
           >
             <Plus className="h-4 w-4" /> Novo Contrato
           </Button>
@@ -1128,7 +1110,7 @@ export default function OrcamentosPage() {
               setIsMedicaoModalOpen(true);
             }}
             variant="outline"
-            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
+            className="text-xs font-bold gap-1.5 h-9 px-3 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
           >
             <Plus className="h-4 w-4 text-[#00A3C4]" /> Nova Medição
           </Button>
@@ -1136,18 +1118,19 @@ export default function OrcamentosPage() {
           <Button
             size="sm"
             onClick={() => setIsRelatorioPdfOpen(true)}
-            className="bg-[#072B3B] dark:bg-[#00A3C4] hover:bg-[#0B384D] dark:hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+            className="bg-[#072B3B] dark:bg-[#00A3C4] hover:bg-[#0B384D] dark:hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 px-3 rounded-xl shadow-xs"
           >
-            <FileText className="h-4 w-4 text-[#00C4EB] dark:text-white" /> Relatório Executivo PDF
+            <FileText className="h-4 w-4 text-[#00C4EB] dark:text-white" /> Relatório PDF
           </Button>
 
           <Button
             size="sm"
             variant="outline"
             onClick={() => setIsExportModalOpen(true)}
-            className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
+            className="text-xs font-bold gap-1.5 h-9 px-3 rounded-xl border-slate-200 dark:border-[#0B384D] hover:bg-slate-50 dark:hover:bg-[#0B384D]"
+            title="Exportar planilhas Excel"
           >
-            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar Relatórios
+            <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> Exportar
           </Button>
         </div>
       </div>

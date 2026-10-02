@@ -113,15 +113,15 @@ export function OrcamentoBaseTable({
   return (
     <div className="space-y-4">
       {/* Barra de Filtros e Busca */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
-        <div className="flex flex-1 flex-wrap items-center gap-3">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
+        <div className="flex flex-1 flex-wrap items-center gap-2.5">
           {/* Busca por texto */}
-          <div className="relative min-w-[220px] flex-1 max-w-sm">
+          <div className="relative w-full sm:w-64 md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar por disciplina ou subdisciplina..."
+              placeholder="Buscar disciplina, subdisciplina..."
               className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] border-slate-200 dark:border-[#0B384D]"
             />
           </div>
@@ -130,7 +130,7 @@ export function OrcamentoBaseTable({
           <select
             value={filtroObra}
             onChange={(e) => setFiltroObra(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
           >
             <option value="">🏢 Todas as Obras</option>
             {obras.map((o) => (
@@ -144,9 +144,9 @@ export function OrcamentoBaseTable({
           <select
             value={filtroDisciplina}
             onChange={(e) => setFiltroDisciplina(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
           >
-            <option value="">📐 Todas as Disciplinas</option>
+            <option value="">📐 Disciplinas</option>
             {disciplinasUnicas.map((d) => (
               <option key={d} value={d}>
                 {d}
@@ -158,9 +158,9 @@ export function OrcamentoBaseTable({
           <select
             value={filtroStatus}
             onChange={(e) => setFiltroStatus(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[130px] max-w-[170px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
           >
-            <option value="">📋 Todos os Status</option>
+            <option value="">📋 Status</option>
             {STATUS_ORCAMENTO_OPCOES.map((st) => (
               <option key={st} value={st}>
                 {st}
@@ -169,11 +169,11 @@ export function OrcamentoBaseTable({
           </select>
 
           {/* Filtro Categoria: Projetos vs Legalização */}
-          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-1 border border-slate-200 dark:border-[#0B384D]">
+          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
             <button
               type="button"
               onClick={() => setFiltroCategoria('Todos')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Todos'
                   ? 'bg-white dark:bg-[#072B3B] text-[#072B3B] dark:text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -184,7 +184,7 @@ export function OrcamentoBaseTable({
             <button
               type="button"
               onClick={() => setFiltroCategoria('Projeto')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Projeto'
                   ? 'bg-[#00A3C4] text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -195,7 +195,7 @@ export function OrcamentoBaseTable({
             <button
               type="button"
               onClick={() => setFiltroCategoria('Legalização')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Legalização'
                   ? 'bg-purple-600 text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -216,7 +216,7 @@ export function OrcamentoBaseTable({
                 setFiltroStatus('');
                 setFiltroCategoria('Todos');
               }}
-              className="text-xs text-rose-600 hover:text-rose-700 h-9"
+              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-9 px-2.5"
             >
               Limpar
             </Button>
@@ -224,13 +224,13 @@ export function OrcamentoBaseTable({
         </div>
 
         {/* Botão Adicionar Item */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 self-end xl:self-center">
           <Button
             size="sm"
             onClick={onNovoItem}
-            className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+            className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 px-3 rounded-xl shadow-xs"
           >
-            <Plus className="h-4 w-4" /> Novo Item de Orçamento
+            <Plus className="h-4 w-4" /> Nova Linha de Orçamento
           </Button>
         </div>
       </div>

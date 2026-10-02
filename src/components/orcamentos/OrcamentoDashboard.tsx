@@ -175,51 +175,47 @@ export function OrcamentoDashboard({
   return (
     <div className="space-y-6">
       {/* 1. BARRA DE FILTROS RÁPIDOS */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase tracking-wider">
-            <Filter className="h-4 w-4 text-[#00A3C4]" />
-            Filtros do Painel:
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider pr-1">
+            <Filter className="h-3.5 w-3.5 text-[#00A3C4]" />
+            <span>Filtros:</span>
           </div>
 
           {/* Filtro Obra */}
-          <div className="min-w-[180px]">
-            <select
-              value={filtroObra}
-              onChange={(e) => setFiltroObra(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">🏢 Todas as Obras ({obras.length})</option>
-              {obras.map((o) => (
-                <option key={o.id} value={o.codigo}>
-                  {o.codigo} - {o.nome}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={filtroObra}
+            onChange={(e) => setFiltroObra(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[160px] max-w-[220px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🏢 Todas as Obras ({obras.length})</option>
+            {obras.map((o) => (
+              <option key={o.id} value={o.codigo}>
+                {o.codigo} - {o.nome}
+              </option>
+            ))}
+          </select>
 
           {/* Filtro Fornecedor */}
-          <div className="min-w-[180px]">
-            <select
-              value={filtroFornecedor}
-              onChange={(e) => setFiltroFornecedor(e.target.value)}
-              className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">🤝 Todos os Fornecedores ({fornecedores.length})</option>
-              {fornecedores.map((f) => (
-                <option key={f.id} value={f.fornecedor}>
-                  {f.fornecedor} ({f.tipo})
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={filtroFornecedor}
+            onChange={(e) => setFiltroFornecedor(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[160px] max-w-[220px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🤝 Todos os Fornecedores</option>
+            {fornecedores.map((f) => (
+              <option key={f.id} value={f.fornecedor}>
+                {f.fornecedor} ({f.tipo})
+              </option>
+            ))}
+          </select>
 
           {/* Filtro Categoria: Projetos vs Legalização */}
-          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-1 border border-slate-200 dark:border-[#0B384D]">
+          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
             <button
               type="button"
               onClick={() => setFiltroCategoria('Todos')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Todos'
                   ? 'bg-white dark:bg-[#072B3B] text-[#072B3B] dark:text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -230,7 +226,7 @@ export function OrcamentoDashboard({
             <button
               type="button"
               onClick={() => setFiltroCategoria('Projeto')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Projeto'
                   ? 'bg-[#00A3C4] text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -241,7 +237,7 @@ export function OrcamentoDashboard({
             <button
               type="button"
               onClick={() => setFiltroCategoria('Legalização')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 filtroCategoria === 'Legalização'
                   ? 'bg-purple-600 text-white shadow-2xs'
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -260,17 +256,17 @@ export function OrcamentoDashboard({
                 setFiltroFornecedor('');
                 setFiltroCategoria('Todos');
               }}
-              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-8"
+              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-9 px-2.5"
             >
-              Limpar Filtros
+              Limpar
             </Button>
           )}
         </div>
 
         {filtroObra && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#00A3C4]/10 text-[#008EA9] dark:text-[#00C4EB] text-xs font-bold border border-[#00A3C4]/30">
-            <Building className="h-3.5 w-3.5" />
-            <span>Exibindo dados de: {getObraLabel(filtroObra, obras)}</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00A3C4]/10 text-[#008EA9] dark:text-[#00C4EB] text-xs font-bold border border-[#00A3C4]/30 h-9 shrink-0">
+            <Building className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate max-w-xs">{getObraLabel(filtroObra, obras)}</span>
           </div>
         )}
       </div>

@@ -179,152 +179,150 @@ export function MedicoesTable({
   return (
     <div className="space-y-4">
       {/* Barra de Filtros e Busca */}
-      <div className="flex flex-col gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <div className="flex flex-1 flex-wrap items-center gap-2 sm:gap-3">
-            {/* Busca por texto */}
-            <div className="relative min-w-[180px] sm:min-w-[200px] flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar ID, etapa, empresa, NF..."
-                className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] border-slate-200 dark:border-[#0B384D]"
-              />
-            </div>
-
-            {/* Filtro Obra */}
-            <select
-              value={filtroObra}
-              onChange={(e) => setFiltroObra(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">🏢 Obras</option>
-              {obras.map((o) => (
-                <option key={o.id} value={o.codigo}>
-                  {o.codigo} - {o.nome}
-                </option>
-              ))}
-            </select>
-
-            {/* Filtro Fornecedor */}
-            <select
-              value={filtroFornecedorAtivo}
-              onChange={(e) => handleSetFiltroFornecedor(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4] max-w-[200px]"
-            >
-              <option value="">🤝 Fornecedores</option>
-              {fornecedoresOpcoes.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-
-            {/* Filtro Status */}
-            <select
-              value={filtroStatus}
-              onChange={(e) => setFiltroStatus(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">📋 Status</option>
-              {STATUS_MEDICAO_OPCOES.map((st) => (
-                <option key={st} value={st}>
-                  {st}
-                </option>
-              ))}
-            </select>
-
-            {/* Filtro Mês */}
-            {mesesUnicos.length > 0 && (
-              <select
-                value={filtroMes}
-                onChange={(e) => setFiltroMes(e.target.value)}
-                className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-              >
-                <option value="">📅 Meses</option>
-                {mesesUnicos.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            )}
-
-            {/* Filtro Rápido: Apenas Em Atraso */}
-            {countEmAtraso > 0 && (
-              <button
-                type="button"
-                onClick={() => setFiltroAtrasoApenas(!filtroAtrasoApenas)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all h-9 border ${
-                  filtroAtrasoApenas
-                    ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
-                    : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-300/60 hover:bg-amber-100 dark:hover:bg-amber-900/40'
-                }`}
-                title="Exibir apenas medições vencidas"
-              >
-                <AlertTriangle className="h-3.5 w-3.5" />
-                <span>Em Atraso ({countEmAtraso})</span>
-              </button>
-            )}
-
-            {(searchQuery || filtroObra || filtroFornecedorAtivo || filtroStatus || filtroMes || filtroContrato || filtroAtrasoApenas) && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSearchQuery('');
-                  setFiltroObra('');
-                  handleSetFiltroFornecedor('');
-                  setFiltroStatus('');
-                  setFiltroMes('');
-                  setFiltroContrato('');
-                  setFiltroAtrasoApenas(false);
-                }}
-                className="text-xs text-rose-600 hover:text-rose-700 h-9"
-              >
-                Limpar
-              </Button>
-            )}
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
+        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+          {/* Busca por texto */}
+          <div className="relative w-full sm:w-64 md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar ID, etapa, empresa, NF..."
+              className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] border-slate-200 dark:border-[#0B384D]"
+            />
           </div>
 
-          {/* Toggle de Visualização & Botão Nova Medição */}
-          <div className="flex items-center gap-2 self-end lg:self-center">
-            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-1 border border-slate-200 dark:border-[#0B384D]">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                title="Visualização em Tabela"
-                className={`p-1.5 rounded-lg transition-all ${
-                  viewMode === 'table'
-                    ? 'bg-white dark:bg-[#072B3B] text-[#00A3C4] shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
-                }`}
-              >
-                <List className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('cards')}
-                title="Visualização em Cards"
-                className={`p-1.5 rounded-lg transition-all ${
-                  viewMode === 'cards'
-                    ? 'bg-white dark:bg-[#072B3B] text-[#00A3C4] shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
-                }`}
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </button>
-            </div>
+          {/* Filtro Obra */}
+          <select
+            value={filtroObra}
+            onChange={(e) => setFiltroObra(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🏢 Obras</option>
+            {obras.map((o) => (
+              <option key={o.id} value={o.codigo}>
+                {o.codigo} - {o.nome}
+              </option>
+            ))}
+          </select>
 
+          {/* Filtro Fornecedor */}
+          <select
+            value={filtroFornecedorAtivo}
+            onChange={(e) => handleSetFiltroFornecedor(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🤝 Fornecedores</option>
+            {fornecedoresOpcoes.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+
+          {/* Filtro Status */}
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[130px] max-w-[170px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">📋 Status</option>
+            {STATUS_MEDICAO_OPCOES.map((st) => (
+              <option key={st} value={st}>
+                {st}
+              </option>
+            ))}
+          </select>
+
+          {/* Filtro Mês */}
+          {mesesUnicos.length > 0 && (
+            <select
+              value={filtroMes}
+              onChange={(e) => setFiltroMes(e.target.value)}
+              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[120px] max-w-[150px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+            >
+              <option value="">📅 Meses</option>
+              {mesesUnicos.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          )}
+
+          {/* Filtro Rápido: Apenas Em Atraso */}
+          {countEmAtraso > 0 && (
+            <button
+              type="button"
+              onClick={() => setFiltroAtrasoApenas(!filtroAtrasoApenas)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all h-9 border shrink-0 ${
+                filtroAtrasoApenas
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-2xs'
+                  : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-300/60 hover:bg-amber-100 dark:hover:bg-amber-900/40'
+              }`}
+              title="Exibir apenas medições vencidas"
+            >
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Em Atraso ({countEmAtraso})</span>
+            </button>
+          )}
+
+          {(searchQuery || filtroObra || filtroFornecedorAtivo || filtroStatus || filtroMes || filtroContrato || filtroAtrasoApenas) && (
             <Button
+              variant="ghost"
               size="sm"
-              onClick={onNovaMedicao}
-              className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+              onClick={() => {
+                setSearchQuery('');
+                setFiltroObra('');
+                handleSetFiltroFornecedor('');
+                setFiltroStatus('');
+                setFiltroMes('');
+                setFiltroContrato('');
+                setFiltroAtrasoApenas(false);
+              }}
+              className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-9 px-2.5"
             >
-              <Plus className="h-4 w-4" /> Nova Medição
+              Limpar
             </Button>
+          )}
+        </div>
+
+        {/* Toggle de Visualização & Botão Nova Medição */}
+        <div className="flex items-center gap-2 self-end xl:self-center shrink-0">
+          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              title="Visualização em Tabela"
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white dark:bg-[#072B3B] text-[#00A3C4] shadow-2xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              title="Visualização em Cards"
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'cards'
+                  ? 'bg-white dark:bg-[#072B3B] text-[#00A3C4] shadow-2xs'
+                  : 'text-slate-400 hover:text-slate-700 dark:hover:text-white'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
           </div>
+
+          <Button
+            size="sm"
+            onClick={onNovaMedicao}
+            className="bg-[#00A3C4] hover:bg-[#008EA9] text-white text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs"
+          >
+            <Plus className="h-4 w-4" /> Nova Medição
+          </Button>
         </div>
       </div>
 

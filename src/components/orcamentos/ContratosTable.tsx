@@ -124,54 +124,53 @@ export function ContratosTable({
   return (
     <div className="space-y-4">
       {/* Barra de Filtros e Ação */}
-      <div className="flex flex-col gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <div className="flex flex-1 flex-wrap items-center gap-2 sm:gap-3">
-            {/* Busca por texto */}
-            <div className="relative min-w-[180px] sm:min-w-[220px] flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar ID, empresa, Sienge..."
-                className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] border-slate-200 dark:border-[#0B384D]"
-              />
-            </div>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] shadow-sm">
+        <div className="flex flex-1 flex-wrap items-center gap-2.5">
+          {/* Busca por texto */}
+          <div className="relative w-full sm:w-64 md:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar ID, empresa, Sienge..."
+              className="pl-9 text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D] border-slate-200 dark:border-[#0B384D]"
+            />
+          </div>
 
-            {/* Filtro Obra */}
-            <select
-              value={filtroObra}
-              onChange={(e) => setFiltroObra(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">🏢 Todas as Obras</option>
-              {obras.map((o) => (
-                <option key={o.id} value={o.codigo}>
-                  {o.codigo} - {o.nome}
-                </option>
-              ))}
-            </select>
+          {/* Filtro Obra */}
+          <select
+            value={filtroObra}
+            onChange={(e) => setFiltroObra(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🏢 Todas as Obras</option>
+            {obras.map((o) => (
+              <option key={o.id} value={o.codigo}>
+                {o.codigo} - {o.nome}
+              </option>
+            ))}
+          </select>
 
-            {/* Filtro Fornecedor */}
-            <select
-              value={filtroFornecedor}
-              onChange={(e) => setFiltroFornecedor(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
-              <option value="">🤝 Fornecedores</option>
-              {fornecedores.map((f) => (
-                <option key={f.id} value={f.fornecedor}>
-                  {f.fornecedor}
-                </option>
-              ))}
-            </select>
+          {/* Filtro Fornecedor */}
+          <select
+            value={filtroFornecedor}
+            onChange={(e) => setFiltroFornecedor(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[140px] max-w-[200px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate"
+          >
+            <option value="">🤝 Fornecedores</option>
+            {fornecedores.map((f) => (
+              <option key={f.id} value={f.fornecedor}>
+                {f.fornecedor}
+              </option>
+            ))}
+          </select>
 
-            {/* Filtro Status (Ativo vs Distratado) */}
-            <select
-              value={filtroStatus}
-              onChange={(e) => setFiltroStatus(e.target.value)}
-              className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
-            >
+          {/* Filtro Status (Ativo vs Distratado) */}
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value)}
+            className="text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4]"
+          >
               <option value="">📋 Status</option>
               <option value="Ativo">Ativos</option>
               <option value="Distratado">Distratados ({countDistratados})</option>
@@ -179,11 +178,11 @@ export function ContratosTable({
             </select>
 
             {/* Filtro Categoria: Projetos vs Legalização */}
-            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-1 border border-slate-200 dark:border-[#0B384D]">
+            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
               <button
                 type="button"
                 onClick={() => setFiltroCategoria('Todos')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   filtroCategoria === 'Todos'
                     ? 'bg-white dark:bg-[#072B3B] text-[#072B3B] dark:text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -194,7 +193,7 @@ export function ContratosTable({
               <button
                 type="button"
                 onClick={() => setFiltroCategoria('Projeto')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   filtroCategoria === 'Projeto'
                     ? 'bg-[#00A3C4] text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -205,7 +204,7 @@ export function ContratosTable({
               <button
                 type="button"
                 onClick={() => setFiltroCategoria('Legalização')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                   filtroCategoria === 'Legalização'
                     ? 'bg-purple-600 text-white shadow-2xs'
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -226,7 +225,7 @@ export function ContratosTable({
                   setFiltroStatus('');
                   setFiltroCategoria('Todos');
                 }}
-                className="text-xs text-rose-600 hover:text-rose-700 h-9"
+                className="text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 h-9 px-2.5"
               >
                 Limpar
               </Button>
@@ -234,8 +233,8 @@ export function ContratosTable({
           </div>
 
           {/* Toggle de Visualização & Botão Novo Contrato */}
-          <div className="flex items-center gap-2 self-end lg:self-center">
-            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-1 border border-slate-200 dark:border-[#0B384D]">
+          <div className="flex items-center gap-2 self-end xl:self-center shrink-0">
+            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
               <button
                 type="button"
                 onClick={() => setViewMode('table')}
@@ -271,7 +270,6 @@ export function ContratosTable({
             </Button>
           </div>
         </div>
-      </div>
 
       {/* CASO LISTA VAZIA */}
       {contratosFiltrados.length === 0 ? (

@@ -206,6 +206,7 @@ export function MedicaoFormModal({
     
     let mesComp = formData.mes_competencia;
 
+    // Se estiver cadastrando nova medição, ou se a competência estiver vazia, ou se a medição estiver 'A Medir'
     if (refData && (!formData.mes_competencia || !medicaoParaEditar)) {
       const parts = refData.split('-');
       if (parts.length >= 2) {
@@ -265,6 +266,15 @@ export function MedicaoFormModal({
     }
 
     const targetId = formData.id || medicaoParaEditar?.id || undefined;
+    const finalDataReferencia = formData.data_referencia || formData.data_medicao || formData.data_prevista || null;
+    let finalMesComp = formData.mes_competencia?.trim();
+    if (!finalMesComp && finalDataReferencia) {
+      const parts = finalDataReferencia.split('-');
+      if (parts.length >= 2) {
+        finalMesComp = `${parts[0].slice(-2)}/${parts[1]}`;
+      }
+    }
+
     onSalvar({
       id: targetId,
       contrato_id: formData.contrato_id,
@@ -275,8 +285,8 @@ export function MedicaoFormModal({
       valor_medicao: Number(formData.valor_medicao),
       data_prevista: formData.data_prevista || null,
       data_medicao: formData.data_medicao || null,
-      data_referencia: formData.data_referencia || formData.data_medicao || formData.data_prevista || null,
-      mes_competencia: formData.mes_competencia,
+      data_referencia: finalDataReferencia,
+      mes_competencia: finalMesComp || '',
       status: statusFinal,
       nf: formData.nf || null,
       data_pagamento: formData.data_pagamento || null,
@@ -566,6 +576,18 @@ export function MedicaoFormModal({
                 className="text-xs h-9 rounded-xl bg-slate-50 dark:bg-[#0B384D]"
               />
               <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                {formData.data_prevista && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const p = formData.data_prevista.split('-');
+                      if (p.length >= 2) setFormData((prev) => ({ ...prev, mes_competencia: `${p[0].slice(-2)}/${p[1]}` }));
+                    }}
+                    className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline"
+                  >
+                    Usar mês previsto ({formData.data_prevista.slice(2, 4)}/{formData.data_prevista.slice(5, 7)})
+                  </button>
+                )}
                 {formData.data_pagamento && (
                   <button
                     type="button"
