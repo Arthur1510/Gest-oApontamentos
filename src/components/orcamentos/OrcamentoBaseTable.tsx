@@ -619,7 +619,7 @@ export function OrcamentoBaseTable({
                   className={`py-3 px-3.5 text-right text-xs ${
                     totais.saldoContratar < 0
                       ? 'text-rose-600 dark:text-rose-400'
-                      : 'text-amber-600 dark:text-amber-400'
+                      : 'text-slate-900 dark:text-white'
                   }`}
                 >
                   {formatCurrency(totais.saldoContratar)}
