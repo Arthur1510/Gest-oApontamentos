@@ -267,7 +267,7 @@ export function ExportModal({
                   className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-xl gap-2 shadow-xs justify-start"
                 >
                   <FileSpreadsheet className="h-4 w-4" />
-                  Baixar Excel Completo (.xls)
+                  Baixar Excel Completo (.xlsx)
                 </Button>
               )}
             </div>

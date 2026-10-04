@@ -1081,18 +1081,18 @@ export default function OrcamentosPage() {
     return list.filter((m) => isMedicaoEmAtraso(m)).length;
   }, [medicoes, filtroObra]);
 
-  // Exportação consolidada para Excel com Dashboard & 6 Planilhas
+  // Exportação consolidada para Excel com Dashboard dinâmico, fórmulas e gráficos (.xlsx)
   const handleExportarExcelConsolidado = useCallback(() => {
-    const kpis = calculateKpis(orcamentosCalculados, contratosRecalculados, medicoes, filtroObra || null, null);
     exportMultiSheetExcel({
       orcamentos: orcamentosCalculados,
       contratos: contratosRecalculados,
       medicoes,
       curvaPontos: curvaPontosExport,
-      kpis,
-      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${filtroObra || 'Geral'}.xls`,
+      obras,
+      filtroObra,
+      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${filtroObra || 'Geral'}.xlsx`,
     });
-  }, [orcamentosCalculados, contratosRecalculados, medicoes, filtroObra, curvaPontosExport]);
+  }, [orcamentosCalculados, contratosRecalculados, medicoes, obras, filtroObra, curvaPontosExport]);
 
   return (
     <div className="flex-1 space-y-6 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">

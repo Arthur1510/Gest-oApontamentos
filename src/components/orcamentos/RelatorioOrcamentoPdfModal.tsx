@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useMemo, useState } from 'react';
+import React, { useRef, useMemo, useState, useEffect } from 'react';
 import { useReactToPrint } from 'react-to-print';
 import {
   ItemOrcamento,
@@ -8,17 +8,17 @@ import {
   Medicao,
   CurvaDesembolsoPonto,
   Obra,
-  Fornecedor,
   STATUS_MEDICAO_COLORS,
-  STATUS_CONTRATO_COLORS,
 } from '@/types/orcamento';
 import {
   formatCurrency,
+  formatCurrencyShort,
   formatPercent,
   formatDateBR,
   calculateKpis,
   getObraLabel,
   isMedicaoEmAtraso,
+  calculateCurvaDesembolso,
 } from '@/lib/orcamento-utils';
 import { exportMultiSheetExcel } from '@/lib/excel-export';
 import { Button } from '@/components/ui/button';
@@ -26,17 +26,34 @@ import {
   X,
   Printer,
   FileSpreadsheet,
-  FileText,
   AlertTriangle,
   CheckCircle2,
   SlidersHorizontal,
-  Layout,
-  Layers,
   CheckSquare,
   Square,
   ChevronDown,
   ChevronUp,
+  TrendingUp,
+  Layers,
+  CreditCard,
+  Calendar,
+  Building,
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Line,
+  Bar,
+  BarChart,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
 interface RelatorioOrcamentoPdfModalProps {
   isOpen: boolean;
@@ -50,33 +67,45 @@ interface RelatorioOrcamentoPdfModalProps {
   filtroFornecedor: string;
 }
 
+const PIE_COLORS: Record<string, string> = {
+  'Pago': '#10b981',      // emerald
+  'A Pagar': '#6366f1',   // indigo
+  'Medido': '#00a3c4',    // cyan WCC
+  'A Medir': '#f59e0b',   // amber
+  'Cancelado': '#94a3b8', // slate
+};
+
 export function RelatorioOrcamentoPdfModal({
   isOpen,
   onClose,
   orcamentos,
   contratos,
   medicoes,
-  curvaPontos,
+  curvaPontos: curvaPontosProp,
   obras,
-  filtroObra,
+  filtroObra: filtroObraProp,
   filtroFornecedor,
 }: RelatorioOrcamentoPdfModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Estados de Personalização do Relatório
-  const [orientacao, setOrientacao] = useState<'landscape' | 'portrait'>('landscape');
+  // Filtro de Obra Local (iniciado pelo filtro recebido, mas modificável no painel do relatório)
+  const [localFiltroObra, setLocalFiltroObra] = useState<string>(filtroObraProp || '');
+
+  useEffect(() => {
+    setLocalFiltroObra(filtroObraProp || '');
+  }, [filtroObraProp, isOpen]);
+
+  // Estados de Personalização do Relatório (Exclusivamente Retrato / Vertical A4)
   const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
   const [showConfig, setShowConfig] = useState<boolean>(true);
 
-  // Seções habilitadas no PDF
+  // Seções habilitadas no PDF Executivo
   const [secoes, setSecoes] = useState({
     kpis: true,
-    orcamentoBase: true,
-    contratos: true,
-    medicoes: true,
-    ocorrencias: true,
+    curvaGrafico: true,
     curvaDesembolso: true,
-    assinaturas: true,
+    disciplinasStatus: true,
+    ocorrencias: true,
   });
 
   const toggleSecao = (key: keyof typeof secoes) => {
@@ -86,76 +115,53 @@ export function RelatorioOrcamentoPdfModal({
   const selecionarTodasSecoes = (valor: boolean) => {
     setSecoes({
       kpis: valor,
-      orcamentoBase: valor,
-      contratos: valor,
-      medicoes: valor,
-      ocorrencias: valor,
+      curvaGrafico: valor,
       curvaDesembolso: valor,
-      assinaturas: valor,
+      disciplinasStatus: valor,
+      ocorrencias: valor,
     });
   };
 
-  // KPIs calculados
+  // Categoria ativa para cálculos
+  const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
+
+  // Curva S de Desembolso Financeiro (criterio = 'desembolso', focado em fluxo de caixa / data de pagamento)
+  const curvaPontosRelatorio = useMemo(() => {
+    return calculateCurvaDesembolso(
+      medicoes,
+      localFiltroObra || null,
+      filtroFornecedor || null,
+      contratos,
+      catParam,
+      'desembolso'
+    );
+  }, [medicoes, localFiltroObra, filtroFornecedor, contratos, catParam]);
+
+  // KPIs calculados considerando o filtro de obra local e categoria
   const kpis = useMemo(() => {
     return calculateKpis(
       orcamentos,
       contratos,
       medicoes,
-      filtroObra || null,
-      null
+      localFiltroObra || null,
+      catParam
     );
-  }, [orcamentos, contratos, medicoes, filtroObra]);
+  }, [orcamentos, contratos, medicoes, localFiltroObra, catParam]);
 
   const dataAtual = new Date().toLocaleDateString('pt-BR');
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-  const obraSelecionadaNome = filtroObra ? getObraLabel(filtroObra, obras) : 'TODAS AS OBRAS E EMPREENDIMENTOS';
+  const obraSelecionadaNome = localFiltroObra ? getObraLabel(localFiltroObra, obras) : 'TODAS AS OBRAS E EMPREENDIMENTOS';
 
-  // 1. Orçamentos Filtrados e Ordenados Hierarquicamente
-  const orcamentosFiltradosRelatorio = useMemo(() => {
-    return orcamentos
-      .filter((o) => {
-        if (filtroObra && o.obra !== filtroObra) return false;
-        if (filtroCategoria !== 'Todos' && o.categoria !== filtroCategoria) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        const cmpObra = (a.obra || '').localeCompare(b.obra || '', 'pt-BR', { numeric: true, sensitivity: 'base' });
-        if (cmpObra !== 0) return cmpObra;
-        const cmpDisc = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR', { sensitivity: 'base' });
-        if (cmpDisc !== 0) return cmpDisc;
-        return (a.subdisciplina || '').localeCompare(b.subdisciplina || '', 'pt-BR', { sensitivity: 'base' });
-      });
-  }, [orcamentos, filtroObra, filtroCategoria]);
-
-  const totaisOrcamento = useMemo(() => {
-    let base = 0;
-    let contratado = 0;
-    let saldoContratar = 0;
-    let medido = 0;
-    let saldoMedicao = 0;
-
-    for (const o of orcamentosFiltradosRelatorio) {
-      base += o.orcamento_base || 0;
-      contratado += o.valor_contratado || 0;
-      saldoContratar += o.saldo_a_contratar || 0;
-      medido += o.valor_medido || 0;
-      saldoMedicao += o.saldo_medicao || 0;
-    }
-    return { base, contratado, saldoContratar, medido, saldoMedicao };
-  }, [orcamentosFiltradosRelatorio]);
-
-  // 2. Contratos Filtrados
+  // 1. Contratos Filtrados (para resumo de ocorrências)
   const contratosFiltrados = useMemo(() => {
-    return contratos
-      .filter((c) => {
-        if (filtroObra && c.obra !== filtroObra) return false;
-        if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-        if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
-        return true;
-      })
-      .sort((a, b) => (a.empresa || '').localeCompare(b.empresa || '', 'pt-BR'));
-  }, [contratos, filtroObra, filtroFornecedor, filtroCategoria]);
+    return contratos.filter((c) => {
+      if (localFiltroObra && c.obra !== localFiltroObra) return false;
+      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+      if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
+      return true;
+    });
+  }, [contratos, localFiltroObra, filtroFornecedor, filtroCategoria]);
 
   const todosAditivos = useMemo(() => {
     return contratosFiltrados.flatMap((c) =>
@@ -167,53 +173,134 @@ export function RelatorioOrcamentoPdfModal({
     return contratosFiltrados.filter((c) => c.status === 'Distratado');
   }, [contratosFiltrados]);
 
-  // 3. Medições Filtradas
-  const medicoesFiltradas = useMemo(() => {
-    return medicoes
-      .filter((m) => {
-        if (filtroObra && m.obra !== filtroObra) return false;
-        if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
-        return true;
-      })
-      .sort((a, b) => (a.data_prevista || '').localeCompare(b.data_prevista || ''));
-  }, [medicoes, filtroObra, filtroFornecedor]);
+  // 2. Distribuição por Disciplina (Orçamento Base vs Contratado)
+  const dadosDisciplinas = useMemo(() => {
+    const map: Record<string, { base: number; contratado: number; medido: number }> = {};
+    const filteredOrc = orcamentos.filter((o) => {
+      if (localFiltroObra && o.obra !== localFiltroObra) return false;
+      if (filtroCategoria !== 'Todos' && o.categoria !== filtroCategoria) return false;
+      return true;
+    });
 
-  const medicoesAtrasadas = useMemo(() => {
-    return medicoesFiltradas.filter((m) => isMedicaoEmAtraso(m));
-  }, [medicoesFiltradas]);
+    for (const o of filteredOrc) {
+      const disc = o.disciplina || 'OUTROS';
+      if (!map[disc]) {
+        map[disc] = { base: 0, contratado: 0, medido: 0 };
+      }
+      map[disc].base += o.orcamento_base || 0;
+      map[disc].contratado += o.valor_contratado || 0;
+      map[disc].medido += o.valor_medido || 0;
+    }
 
-  // Disparo da impressão com estilos A4 dedicados e controle anti-corte de páginas
+    return Object.entries(map)
+      .map(([disciplina, valores]) => ({
+        disciplina,
+        base: valores.base,
+        contratado: valores.contratado,
+        medido: valores.medido,
+      }))
+      .sort((a, b) => b.base - a.base)
+      .slice(0, 8); // Top 8
+  }, [orcamentos, localFiltroObra, filtroCategoria]);
+
+  // 3. Distribuição por Status das Medições
+  const dadosStatusMedicoes = useMemo(() => {
+    const catPorContrato: Record<string, string> = {};
+    contratos.forEach((c) => {
+      catPorContrato[c.id] = c.categoria || 'Projeto';
+    });
+
+    const filteredMed = medicoes.filter((m) => {
+      if (localFiltroObra && m.obra !== localFiltroObra) return false;
+      if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
+      if (filtroCategoria !== 'Todos' && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== filtroCategoria) return false;
+      return true;
+    });
+
+    const map: Record<string, { count: number; valor: number }> = {
+      'Pago': { count: 0, valor: 0 },
+      'A Pagar': { count: 0, valor: 0 },
+      'Medido': { count: 0, valor: 0 },
+      'A Medir': { count: 0, valor: 0 },
+      'Cancelado': { count: 0, valor: 0 },
+    };
+
+    for (const m of filteredMed) {
+      const st = m.status;
+      if (map[st]) {
+        map[st].count += 1;
+        map[st].valor += m.valor_medicao || 0;
+      }
+    }
+
+    return Object.entries(map)
+      .filter(([_, dados]) => dados.count > 0)
+      .map(([status, dados]) => ({
+        name: status,
+        count: dados.count,
+        value: dados.valor,
+      }));
+  }, [medicoes, contratos, localFiltroObra, filtroFornecedor, filtroCategoria]);
+
+  // 4. Totais da Curva S com foco nos próximos meses
+  const totalPrevistoFuturo = useMemo(() => {
+    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.previsto || 0), 0);
+  }, [curvaPontosRelatorio]);
+
+  const totalRealizadoCurva = useMemo(() => {
+    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.realizado || 0), 0);
+  }, [curvaPontosRelatorio]);
+
+  const totalMedicoesValor = useMemo(() => {
+    return dadosStatusMedicoes.reduce((acc, d) => acc + d.value, 0);
+  }, [dadosStatusMedicoes]);
+
+  // Disparo da impressão com margem física exata de 2,0 cm (20mm) garantida em cada folha A4
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Relatorio_Executivo_Orcamentos_WCC_${filtroObra || 'Consolidado'}_${new Date().toISOString().slice(0, 10)}`,
+    documentTitle: `Relatorio_Executivo_WCC_${localFiltroObra || 'Consolidado'}_${new Date().toISOString().slice(0, 10)}`,
     pageStyle: `
       @page {
-        size: A4 ${orientacao};
-        margin: 8mm 8mm 8mm 8mm;
+        size: A4 portrait;
+        margin: 0 !important;
       }
       @media print {
         html, body {
+          margin: 0 !important;
+          padding: 0 !important;
           background: #ffffff !important;
           color: #0f172a !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
-          font-family: ui-sans-serif, system-ui, sans-serif !important;
+          font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        }
+        .print-report-root {
+          gap: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 210mm !important;
+          background: transparent !important;
+        }
+        .folha-a4 {
+          width: 210mm !important;
+          min-width: 210mm !important;
+          max-width: 210mm !important;
+          min-height: 297mm !important;
+          padding: 20mm 20mm 20mm 20mm !important;
+          margin: 0 auto !important;
+          border: none !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          box-sizing: border-box !important;
+          page-break-after: always !important;
+          break-after: page !important;
+          background: #ffffff !important;
+        }
+        .folha-a4:last-child {
+          page-break-after: auto !important;
+          break-after: auto !important;
         }
         .page-break-avoid {
-          break-inside: avoid !important;
-          page-break-inside: avoid !important;
-        }
-        .page-break-before {
-          break-before: page !important;
-          page-break-before: always !important;
-        }
-        thead {
-          display: table-header-group !important;
-        }
-        tfoot {
-          display: table-footer-group !important;
-        }
-        tr {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
         }
@@ -226,9 +313,11 @@ export function RelatorioOrcamentoPdfModal({
       orcamentos,
       contratos,
       medicoes,
-      curvaPontos,
-      kpis,
-      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${filtroObra || 'Geral'}.xls`,
+      curvaPontos: curvaPontosRelatorio,
+      obras,
+      filtroObra: localFiltroObra,
+      filtroCategoria: filtroCategoria,
+      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${localFiltroObra || 'Geral'}.xlsx`,
     });
   };
 
@@ -238,35 +327,30 @@ export function RelatorioOrcamentoPdfModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in-0">
       <div className="bg-white dark:bg-[#072B3B] rounded-2xl border border-slate-200 dark:border-[#0B384D] max-w-6xl w-full max-h-[96vh] flex flex-col shadow-2xl overflow-hidden">
         {/* 1. BARRA SUPERIOR DE AÇÕES (Não impressa) */}
-        <div className="p-3.5 sm:p-4 border-b border-slate-200 dark:border-[#0B384D] flex flex-wrap items-center justify-between gap-3 bg-slate-50 dark:bg-[#072432]">
+        <div className="p-4 border-b border-slate-200 dark:border-[#0B384D] flex items-center justify-between gap-4 bg-slate-50 dark:bg-[#072432]">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#00A3C4]/15 text-[#00A3C4] dark:text-[#00C4EB]">
-              <FileText className="h-5 w-5" />
+              <Printer className="h-5 w-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-slate-900 dark:text-white text-sm sm:text-base">
-                  Relatório Executivo Consolidado
-                </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#00A3C4]/10 text-[#008EA9] dark:text-[#00C4EB] border border-[#00A3C4]/20">
-                  {orientacao === 'landscape' ? 'A4 Paisagem (Horizontal)' : 'A4 Retrato (Vertical)'}
-                </span>
-              </div>
+              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                Relatório Executivo PDF (Cards &amp; Gráficos)
+              </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Visualização formatada para exportação em PDF e Excel multinível.
+                Resumo visual executivo para diretoria. As tabelas analíticas completas ficam no Excel.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Button
-              size="sm"
               variant="outline"
+              size="sm"
               onClick={() => setShowConfig(!showConfig)}
-              className="text-xs font-semibold h-9 rounded-xl gap-1.5 border-slate-200 dark:border-[#0B384D]"
+              className="text-xs font-bold gap-1.5 h-9 rounded-xl border-slate-200 dark:border-[#0B384D]"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              <span>{showConfig ? 'Ocultar Filtros' : 'Opções do Relatório'}</span>
+              <SlidersHorizontal className="h-3.5 w-3.5 text-[#00A3C4]" />
+              Personalizar
               {showConfig ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
             </Button>
 
@@ -275,7 +359,7 @@ export function RelatorioOrcamentoPdfModal({
               onClick={handleExportarExcelConsolidado}
               className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-9 rounded-xl gap-1.5 shadow-xs"
             >
-              <FileSpreadsheet className="h-4 w-4" /> Excel (.xls)
+              <FileSpreadsheet className="h-4 w-4" /> Excel (.xlsx)
             </Button>
 
             <Button
@@ -301,33 +385,29 @@ export function RelatorioOrcamentoPdfModal({
         {showConfig && (
           <div className="p-3 sm:p-4 bg-slate-100/80 dark:bg-[#083042] border-b border-slate-200 dark:border-[#0B384D] text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Orientação do Papel */}
+              {/* Filtro de Obra */}
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">Orientação da Folha:</span>
-                <div className="flex items-center rounded-xl bg-white dark:bg-[#072B3B] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
-                  <button
-                    type="button"
-                    onClick={() => setOrientacao('landscape')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      orientacao === 'landscape'
-                        ? 'bg-[#00A3C4] text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                    }`}
-                  >
-                    Paisagem (Horizontal - Recomendado)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setOrientacao('portrait')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                      orientacao === 'portrait'
-                        ? 'bg-[#00A3C4] text-white shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
-                    }`}
-                  >
-                    Retrato (Vertical)
-                  </button>
-                </div>
+                <span className="font-bold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
+                  <Building className="h-3.5 w-3.5 text-[#00A3C4]" /> Obra:
+                </span>
+                <select
+                  value={localFiltroObra}
+                  onChange={(e) => setLocalFiltroObra(e.target.value)}
+                  className="text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[170px] max-w-[260px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate shadow-2xs"
+                >
+                  <option value="">🏢 Todas as Obras ({obras.length})</option>
+                  {obras.map((o) => (
+                    <option key={o.id} value={o.codigo}>
+                      {o.codigo} - {o.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Informação de Formato Fixo */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/60 dark:bg-[#072B3B] text-[11px] font-bold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-[#0B384D] h-9">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#00A3C4]" />
+                <span>Formato: A4 Retrato (Vertical) • Margens: 2,0 cm</span>
               </div>
 
               {/* Filtro de Categoria */}
@@ -377,12 +457,10 @@ export function RelatorioOrcamentoPdfModal({
 
               {[
                 { key: 'kpis', label: '1. Indicadores (KPIs)' },
-                { key: 'orcamentoBase', label: '2. Orçamento Base Analítico' },
-                { key: 'contratos', label: '3. Contratos Vigentes' },
-                { key: 'medicoes', label: '4. Cronograma & Medições' },
-                { key: 'ocorrencias', label: '5. Aditivos & Distratos' },
-                { key: 'curvaDesembolso', label: '6. Curva S / Fluxo' },
-                { key: 'assinaturas', label: '7. Assinaturas Técnicas' },
+                { key: 'curvaGrafico', label: '2. Curva S (Gráfico Desembolso)' },
+                { key: 'disciplinasStatus', label: '3. Disciplinas & Status (Gráficos)' },
+                { key: 'curvaDesembolso', label: '4. Cronograma Detalhado (Tabela Curva S - Pág. 2)' },
+                { key: 'ocorrencias', label: '5. Ocorrências (Aditivos & Distratos)' },
               ].map((item) => {
                 const ativo = secoes[item.key as keyof typeof secoes];
                 return (
@@ -390,10 +468,10 @@ export function RelatorioOrcamentoPdfModal({
                     key={item.key}
                     type="button"
                     onClick={() => toggleSecao(item.key as keyof typeof secoes)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
                       ativo
-                        ? 'bg-white dark:bg-[#072B3B] text-[#008EA9] dark:text-[#00C4EB] border-[#00A3C4]/40 shadow-2xs'
-                        : 'bg-slate-200/50 dark:bg-[#061e29] text-slate-400 dark:text-slate-500 border-transparent hover:border-slate-300'
+                        ? 'bg-white dark:bg-[#072B3B] text-slate-900 dark:text-white border-[#00A3C4]'
+                        : 'bg-transparent text-slate-400 border-dashed border-slate-300 dark:border-slate-700'
                     }`}
                   >
                     {ativo ? (
@@ -409,475 +487,546 @@ export function RelatorioOrcamentoPdfModal({
           </div>
         )}
 
-        {/* 3. ÁREA DE VISUALIZAÇÃO E IMPRESSÃO (Folha A4) */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-100 dark:bg-slate-950/60 flex justify-center">
+        {/* 3. ÁREA DE VISUALIZAÇÃO E IMPRESSÃO (Folhas A4 Verticais com Margens Físicas de 2,0 cm) */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-slate-200 dark:bg-slate-950/80 flex justify-center">
           <div
             ref={contentRef}
-            className={`bg-white text-slate-900 mx-auto p-6 sm:p-10 shadow-lg border border-slate-200 rounded-xl text-xs font-sans print:shadow-none print:border-none print:m-0 print:p-4 print:max-w-none print:w-full transition-all ${
-              orientacao === 'landscape' ? 'w-full max-w-[297mm]' : 'w-full max-w-[210mm]'
-            }`}
+            className="print-report-root flex flex-col items-center gap-8 w-full max-w-[210mm]"
           >
-            {/* CABEÇALHO EXECUTIVO WCC */}
-            <div className="border-b-2 border-[#00A3C4] pb-4 mb-6 flex items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded bg-[#072B3B] text-white uppercase">
-                    WCC ENGENHARIA &amp; DESENVOLVIMENTO
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">
-                    Gestão de Custos, Orçamentos &amp; Contratos
-                  </span>
+            {/* ============================================================== */}
+            {/* FOLHA 1 (PÁGINA 1): CABEÇALHO, KPIS E TODOS OS GRÁFICOS       */}
+            {/* ============================================================== */}
+            <div className="folha-a4 bg-white text-slate-900 shadow-2xl border border-slate-200 rounded-lg text-xs font-sans w-full max-w-[210mm] min-h-[297mm] p-[20mm] flex flex-col justify-between box-border">
+              <div className="space-y-3.5 flex-1">
+                {/* CABEÇALHO EXECUTIVO WCC */}
+                <div className="border-b-2 border-[#00A3C4] pb-3 mb-2 page-break-avoid">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-black tracking-widest px-2.5 py-0.5 rounded bg-[#072B3B] text-white uppercase">
+                          WCC ENGENHARIA &amp; DESENVOLVIMENTO
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                          Gestão de Custos &amp; Cronograma
+                        </span>
+                      </div>
+                      <h1 className="text-xl font-black text-[#072B3B] tracking-tight">
+                        RELATÓRIO EXECUTIVO DE CUSTOS &amp; DESEMBOLSO
+                      </h1>
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00A3C4]/10 text-[#008EA9] font-bold border border-[#00A3C4]/30">
+                          <Building className="h-3.5 w-3.5" />
+                          {obraSelecionadaNome}
+                        </span>
+                        {filtroCategoria !== 'Todos' && (
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200">
+                            Categoria: {filtroCategoria}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right text-[10px] text-slate-500 shrink-0">
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 space-y-1 text-right">
+                        <p className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Emissão do Relatório</p>
+                        <p className="font-mono font-bold text-slate-800 text-xs">{dataAtual} às {horaAtual}</p>
+                        <div className="pt-1 border-t border-slate-200 flex items-center justify-end gap-2 text-[9px]">
+                          <span><strong>{contratosFiltrados.length}</strong> contratos</span>
+                          <span>•</span>
+                          <span className={kpis.qtdEmAtraso > 0 ? 'text-amber-700 font-bold' : 'text-emerald-700 font-bold'}>
+                            {kpis.qtdEmAtraso > 0 ? `${kpis.qtdEmAtraso} pendência(s)` : 'Cronograma em dia'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-black text-[#072B3B] tracking-tight mt-1.5">
-                  RELATÓRIO EXECUTIVO CONSOLIDADO
-                </h1>
-                <p className="text-xs font-bold text-[#008EA9] mt-0.5">
-                  Escopo: {obraSelecionadaNome}
-                  {filtroCategoria !== 'Todos' && ` • Categoria: ${filtroCategoria}`}
-                </p>
+
+                {/* SEÇÃO 1: PAINEL DE KPIS EXECUTIVOS */}
+                {secoes.kpis && (
+                  <div className="space-y-2.5 page-break-avoid">
+                    <div className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 py-0.5">
+                      <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B]">
+                        1. Indicadores Financeiros &amp; Físicos
+                      </h2>
+                      <span className="text-[10px] text-slate-500">
+                        Critério da curva: <strong>Desembolso Financeiro (Caixa)</strong>
+                      </span>
+                    </div>
+
+                    {/* 4 Cards Principais */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="p-3 rounded-xl border border-slate-200 bg-slate-50/80 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Orçamento Base</span>
+                          <span className="text-base font-extrabold text-slate-900 block font-mono mt-1">
+                            {formatCurrency(kpis.totalOrcado)}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-slate-500 block mt-1.5 pt-1.5 border-t border-slate-200/70">
+                          Saldo a contr.: <strong className="font-mono">{formatCurrency(kpis.saldoAContratar)}</strong>
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-sky-200 bg-sky-50/40 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold text-sky-800 uppercase tracking-wider block">Total Contratado</span>
+                          <span className="text-base font-extrabold text-[#008EA9] block font-mono mt-1">
+                            {formatCurrency(kpis.totalContratado)}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-sky-700 block mt-1.5 pt-1.5 border-t border-sky-200/70">
+                          <strong>{formatPercent(kpis.percentualContratado)}</strong> do orçado
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold text-emerald-800 uppercase tracking-wider block">Total Medido (Físico)</span>
+                          <span className="text-base font-extrabold text-emerald-700 block font-mono mt-1">
+                            {formatCurrency(kpis.totalMedido)}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-emerald-700 block mt-1.5 pt-1.5 border-t border-emerald-200/70">
+                          <strong>{formatPercent(kpis.percentualMedido)}</strong> contratado
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-purple-200 bg-purple-50/40 flex flex-col justify-between">
+                        <div>
+                          <span className="text-[9px] font-bold text-purple-800 uppercase tracking-wider block">Total Pago (Caixa)</span>
+                          <span className="text-base font-extrabold text-purple-700 block font-mono mt-1">
+                            {formatCurrency(kpis.totalPago)}
+                          </span>
+                        </div>
+                        <span className="text-[9px] text-purple-700 block mt-1.5 pt-1.5 border-t border-purple-200/70">
+                          Saldo a medir: <strong className="font-mono">{formatCurrency(kpis.saldoAMedir)}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Sub-painel: Projetos, Legalização, Aditivos e Distratos */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10px]">
+                      <div>
+                        <span className="text-slate-500 block font-semibold text-[9px] uppercase">Projetos Técnicos:</span>
+                        <span className="font-mono font-bold text-slate-800">{formatCurrency(kpis.totalProjetosContratado)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block font-semibold text-[9px] uppercase">Taxas &amp; Legalização:</span>
+                        <span className="font-mono font-bold text-purple-700">{formatCurrency(kpis.totalLegalizacaoContratado)}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block font-semibold text-[9px] uppercase">Termos Aditivos:</span>
+                        <span className="font-mono font-bold text-emerald-700">
+                          {todosAditivos.length} adit. (+{formatCurrency(contratosFiltrados.reduce((acc, c) => acc + (c.valor_aditivos || 0), 0))})
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block font-semibold text-[9px] uppercase">Contratos Distratados:</span>
+                        <span className="font-mono font-bold text-rose-700">
+                          {contratosDistratados.length} contrato(s)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Alerta de Atraso se houver */}
+                    {kpis.qtdEmAtraso > 0 && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-[10px] text-amber-900 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                          <span>
+                            <strong>Atenção de Cronograma:</strong> {kpis.qtdEmAtraso} medições com marco previsto no passado ainda não quitadas ({formatCurrency(kpis.totalEmAtraso)}).
+                          </span>
+                        </div>
+                        <span className="font-mono font-bold text-amber-800 shrink-0">
+                          {kpis.qtdAMedirAtrasado} a medir • {kpis.qtdMedidoNaoPago} a quitar
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* SEÇÃO 2: GRÁFICO DA CURVA S (DESEMBOLSO FINANCEIRO) */}
+                {secoes.curvaGrafico && (
+                  <div className="space-y-2 page-break-avoid">
+                    <div className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 py-0.5">
+                      <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5">
+                        <TrendingUp className="h-3.5 w-3.5 text-[#00A3C4]" />
+                        2. Curva S de Desembolso Financeiro (Previsto x Realizado)
+                      </h2>
+                      <div className="flex items-center gap-3 text-[10px]">
+                        <span className="text-slate-500">
+                          Realizado (Pago): <strong className="text-emerald-700 font-mono">{formatCurrency(totalRealizadoCurva)}</strong>
+                        </span>
+                        <span className="text-slate-500">
+                          Previsto a Pagar: <strong className="text-amber-600 font-mono">{formatCurrency(totalPrevistoFuturo)}</strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-slate-200 bg-white">
+                      <div className="h-44 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <ComposedChart
+                            data={curvaPontosRelatorio}
+                            margin={{ top: 8, right: 15, bottom: 18, left: 10 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" opacity={0.15} />
+                            <XAxis
+                              dataKey="mesFormatado"
+                              tick={{ fontSize: 8.5, fill: '#64748b' }}
+                              interval={0}
+                              angle={-20}
+                              textAnchor="end"
+                              height={26}
+                            />
+                            <YAxis
+                              yAxisId="left"
+                              tickFormatter={formatCurrencyShort}
+                              tick={{ fontSize: 8.5, fill: '#64748b' }}
+                            />
+                            <YAxis
+                              yAxisId="right"
+                              orientation="right"
+                              tickFormatter={formatCurrencyShort}
+                              tick={{ fontSize: 8.5, fill: '#64748b' }}
+                            />
+                            <Tooltip
+                              formatter={(value: any, name: any) => [formatCurrency(Number(value) || 0), name]}
+                              contentStyle={{ fontSize: '11px', borderRadius: '8px' }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 9.5, paddingTop: 2 }} />
+                            <Bar
+                              yAxisId="left"
+                              dataKey="realizado"
+                              name="Realizado Mensal (Pago)"
+                              fill="#00A3C4"
+                              isAnimationActive={false}
+                              barSize={13}
+                              radius={[3, 3, 0, 0]}
+                            />
+                            <Bar
+                              yAxisId="left"
+                              dataKey="previsto"
+                              name="Previsto Mensal (A pagar)"
+                              fill="#F59E0B"
+                              isAnimationActive={false}
+                              barSize={13}
+                              radius={[3, 3, 0, 0]}
+                            />
+                            <Line
+                              yAxisId="right"
+                              type="monotone"
+                              dataKey="acumuladoTotal"
+                              name="Curva S Acumulada Total"
+                              stroke="#0284C7"
+                              strokeWidth={2.5}
+                              dot={{ r: 2.5, fill: '#0284C7' }}
+                              isAnimationActive={false}
+                            />
+                          </ComposedChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SEÇÃO 3: DISTRIBUIÇÃO POR DISCIPLINA & STATUS DAS MEDIÇÕES */}
+                {secoes.disciplinasStatus && (
+                  <div className="space-y-2 page-break-avoid">
+                    <div className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 py-0.5">
+                      <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5">
+                        <Layers className="h-3.5 w-3.5 text-[#00A3C4]" />
+                        3. Distribuição Setorial &amp; Status das Medições
+                      </h2>
+                      <span className="text-[10px] text-slate-500">
+                        Visão setorial e liquidação financeira detalhada por status
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Gráfico A: Orçamento vs Contratado por Disciplina */}
+                      <div className="p-3 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
+                        <h3 className="text-[10.5px] font-bold text-slate-800 flex items-center gap-1.5 mb-1.5">
+                          <Layers className="h-3 w-3 text-[#00A3C4]" />
+                          Orçamento Base vs Contratado por Disciplina
+                        </h3>
+                        <div className="h-32 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={dadosDisciplinas}
+                              layout="vertical"
+                              margin={{ top: 2, right: 15, bottom: 2, left: 60 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
+                              <XAxis type="number" tickFormatter={formatCurrencyShort} tick={{ fontSize: 7.5 }} />
+                              <YAxis type="category" dataKey="disciplina" tick={{ fontSize: 7.5 }} width={68} />
+                              <Tooltip formatter={(v: any, n: any) => [formatCurrency(Number(v) || 0), n]} />
+                              <Legend wrapperStyle={{ fontSize: 8.5 }} />
+                              <Bar dataKey="base" name="Orçado" fill="#3B82F6" barSize={7} isAnimationActive={false} radius={[0, 2, 2, 0]} />
+                              <Bar dataKey="contratado" name="Contratado" fill="#00A3C4" barSize={7} isAnimationActive={false} radius={[0, 2, 2, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+
+                      {/* Gráfico B: Status das Medições com Valores Monetários Visíveis */}
+                      <div className="p-3 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
+                        <h3 className="text-[10.5px] font-bold text-slate-800 flex items-center justify-between mb-1.5">
+                          <span className="flex items-center gap-1.5">
+                            <CreditCard className="h-3 w-3 text-[#00A3C4]" />
+                            Status das Medições (Liquidação)
+                          </span>
+                          <span className="font-mono text-[9px] font-semibold text-slate-500">
+                            Total: {formatCurrency(totalMedicoesValor)}
+                          </span>
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          {/* Rosca */}
+                          <div className="h-32 w-28 shrink-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={dadosStatusMedicoes}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={24}
+                                  outerRadius={44}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                  isAnimationActive={false}
+                                >
+                                  {dadosStatusMedicoes.map((entry) => (
+                                    <Cell key={entry.name} fill={PIE_COLORS[entry.name] || '#94a3b8'} />
+                                  ))}
+                                </Pie>
+                                <Tooltip formatter={(v: any, n: any) => [formatCurrency(Number(v) || 0), n]} />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          {/* Lista de Valores por Status */}
+                          <div className="flex-1 flex flex-col justify-center space-y-1 pl-2 border-l border-slate-100">
+                            {dadosStatusMedicoes.map((st) => {
+                              const cor = PIE_COLORS[st.name] || '#94a3b8';
+                              const pct = totalMedicoesValor > 0 ? ((st.value / totalMedicoesValor) * 100).toFixed(1) : '0';
+                              return (
+                                <div key={st.name} className="flex items-center justify-between text-[8.5px]">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cor }} />
+                                    <span className="font-bold text-slate-700">{st.name}:</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="font-mono font-bold text-slate-900 block leading-tight">
+                                      {formatCurrency(st.value)}
+                                    </span>
+                                    <span className="text-[7.5px] text-slate-400 font-medium">
+                                      {pct}% • {st.count} med.
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              <div className="text-right text-[11px] text-slate-500 space-y-0.5">
-                <p><strong>Emissão:</strong> {dataAtual} às {horaAtual}</p>
-                <p><strong>Itens Orçamento:</strong> {orcamentosFiltradosRelatorio.length} pacotes</p>
-                <p><strong>Contratos:</strong> {contratosFiltrados.length} listados</p>
-                <p><strong>Medições:</strong> {medicoesFiltradas.length} marcos</p>
+              {/* Rodapé da Página 1 */}
+              <div className="pt-2 mt-auto border-t border-slate-200 flex items-center justify-between text-[8px] text-slate-400 page-break-avoid">
+                <span className="font-semibold text-slate-500">WCC Engenharia &amp; Desenvolvimento • Relatório Executivo</span>
+                <span>Página 1 de 2 • Emitido em {dataAtual} às {horaAtual}</span>
               </div>
             </div>
 
-            {/* SEÇÃO 1: PAINEL DE KPIS EXECUTIVOS */}
-            {secoes.kpis && (
-              <div className="mb-6 page-break-avoid">
-                <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] mb-2.5 border-l-4 border-[#00A3C4] pl-2">
-                  1. Painel de Indicadores Financeiros &amp; Físicos
-                </h2>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Orçamento Base</span>
-                    <span className="text-sm font-extrabold text-slate-900 block font-mono mt-0.5">
-                      {formatCurrency(kpis.totalOrcado)}
+            {/* ============================================================== */}
+            {/* FOLHA 2 (PÁGINA 2): CRONOGRAMA DETALHADO & OCORRÊNCIAS         */}
+            {/* ============================================================== */}
+            <div className="folha-a4 bg-white text-slate-900 shadow-2xl border border-slate-200 rounded-lg text-xs font-sans w-full max-w-[210mm] min-h-[297mm] p-[20mm] flex flex-col justify-between box-border">
+              <div className="space-y-3.5 flex-1">
+                {/* Mini Cabeçalho da Página 2 */}
+                <div className="border-b border-[#00A3C4]/40 pb-2 mb-2 flex items-center justify-between page-break-avoid">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[9px] font-black tracking-widest px-2 py-0.5 rounded bg-[#072B3B] text-white uppercase">
+                      WCC ENGENHARIA
                     </span>
-                    <span className="text-[9px] text-slate-500 block">Saldo a contr.: {formatCurrency(kpis.saldoAContratar)}</span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase block">Total Contratado</span>
-                    <span className="text-sm font-extrabold text-[#008EA9] block font-mono mt-0.5">
-                      {formatCurrency(kpis.totalContratado)}
+                    <span className="text-[10px] text-slate-700 font-bold">
+                      Relatório Executivo • {obraSelecionadaNome}
                     </span>
-                    <span className="text-[9px] text-slate-500 block">{formatPercent(kpis.percentualContratado)} do orçado</span>
                   </div>
-
-                  <div className="p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50">
-                    <span className="text-[9px] font-bold text-emerald-800 uppercase block">Total Medido (Físico)</span>
-                    <span className="text-sm font-extrabold text-emerald-700 block font-mono mt-0.5">
-                      {formatCurrency(kpis.totalMedido)}
-                    </span>
-                    <span className="text-[9px] font-bold text-emerald-700 block">{formatPercent(kpis.percentualMedido)} contratado</span>
-                  </div>
-
-                  <div className="p-2.5 rounded-lg border border-purple-200 bg-purple-50/50">
-                    <span className="text-[9px] font-bold text-purple-800 uppercase block">Saldo a Medir</span>
-                    <span className="text-sm font-extrabold text-purple-700 block font-mono mt-0.5">
-                      {formatCurrency(kpis.saldoAMedir)}
-                    </span>
-                    <span className="text-[9px] text-purple-600 block">Pago: {formatCurrency(kpis.totalPago)}</span>
-                  </div>
+                  <span className="text-[9px] font-mono text-slate-400">Página 2 de 2 • Cronograma Analítico de Desembolso</span>
                 </div>
 
-                {/* Subdivisão Projetos vs Legalização & Ocorrências */}
-                <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] p-2 rounded-lg bg-slate-100 border border-slate-200">
-                  <div>
-                    <span className="text-slate-500 block font-bold">Projetos Técnicos:</span>
-                    <span className="font-mono font-bold text-slate-800">{formatCurrency(kpis.totalProjetosContratado)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-bold">Taxas &amp; Legalização:</span>
-                    <span className="font-mono font-bold text-purple-700">{formatCurrency(kpis.totalLegalizacaoContratado)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-bold">Termos Aditivos:</span>
-                    <span className="font-mono font-bold text-emerald-700">
-                      {todosAditivos.length} adit. ({formatCurrency(contratosFiltrados.reduce((acc, c) => acc + (c.valor_aditivos || 0), 0))})
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500 block font-bold">Contratos Distratados:</span>
-                    <span className="font-mono font-bold text-rose-700">
-                      {contratosDistratados.length} contrato(s)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Alerta de Atraso se houver */}
-                {kpis.qtdEmAtraso > 0 && (
-                  <div className="mt-2.5 p-2 rounded-lg bg-amber-50 border border-amber-300 text-[10px] text-amber-900 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
-                      <span><strong>Atenção de Cronograma:</strong> {kpis.qtdEmAtraso} medições com marco previsto no passado ainda não quitadas.</span>
+                {/* SEÇÃO 4: CRONOGRAMA DE DESEMBOLSO FINANCEIRO (CURVA S - TABELA 5 COLUNAS) */}
+                {secoes.curvaDesembolso && curvaPontosRelatorio.length > 0 && (
+                  <div className="space-y-2 page-break-avoid">
+                    <div className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 py-0.5">
+                      <div>
+                        <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-[#00A3C4]" />
+                          4. Cronograma Detalhado de Desembolso Financeiro (Mês a Mês)
+                        </h2>
+                        <span className="text-[9px] text-slate-500 font-medium">
+                          Valores baseados na data de liquidação realizada e datas previstas para os próximos meses
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-semibold">
+                        Total a Desembolsar Futuro: <strong className="text-amber-600 font-mono">{formatCurrency(totalPrevistoFuturo)}</strong>
+                      </span>
                     </div>
-                    <span className="font-mono font-bold text-amber-800">{formatCurrency(kpis.totalEmAtraso)}</span>
-                  </div>
-                )}
-              </div>
-            )}
 
-            {/* SEÇÃO 2: QUADRO DE ORÇAMENTO BASE ANALÍTICO */}
-            {secoes.orcamentoBase && (
-              <div className="mb-6 page-break-avoid">
-                <div className="flex items-center justify-between mb-2 border-l-4 border-[#00A3C4] pl-2">
-                  <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B]">
-                    2. Quadro Analítico de Orçamento Base ({orcamentosFiltradosRelatorio.length} itens)
-                  </h2>
-                  <span className="text-[10px] text-slate-500 font-semibold">
-                    Previsto: <strong>{formatCurrency(totaisOrcamento.base)}</strong> • Contratado: <strong>{formatCurrency(totaisOrcamento.contratado)}</strong>
-                  </span>
-                </div>
-
-                {orcamentosFiltradosRelatorio.length === 0 ? (
-                  <p className="text-slate-500 italic py-2">Nenhum item de orçamento encontrado para os filtros selecionados.</p>
-                ) : (
-                  <table className="w-full text-[9px] border-collapse border border-slate-200">
-                    <thead className="bg-[#072B3B] text-white">
-                      <tr>
-                        <th className="p-1.5 text-center">Obra</th>
-                        <th className="p-1.5 text-center">Tipo</th>
-                        <th className="p-1.5 text-left">Disciplina</th>
-                        <th className="p-1.5 text-left">Subdisciplina</th>
-                        <th className="p-1.5 text-right">Orçamento Base</th>
-                        <th className="p-1.5 text-right">Contratado</th>
-                        <th className="p-1.5 text-right">Saldo Contratar</th>
-                        <th className="p-1.5 text-center">% Contrat.</th>
-                        <th className="p-1.5 text-right">Medido</th>
-                        <th className="p-1.5 text-right">Saldo Medição</th>
-                        <th className="p-1.5 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {orcamentosFiltradosRelatorio.map((o) => {
-                        const pctContrat = o.orcamento_base > 0 ? (o.valor_contratado / o.orcamento_base) * 100 : 0;
-                        return (
-                          <tr key={o.id} className="even:bg-slate-50">
-                            <td className="p-1 text-center font-bold text-[#008EA9]">{o.obra}</td>
-                            <td className="p-1 text-center font-semibold">
-                              <span className={`px-1 py-0.5 rounded text-[8px] ${o.categoria === 'Legalização' ? 'text-purple-700 bg-purple-50' : 'text-cyan-800 bg-cyan-50'}`}>
-                                {o.categoria || 'Projeto'}
-                              </span>
-                            </td>
-                            <td className="p-1 font-semibold text-slate-900">{o.disciplina}</td>
-                            <td className="p-1 text-slate-600">{o.subdisciplina}</td>
-                            <td className="p-1 text-right font-mono font-bold text-slate-800">{formatCurrency(o.orcamento_base)}</td>
-                            <td className="p-1 text-right font-mono text-[#008EA9]">{formatCurrency(o.valor_contratado)}</td>
-                            <td className={`p-1 text-right font-mono ${o.saldo_a_contratar < 0 ? 'text-rose-600 font-bold' : 'text-slate-600'}`}>
-                              {formatCurrency(o.saldo_a_contratar)}
-                            </td>
-                            <td className="p-1 text-center font-mono">
-                              {formatPercent(Math.min(1, pctContrat / 100))}
-                            </td>
-                            <td className="p-1 text-right font-mono text-emerald-700">{formatCurrency(o.valor_medido)}</td>
-                            <td className="p-1 text-right font-mono text-purple-700">{formatCurrency(o.saldo_medicao)}</td>
-                            <td className="p-1 text-center">
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold border border-slate-300 bg-slate-100 text-slate-700">
-                                {o.status || 'A contratar'}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <tr>
-                        <td colSpan={4} className="p-1.5 uppercase text-left">Totais Orçamento Base:</td>
-                        <td className="p-1.5 text-right font-mono text-slate-900">{formatCurrency(totaisOrcamento.base)}</td>
-                        <td className="p-1.5 text-right font-mono text-[#008EA9]">{formatCurrency(totaisOrcamento.contratado)}</td>
-                        <td className={`p-1.5 text-right font-mono ${totaisOrcamento.saldoContratar < 0 ? 'text-rose-600' : 'text-slate-700'}`}>
-                          {formatCurrency(totaisOrcamento.saldoContratar)}
-                        </td>
-                        <td className="p-1.5 text-center font-mono text-[#00A3C4]">
-                          {formatPercent(totaisOrcamento.base > 0 ? totaisOrcamento.contratado / totaisOrcamento.base : 0)}
-                        </td>
-                        <td className="p-1.5 text-right font-mono text-emerald-700">{formatCurrency(totaisOrcamento.medido)}</td>
-                        <td className="p-1.5 text-right font-mono text-purple-700">{formatCurrency(totaisOrcamento.saldoMedicao)}</td>
-                        <td></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </div>
-            )}
-
-            {/* SEÇÃO 3: QUADRO RESUMO DE CONTRATOS */}
-            {secoes.contratos && (
-              <div className="mb-6 page-break-avoid">
-                <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] mb-2 border-l-4 border-[#00A3C4] pl-2">
-                  3. Relação de Contratos Vigentes ({contratosFiltrados.length})
-                </h2>
-
-                {contratosFiltrados.length === 0 ? (
-                  <p className="text-slate-500 italic py-2">Nenhum contrato cadastrado para este escopo.</p>
-                ) : (
-                  <table className="w-full text-[9px] border-collapse border border-slate-200">
-                    <thead className="bg-[#072B3B] text-white">
-                      <tr>
-                        <th className="p-1.5 text-left">ID</th>
-                        <th className="p-1.5 text-center">Status</th>
-                        <th className="p-1.5 text-left">Empresa</th>
-                        <th className="p-1.5 text-center">Obra</th>
-                        <th className="p-1.5 text-left">Disciplina</th>
-                        <th className="p-1.5 text-right">V. Original</th>
-                        <th className="p-1.5 text-right">Aditivos</th>
-                        <th className="p-1.5 text-right">V. Vigente</th>
-                        <th className="p-1.5 text-right">Medido</th>
-                        <th className="p-1.5 text-right">Saldo</th>
-                        <th className="p-1.5 text-center">% Medido</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {contratosFiltrados.map((c) => (
-                        <tr key={c.id} className={c.status === 'Distratado' ? 'bg-rose-50/50' : 'even:bg-slate-50'}>
-                          <td className="p-1 font-mono font-bold text-slate-700">{c.id}</td>
-                          <td className="p-1 text-center font-bold">
-                            <span className={c.status === 'Distratado' ? 'text-rose-600' : 'text-emerald-700'}>
-                              {c.status || 'Ativo'}
-                            </span>
-                          </td>
-                          <td className="p-1 font-semibold text-slate-900">{c.empresa}</td>
-                          <td className="p-1 text-center font-bold text-[#008EA9]">{c.obra}</td>
-                          <td className="p-1 text-slate-600">{c.subdisciplina || c.disciplina}</td>
-                          <td className="p-1 text-right font-mono">{formatCurrency(c.valor_original ?? c.valor_contrato)}</td>
-                          <td className="p-1 text-right font-mono text-emerald-700">
-                            {c.valor_aditivos ? formatCurrency(c.valor_aditivos) : '-'}
-                          </td>
-                          <td className="p-1 text-right font-mono font-bold text-slate-900">{formatCurrency(c.valor_contrato)}</td>
-                          <td className="p-1 text-right font-mono text-emerald-700">{formatCurrency(c.valor_medido)}</td>
-                          <td className="p-1 text-right font-mono text-purple-700">
-                            {c.status === 'Distratado' ? <span className="line-through text-rose-500">R$ 0,00</span> : formatCurrency(c.saldo_a_medir)}
-                          </td>
-                          <td className="p-1 text-center font-mono font-bold">{formatPercent(c.percentual_medido)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <tr>
-                        <td colSpan={7} className="p-1.5 uppercase text-left">Totais Contratos:</td>
-                        <td className="p-1.5 text-right font-mono text-slate-900">{formatCurrency(kpis.totalContratado)}</td>
-                        <td className="p-1.5 text-right font-mono text-emerald-700">{formatCurrency(kpis.totalMedido)}</td>
-                        <td className="p-1.5 text-right font-mono text-purple-700">{formatCurrency(kpis.saldoAMedir)}</td>
-                        <td className="p-1.5 text-center font-mono text-[#00A3C4]">{formatPercent(kpis.percentualMedido)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </div>
-            )}
-
-            {/* SEÇÃO 4: CRONOGRAMA & MEDIÇÕES */}
-            {secoes.medicoes && (
-              <div className="mb-6 page-break-avoid">
-                <div className="flex items-center justify-between mb-2 border-l-4 border-[#00A3C4] pl-2">
-                  <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B]">
-                    4. Cronograma &amp; Registro de Medições ({medicoesFiltradas.length} marcos)
-                  </h2>
-                  {medicoesAtrasadas.length > 0 && (
-                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
-                      ⚠️ {medicoesAtrasadas.length} marco(s) em atraso ({formatCurrency(medicoesAtrasadas.reduce((acc, m) => acc + m.valor_medicao, 0))})
-                    </span>
-                  )}
-                </div>
-
-                {medicoesFiltradas.length === 0 ? (
-                  <p className="text-slate-500 italic py-2">Nenhuma medição cadastrada para este escopo.</p>
-                ) : (
-                  <table className="w-full text-[9px] border-collapse border border-slate-200">
-                    <thead className="bg-[#072B3B] text-white">
-                      <tr>
-                        <th className="p-1.5 text-left">ID</th>
-                        <th className="p-1.5 text-center">Status</th>
-                        <th className="p-1.5 text-left">Fornecedor / Contrato</th>
-                        <th className="p-1.5 text-center">Obra</th>
-                        <th className="p-1.5 text-left">Etapa / Marco</th>
-                        <th className="p-1.5 text-right">Valor Medição</th>
-                        <th className="p-1.5 text-center">Data Prevista</th>
-                        <th className="p-1.5 text-center">Data Medição</th>
-                        <th className="p-1.5 text-center">Mês Comp.</th>
-                        <th className="p-1.5 text-center">NF</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {medicoesFiltradas.map((m) => {
-                        const isAtraso = isMedicaoEmAtraso(m);
-                        return (
-                          <tr key={m.id} className={isAtraso ? 'bg-amber-50/70' : 'even:bg-slate-50'}>
-                            <td className="p-1 font-mono font-bold text-slate-700">{m.id}</td>
-                            <td className="p-1 text-center font-bold">
-                              <span className={`px-1.5 py-0.5 rounded text-[8px] ${
-                                m.status === 'Pago' ? 'text-emerald-700 bg-emerald-100/60 font-bold' :
-                                m.status === 'A Pagar' ? 'text-indigo-700 bg-indigo-100/60 font-bold' :
-                                m.status === 'Medido' ? 'text-cyan-700 bg-cyan-100/60 font-bold' :
-                                isAtraso ? 'text-amber-800 bg-amber-200/80 font-black' :
-                                'text-slate-700 bg-slate-100'
-                              }`}>
-                                {isAtraso ? 'EM ATRASO' : m.status}
-                              </span>
-                            </td>
-                            <td className="p-1 font-medium text-slate-900">{m.empresa} <span className="font-mono text-slate-400">({m.contrato_id})</span></td>
-                            <td className="p-1 text-center font-bold text-[#008EA9]">{m.obra}</td>
-                            <td className="p-1 text-slate-700">{m.etapa}</td>
-                            <td className="p-1 text-right font-mono font-bold text-slate-900">{formatCurrency(m.valor_medicao)}</td>
-                            <td className="p-1 text-center font-mono">{formatDateBR(m.data_prevista)}</td>
-                            <td className="p-1 text-center font-mono">{formatDateBR(m.data_medicao)}</td>
-                            <td className="p-1 text-center font-mono font-bold text-slate-600">{m.mes_competencia || '-'}</td>
-                            <td className="p-1 text-center font-mono text-slate-500">{m.nf || '-'}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300">
-                      <tr>
-                        <td colSpan={5} className="p-1.5 uppercase text-left">Total de Medições Listadas:</td>
-                        <td className="p-1.5 text-right font-mono text-slate-900">
-                          {formatCurrency(medicoesFiltradas.reduce((acc, m) => acc + m.valor_medicao, 0))}
-                        </td>
-                        <td colSpan={4}></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                )}
-              </div>
-            )}
-
-            {/* SEÇÃO 5: QUADRO DE OCORRÊNCIAS (ADITIVOS E DISTRATOS) */}
-            {secoes.ocorrencias && (todosAditivos.length > 0 || contratosDistratados.length > 0) && (
-              <div className="mb-6 page-break-avoid">
-                <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] mb-2 border-l-4 border-[#00A3C4] pl-2">
-                  5. Ocorrências Contratuais (Aditivos &amp; Distratos)
-                </h2>
-
-                <div className="space-y-3">
-                  {todosAditivos.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-bold text-slate-700 block mb-1">Termos Aditivos Registrados:</span>
-                      <table className="w-full text-[9px] border-collapse border border-slate-200">
-                        <thead className="bg-slate-100 text-slate-700">
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                      <table className="w-full text-[10px] border-collapse">
+                        <thead className="bg-[#072B3B] text-white font-bold">
                           <tr>
-                            <th className="p-1 text-left">Contrato</th>
-                            <th className="p-1 text-left">Fornecedor</th>
-                            <th className="p-1 text-center">Nº</th>
-                            <th className="p-1 text-center">Data</th>
-                            <th className="p-1 text-center">Tipo</th>
-                            <th className="p-1 text-right">Valor</th>
-                            <th className="p-1 text-left">Justificativa / Escopo</th>
+                            <th className="py-2 px-3 text-left w-[24%]">Mês Competência</th>
+                            <th className="py-2 px-3 text-right w-[19%]">Realizado (Pago)</th>
+                            <th className="py-2 px-3 text-right w-[19%] bg-[#00A3C4]/30">Previsto (A pagar)</th>
+                            <th className="py-2 px-3 text-right w-[19%]">Total do Mês</th>
+                            <th className="py-2 px-3 text-right w-[19%]">Acumulado</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {todosAditivos.map((a) => (
-                            <tr key={a.id}>
-                              <td className="p-1 font-mono font-bold">{a.contrato_id}</td>
-                              <td className="p-1 font-medium">{a.empresa}</td>
-                              <td className="p-1 text-center font-bold">#{a.numero}</td>
-                              <td className="p-1 text-center">{formatDateBR(a.data)}</td>
-                              <td className="p-1 text-center">{a.tipo}</td>
-                              <td className={`p-1 text-right font-mono font-bold ${a.valor >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
-                                {a.valor >= 0 ? `+${formatCurrency(a.valor)}` : formatCurrency(a.valor)}
-                              </td>
-                              <td className="p-1 text-slate-600">{a.descricao}</td>
-                            </tr>
-                          ))}
+                        <tbody className="divide-y divide-slate-100 font-mono text-[9.5px]">
+                          {curvaPontosRelatorio.map((p) => {
+                            const isFuturo = p.previsto > 0 && (p.realizado === 0 || p.realizado === null);
+                            return (
+                              <tr
+                                key={p.mesSortKey || p.mes}
+                                className={isFuturo ? 'bg-amber-50/50 font-semibold' : 'even:bg-slate-50/50'}
+                              >
+                                <td className="py-1.5 px-3 text-left font-sans font-semibold text-slate-800">
+                                  {p.mesFormatado} <span className="font-mono text-[8.5px] text-slate-500">({p.mes})</span>
+                                </td>
+                                <td className="py-1.5 px-3 text-right text-emerald-700 font-semibold">
+                                  {p.realizado > 0 ? formatCurrency(p.realizado) : '-'}
+                                </td>
+                                <td className="py-1.5 px-3 text-right bg-amber-50/40 text-amber-700 font-bold">
+                                  {p.previsto > 0 ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      {formatCurrency(p.previsto)}
+                                      {isFuturo && (
+                                        <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-500 text-white font-sans">
+                                          A PAGAR
+                                        </span>
+                                      )}
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td className="py-1.5 px-3 text-right font-bold text-slate-900">
+                                  {formatCurrency(p.total)}
+                                </td>
+                                <td className="py-1.5 px-3 text-right font-bold text-[#008EA9]">
+                                  {formatCurrency(p.acumuladoTotal)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {contratosDistratados.length > 0 && (
-                    <div>
-                      <span className="text-[10px] font-bold text-rose-700 block mb-1">Contratos Distratados / Rescindidos:</span>
-                      <table className="w-full text-[9px] border-collapse border border-rose-200 bg-rose-50/30">
-                        <thead className="bg-rose-100/70 text-rose-900">
+                        <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-[10px]">
                           <tr>
-                            <th className="p-1 text-left">Contrato</th>
-                            <th className="p-1 text-left">Fornecedor</th>
-                            <th className="p-1 text-center">Data Distrato</th>
-                            <th className="p-1 text-left">Motivo Rescisório</th>
-                            <th className="p-1 text-right">Acerto Final</th>
-                            <th className="p-1 text-left">Observações</th>
+                            <td className="py-2 px-3 uppercase text-left font-sans">Totais Consolidados:</td>
+                            <td className="py-2 px-3 text-right font-mono text-emerald-700">{formatCurrency(totalRealizadoCurva)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-amber-700 bg-amber-100/50 font-black">
+                              {formatCurrency(totalPrevistoFuturo)}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-900 font-black">{formatCurrency(totalRealizadoCurva + totalPrevistoFuturo)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-[#008EA9] font-black">
+                              {formatCurrency(totalRealizadoCurva + totalPrevistoFuturo)}
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-rose-100">
-                          {contratosDistratados.map((c) => (
-                            <tr key={c.id}>
-                              <td className="p-1 font-mono font-bold text-rose-800">{c.id}</td>
-                              <td className="p-1 font-semibold">{c.empresa}</td>
-                              <td className="p-1 text-center">{formatDateBR(c.distrato?.data)}</td>
-                              <td className="p-1 text-slate-700">{c.distrato?.motivo}</td>
-                              <td className="p-1 text-right font-mono font-bold">{formatCurrency(c.distrato?.valor_acerto || 0)}</td>
-                              <td className="p-1 text-slate-500">{c.distrato?.observacoes || '-'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
+                        </tfoot>
                       </table>
                     </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* SEÇÃO 6: CURVA DE DESEMBOLSO MÊS A MÊS */}
-            {secoes.curvaDesembolso && curvaPontos.length > 0 && (
-              <div className="mb-6 page-break-avoid">
-                <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B] mb-2 border-l-4 border-[#00A3C4] pl-2">
-                  6. Cronograma &amp; Curva de Desembolso Financeiro S (Competências)
-                </h2>
-
-                <table className="w-full text-[9px] border-collapse border border-slate-200">
-                  <thead className="bg-slate-100 text-slate-700 font-bold">
-                    <tr>
-                      <th className="p-1 text-center">Mês</th>
-                      <th className="p-1 text-right">Previsto Mensal</th>
-                      <th className="p-1 text-right">Realizado Mensal</th>
-                      <th className="p-1 text-right">Total Mês</th>
-                      <th className="p-1 text-right">Acumulado Previsto</th>
-                      <th className="p-1 text-right">Acumulado Realizado</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-mono">
-                    {curvaPontos.slice(0, 16).map((p) => (
-                      <tr key={p.mes} className="even:bg-slate-50">
-                        <td className="p-1 text-center font-bold text-slate-700">{p.mesFormatado}</td>
-                        <td className="p-1 text-right text-slate-600">{formatCurrency(p.previsto)}</td>
-                        <td className="p-1 text-right font-bold text-[#008EA9]">{formatCurrency(p.realizado)}</td>
-                        <td className="p-1 text-right text-slate-700">{formatCurrency(p.total)}</td>
-                        <td className="p-1 text-right text-slate-500">{formatCurrency(p.acumuladoPrevisto)}</td>
-                        <td className="p-1 text-right font-bold text-emerald-700">{formatCurrency(p.acumuladoRealizado)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* SEÇÃO 7: ASSINATURAS E RESPONSABILIDADES */}
-            {secoes.assinaturas && (
-              <div className="pt-8 mt-6 border-t border-slate-200 grid grid-cols-2 gap-8 text-center text-[10px] text-slate-600 page-break-avoid">
-                <div>
-                  <div className="border-t border-slate-400 w-3/4 mx-auto pt-1 font-bold text-slate-900">
-                    Responsável Técnico / Orçamentista
                   </div>
-                  <span>WCC Engenharia &amp; Orçamentos</span>
-                </div>
-                <div>
-                  <div className="border-t border-slate-400 w-3/4 mx-auto pt-1 font-bold text-slate-900">
-                    Gestão de Obras / Diretoria de Contratos
-                  </div>
-                  <span>Aprovação Executiva</span>
-                </div>
-              </div>
-            )}
+                )}
 
-            {/* RODAPÉ DO DOCUMENTO */}
-            <div className="mt-8 pt-2 border-t border-slate-100 flex items-center justify-between text-[8px] text-slate-400">
-              <span>WCC Engenharia • Sistema Integrado de Gestão e Apontamentos</span>
-              <span>Documento emitido eletronicamente em {dataAtual} às {horaAtual}</span>
+                {/* SEÇÃO 5: RESUMO DE OCORRÊNCIAS (ADITIVOS & DISTRATOS) */}
+                {secoes.ocorrencias && (todosAditivos.length > 0 || contratosDistratados.length > 0) && (
+                  <div className="space-y-2 page-break-avoid">
+                    <div className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 py-0.5">
+                      <h2 className="text-xs font-black uppercase tracking-wider text-[#072B3B]">
+                        5. Resumo de Ocorrências Contratuais (Aditivos &amp; Distratos)
+                      </h2>
+                      <span className="text-[10px] text-slate-500">
+                        Histórico de alterações e distratos
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5">
+                      {todosAditivos.length > 0 && (
+                        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                          <table className="w-full text-[9px] border-collapse">
+                            <thead className="bg-slate-100 text-slate-700 font-bold">
+                              <tr>
+                                <th className="py-1.5 px-2 text-left">Contrato</th>
+                                <th className="py-1.5 px-2 text-left">Fornecedor</th>
+                                <th className="py-1.5 px-2 text-center">Nº</th>
+                                <th className="py-1.5 px-2 text-center">Data</th>
+                                <th className="py-1.5 px-2 text-center">Tipo</th>
+                                <th className="py-1.5 px-2 text-right">Valor</th>
+                                <th className="py-1.5 px-2 text-left">Justificativa / Escopo</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {todosAditivos.slice(0, 8).map((a) => (
+                                <tr key={a.id} className="even:bg-slate-50/50">
+                                  <td className="py-1 px-2 font-mono font-bold">{a.contrato_id}</td>
+                                  <td className="py-1 px-2 font-medium">{a.empresa}</td>
+                                  <td className="py-1 px-2 text-center font-bold">#{a.numero}</td>
+                                  <td className="py-1 px-2 text-center">{formatDateBR(a.data)}</td>
+                                  <td className="py-1 px-2 text-center">{a.tipo}</td>
+                                  <td className={`py-1 px-2 text-right font-mono font-bold ${a.valor >= 0 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                    {a.valor >= 0 ? `+${formatCurrency(a.valor)}` : formatCurrency(a.valor)}
+                                  </td>
+                                  <td className="py-1 px-2 text-slate-600 truncate max-w-xs">{a.descricao}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {contratosDistratados.length > 0 && (
+                        <div className="border border-rose-200 rounded-xl overflow-hidden bg-rose-50/20 shadow-2xs">
+                          <table className="w-full text-[9px] border-collapse">
+                            <thead className="bg-rose-100/70 text-rose-900 font-bold">
+                              <tr>
+                                <th className="py-1.5 px-2 text-left">Contrato</th>
+                                <th className="py-1.5 px-2 text-left">Fornecedor</th>
+                                <th className="py-1.5 px-2 text-center">Data Distrato</th>
+                                <th className="py-1.5 px-2 text-left">Motivo Rescisório</th>
+                                <th className="py-1.5 px-2 text-right">Acerto Final</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-rose-100">
+                              {contratosDistratados.map((c) => (
+                                <tr key={c.id}>
+                                  <td className="py-1 px-2 font-mono font-bold text-rose-800">{c.id}</td>
+                                  <td className="py-1 px-2 font-semibold">{c.empresa}</td>
+                                  <td className="py-1 px-2 text-center">{formatDateBR(c.distrato?.data)}</td>
+                                  <td className="py-1 px-2 text-slate-700">{c.distrato?.motivo}</td>
+                                  <td className="py-1 px-2 text-right font-mono font-bold">{formatCurrency(c.distrato?.valor_acerto || 0)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Rodapé da Página 2 */}
+              <div className="pt-2 mt-auto border-t border-slate-200 flex items-center justify-between text-[8px] text-slate-400 page-break-avoid">
+                <span className="font-semibold text-slate-500">WCC Engenharia &amp; Desenvolvimento • Relatório Executivo de Custos</span>
+                <span>Documento emitido eletronicamente em {dataAtual} às {horaAtual}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -885,7 +1034,7 @@ export function RelatorioOrcamentoPdfModal({
         {/* 4. FOOTER DO MODAL */}
         <div className="p-3 border-t border-slate-200 dark:border-[#0B384D] flex items-center justify-between bg-slate-50 dark:bg-[#072432]">
           <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-            Dica: No diálogo de impressão do navegador, selecione a opção <b>&quot;Salvar como PDF&quot;</b> e certifique-se de que <b>&quot;Gráficos de segundo plano&quot;</b> esteja marcado.
+            Dica: No diálogo de impressão, selecione <b>&quot;Salvar como PDF&quot;</b> e ative <b>&quot;Gráficos de segundo plano&quot;</b>.
           </span>
           <Button
             variant="outline"

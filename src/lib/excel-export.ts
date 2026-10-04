@@ -1,3 +1,4 @@
+import JSZip from 'jszip';
 import {
   ItemOrcamento,
   Contrato,
@@ -5,7 +6,6 @@ import {
   CurvaDesembolsoPonto,
   KpiOrcamento,
   Obra,
-  Fornecedor,
 } from '@/types/orcamento';
 import { formatDateBR } from '@/lib/orcamento-utils';
 
@@ -20,22 +20,27 @@ function escapeXml(unsafe: string | number | null | undefined): string {
     .replace(/'/g, '&apos;');
 }
 
-export function exportMultiSheetExcel({
+export async function exportMultiSheetExcel({
   orcamentos,
   contratos,
   medicoes,
   curvaPontos,
-  kpis,
-  nomeArquivo = 'Relatorio_Consolidado_Orcamentos_WCC.xls',
+  obras = [],
+  filtroObra = '',
+  filtroCategoria = 'TODAS',
+  nomeArquivo = 'Relatorio_Consolidado_Orcamentos_WCC.xlsx',
 }: {
   orcamentos: ItemOrcamento[];
   contratos: Contrato[];
   medicoes: Medicao[];
   curvaPontos: CurvaDesembolsoPonto[];
-  kpis: KpiOrcamento;
+  obras?: Obra[];
+  kpis?: KpiOrcamento;
+  filtroObra?: string;
+  filtroCategoria?: string;
   nomeArquivo?: string;
 }) {
-  // Lista acumulada de aditivos
+  // 1. Lista acumulada de aditivos
   const todosAditivos: {
     contrato_id: string;
     empresa: string;
@@ -66,395 +71,211 @@ export function exportMultiSheetExcel({
     }
   }
 
-  const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:o="urn:schemas-microsoft-com:office:office"
- xmlns:x="urn:schemas-microsoft-com:office:excel"
- xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
- xmlns:html="http://www.w3.org/TR/REC-html40">
- <Styles>
-  <Style ss:ID="Default" ss:Name="Normal">
-   <Alignment ss:Vertical="Center"/>
-   <Borders/>
-   <Font ss:FontName="Calibri" x:Family="Swiss" ss:Size="11" ss:Color="#000000"/>
-   <Interior/>
-   <NumberFormat/>
-   <Protection/>
-  </Style>
-  <Style ss:ID="Title">
-   <Font ss:FontName="Calibri" ss:Size="16" ss:Bold="1" ss:Color="#FFFFFF"/>
-   <Interior ss:Color="#072B3B" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Header">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#FFFFFF"/>
-   <Interior ss:Color="#00A3C4" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-   <Borders>
-    <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#072B3B"/>
-   </Borders>
-  </Style>
-  <Style ss:ID="SubHeader">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#072B3B"/>
-   <Interior ss:Color="#E2F5F8" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Left" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Currency">
-   <NumberFormat ss:Format="&quot;R$&quot;\ #,##0.00"/>
-   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="CurrencyBold">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#072B3B"/>
-   <NumberFormat ss:Format="&quot;R$&quot;\ #,##0.00"/>
-   <Alignment ss:Horizontal="Right" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Percent">
-   <NumberFormat ss:Format="0.0%"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="PercentBold">
-   <Font ss:FontName="Calibri" ss:Size="11" ss:Bold="1" ss:Color="#00A3C4"/>
-   <NumberFormat ss:Format="0.0%"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Date">
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="Center">
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="BadgeDistrato">
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#991B1B"/>
-   <Interior ss:Color="#FEE2E2" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
-  <Style ss:ID="BadgeAtivo">
-   <Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#065F46"/>
-   <Interior ss:Color="#D1FAE5" ss:Pattern="Solid"/>
-   <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
-  </Style>
- </Styles>
+  // 2. Mapa consolidado de obras
+  const obrasMap = new Map<string, string>();
+  obras.forEach((o) => obrasMap.set(o.codigo, o.nome));
+  orcamentos.forEach((o) => {
+    if (o.obra && !obrasMap.has(o.obra)) obrasMap.set(o.obra, o.nome_obra || o.obra);
+  });
+  contratos.forEach((c) => {
+    if (c.obra && !obrasMap.has(c.obra)) obrasMap.set(c.obra, c.obra);
+  });
 
- <!-- 1. ABA DASHBOARD & KPIS -->
- <Worksheet ss:Name="Dashboard_Resumo">
-  <Table ss:DefaultRowHeight="20">
-   <Column ss:Width="250"/>
-   <Column ss:Width="160"/>
-   <Column ss:Width="200"/>
-   <Column ss:Width="160"/>
+  // 3. Carregar o template mestre .xlsx
+  let zip: JSZip;
+  try {
+    const res = await fetch('/templates/template_orcamentos_wcc.xlsx');
+    if (!res.ok) throw new Error(`HTTP ${res.status} ao carregar template`);
+    const arrayBuffer = await res.arrayBuffer();
+    zip = await JSZip.loadAsync(arrayBuffer);
+  } catch (err) {
+    console.error('Falha ao carregar template .xlsx:', err);
+    alert('Erro ao carregar o modelo de exportação do Excel. Verifique a conexão e tente novamente.');
+    return;
+  }
 
-   <Row ss:Height="30">
-    <Cell ss:MergeAcross="3" ss:StyleID="Title"><Data ss:Type="String">  WCC GESTÃO DE CUSTOS &amp; MEDIÇÕES - DASHBOARD EXECUTIVO</Data></Cell>
-   </Row>
-   <Row ss:Height="10"/>
+  // 4. Atualizar Dashboard_Resumo (sheet1.xml)
+  const sheet1File = zip.file('xl/worksheets/sheet1.xml');
+  if (sheet1File) {
+    let sheet1Xml = await sheet1File.async('string');
+    const valorObraInicial = filtroObra && obrasMap.has(filtroObra) ? filtroObra : 'TODAS';
+    const valorCatInicial = !filtroCategoria || filtroCategoria === 'Todos' ? 'TODAS' : filtroCategoria;
+    
+    // Configura a célula B3 com o filtro de obra
+    sheet1Xml = sheet1Xml.replace(
+      /(<c r="B3"[^>]*>)(?:<v>[^<]*<\/v>|<is><t>[^<]*<\/t><\/is>)?(<\/c>)/,
+      `$1<is><t>${escapeXml(valorObraInicial)}</t></is>$2`
+    );
 
-   <Row>
-    <Cell ss:MergeAcross="1" ss:StyleID="SubHeader"><Data ss:Type="String">INDICADORES FINANCEIROS GLOBAIS</Data></Cell>
-    <Cell ss:MergeAcross="1" ss:StyleID="SubHeader"><Data ss:Type="String">MEDIDAS DE LIQUIDAÇÃO &amp; CRONOGRAMA</Data></Cell>
-   </Row>
+    // Configura a célula D3 com o filtro de categoria
+    sheet1Xml = sheet1Xml.replace(
+      /(<c r="D3"[^>]*>)(?:<v>[^<]*<\/v>|<is><t>[^<]*<\/t><\/is>)?(<\/c>)/,
+      `$1<is><t>${escapeXml(valorCatInicial)}</t></is>$2`
+    );
 
-   <Row>
-    <Cell><Data ss:Type="String">Orçamento Base Total:</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalOrcado}</Data></Cell>
-    <Cell><Data ss:Type="String">Total Medido / Físico:</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalMedido}</Data></Cell>
-   </Row>
+    zip.file('xl/worksheets/sheet1.xml', sheet1Xml);
+  }
 
-   <Row>
-    <Cell><Data ss:Type="String">Valor Total Contratado:</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalContratado}</Data></Cell>
-    <Cell><Data ss:Type="String">Percentual Medido / Contratado:</Data></Cell>
-    <Cell ss:StyleID="PercentBold"><Data ss:Type="Number">${kpis.percentualMedido}</Data></Cell>
-   </Row>
+  // 5. Preencher tbOrcamentoBase (sheet2.xml)
+  const sheet2File = zip.file('xl/worksheets/sheet2.xml');
+  if (sheet2File) {
+    let sheet2Xml = await sheet2File.async('string');
+    let orcRows = '';
+    orcamentos.forEach((o, idx) => {
+      const r = idx + 2;
+      orcRows += `<row r="${r}">` +
+        `<c r="A${r}" t="inlineStr"><is><t>${escapeXml(o.obra)}</t></is></c>` +
+        `<c r="B${r}" t="inlineStr"><is><t>${escapeXml(o.nome_obra || o.obra)}</t></is></c>` +
+        `<c r="C${r}" t="inlineStr"><is><t>${escapeXml(o.categoria || 'Projeto')}</t></is></c>` +
+        `<c r="D${r}" t="inlineStr"><is><t>${escapeXml(o.disciplina)}</t></is></c>` +
+        `<c r="E${r}" t="inlineStr"><is><t>${escapeXml(o.subdisciplina)}</t></is></c>` +
+        `<c r="F${r}"><v>${o.orcamento_base || 0}</v></c>` +
+        `<c r="G${r}"><v>${o.valor_contratado || 0}</v></c>` +
+        `<c r="H${r}"><v>${o.saldo_a_contratar || 0}</v></c>` +
+        `<c r="I${r}"><v>${o.valor_medido || 0}</v></c>` +
+        `<c r="J${r}"><v>${o.saldo_medicao || 0}</v></c>` +
+        `<c r="K${r}" t="inlineStr"><is><t>${escapeXml(o.status || 'A contratar')}</t></is></c>` +
+      `</row>`;
+    });
+    sheet2Xml = sheet2Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${orcRows}$3`);
+    zip.file('xl/worksheets/sheet2.xml', sheet2Xml);
+  }
 
-   <Row>
-    <Cell><Data ss:Type="String">Saldo a Contratar:</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${kpis.saldoAContratar}</Data></Cell>
-    <Cell><Data ss:Type="String">Saldo Restante a Medir:</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${kpis.saldoAMedir}</Data></Cell>
-   </Row>
+  // 6. Preencher tbContratos (sheet3.xml)
+  const sheet3File = zip.file('xl/worksheets/sheet3.xml');
+  if (sheet3File) {
+    let sheet3Xml = await sheet3File.async('string');
+    let ctRows = '';
+    contratos.forEach((c, idx) => {
+      const r = idx + 2;
+      const distratoTxt = c.distrato
+        ? `Distratado em ${formatDateBR(c.distrato.data)}: ${c.distrato.motivo}${c.distrato.observacoes ? ` (${c.distrato.observacoes})` : ''}`
+        : '';
+      ctRows += `<row r="${r}">` +
+        `<c r="A${r}" t="inlineStr"><is><t>${escapeXml(c.id)}</t></is></c>` +
+        `<c r="B${r}" t="inlineStr"><is><t>${escapeXml(c.status || 'Ativo')}</t></is></c>` +
+        `<c r="C${r}" t="inlineStr"><is><t>${escapeXml(c.categoria || 'Projeto')}</t></is></c>` +
+        `<c r="D${r}" t="inlineStr"><is><t>${escapeXml(c.num_sienge || '-')}</t></is></c>` +
+        `<c r="E${r}" t="inlineStr"><is><t>${escapeXml(c.empresa)}</t></is></c>` +
+        `<c r="F${r}" t="inlineStr"><is><t>${escapeXml(c.obra)}</t></is></c>` +
+        `<c r="G${r}" t="inlineStr"><is><t>${escapeXml(c.disciplina)}</t></is></c>` +
+        `<c r="H${r}" t="inlineStr"><is><t>${escapeXml(c.subdisciplina)}</t></is></c>` +
+        `<c r="I${r}"><v>${c.valor_original ?? c.valor_contrato}</v></c>` +
+        `<c r="J${r}"><v>${c.valor_aditivos || 0}</v></c>` +
+        `<c r="K${r}"><v>${c.valor_contrato}</v></c>` +
+        `<c r="L${r}"><v>${c.valor_medido || 0}</v></c>` +
+        `<c r="M${r}"><v>${c.saldo_a_medir || 0}</v></c>` +
+        `<c r="N${r}"><v>${c.percentual_medido || 0}</v></c>` +
+        `<c r="O${r}" t="inlineStr"><is><t>${escapeXml(distratoTxt)}</t></is></c>` +
+      `</row>`;
+    });
+    sheet3Xml = sheet3Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${ctRows}$3`);
+    zip.file('xl/worksheets/sheet3.xml', sheet3Xml);
+  }
 
-   <Row>
-    <Cell><Data ss:Type="String">% Orçamento Contratado:</Data></Cell>
-    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${kpis.percentualContratado}</Data></Cell>
-    <Cell><Data ss:Type="String">Total Efetivamente Pago:</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${kpis.totalPago}</Data></Cell>
-   </Row>
+  // 7. Preencher tbMedicoes (sheet4.xml)
+  const sheet4File = zip.file('xl/worksheets/sheet4.xml');
+  if (sheet4File) {
+    let sheet4Xml = await sheet4File.async('string');
+    const contratoCategoriaMap = new Map<string, string>();
+    contratos.forEach((c) => {
+      contratoCategoriaMap.set(c.id, c.categoria || 'Projeto');
+    });
 
-   <Row>
-    <Cell><Data ss:Type="String">Total Contratos Ativos:</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="Number">${contratos.filter(c => c.status !== 'Distratado').length}</Data></Cell>
-    <Cell><Data ss:Type="String">Total Medido Pendente de Quitação:</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${kpis.totalMedidoPendente}</Data></Cell>
-   </Row>
+    let medRows = '';
+    medicoes.forEach((m, idx) => {
+      const r = idx + 2;
+      const cat = contratoCategoriaMap.get(m.contrato_id) || 'Projeto';
+      medRows += `<row r="${r}">` +
+        `<c r="A${r}" t="inlineStr"><is><t>${escapeXml(m.id)}</t></is></c>` +
+        `<c r="B${r}" t="inlineStr"><is><t>${escapeXml(m.contrato_id)}</t></is></c>` +
+        `<c r="C${r}" t="inlineStr"><is><t>${escapeXml(m.empresa)}</t></is></c>` +
+        `<c r="D${r}" t="inlineStr"><is><t>${escapeXml(m.obra)}</t></is></c>` +
+        `<c r="E${r}" t="inlineStr"><is><t>${escapeXml(m.etapa)}</t></is></c>` +
+        `<c r="F${r}"><v>${m.percentual || 0}</v></c>` +
+        `<c r="G${r}"><v>${m.valor_medicao || 0}</v></c>` +
+        `<c r="H${r}" t="inlineStr"><is><t>${formatDateBR(m.data_prevista)}</t></is></c>` +
+        `<c r="I${r}" t="inlineStr"><is><t>${formatDateBR(m.data_medicao)}</t></is></c>` +
+        `<c r="J${r}" t="inlineStr"><is><t>${escapeXml(m.mes_competencia || '-')}</t></is></c>` +
+        `<c r="K${r}" t="inlineStr"><is><t>${escapeXml(m.status)}</t></is></c>` +
+        `<c r="L${r}" t="inlineStr"><is><t>${escapeXml(m.nf || '-')}</t></is></c>` +
+        `<c r="M${r}" t="inlineStr"><is><t>${formatDateBR(m.data_pagamento)}</t></is></c>` +
+        `<c r="N${r}" t="inlineStr"><is><t>${escapeXml(cat)}</t></is></c>` +
+      `</row>`;
+    });
+    sheet4Xml = sheet4Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${medRows}$3`);
+    zip.file('xl/worksheets/sheet4.xml', sheet4Xml);
+  }
 
-   <Row>
-    <Cell><Data ss:Type="String">Contratos Distratados:</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="Number">${contratos.filter(c => c.status === 'Distratado').length}</Data></Cell>
-    <Cell><Data ss:Type="String">Medições em Atraso (Vencidas):</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalEmAtraso}</Data></Cell>
-   </Row>
+  // 8. Preencher tbAditivos (sheet5.xml)
+  const sheet5File = zip.file('xl/worksheets/sheet5.xml');
+  if (sheet5File) {
+    let sheet5Xml = await sheet5File.async('string');
+    let aditRows = '';
+    todosAditivos.forEach((a, idx) => {
+      const r = idx + 2;
+      aditRows += `<row r="${r}">` +
+        `<c r="A${r}" t="inlineStr"><is><t>${escapeXml(a.contrato_id)}</t></is></c>` +
+        `<c r="B${r}" t="inlineStr"><is><t>${escapeXml(a.empresa)}</t></is></c>` +
+        `<c r="C${r}" t="inlineStr"><is><t>${escapeXml(a.obra)}</t></is></c>` +
+        `<c r="D${r}"><v>${a.numero}</v></c>` +
+        `<c r="E${r}" t="inlineStr"><is><t>${formatDateBR(a.data)}</t></is></c>` +
+        `<c r="F${r}" t="inlineStr"><is><t>${escapeXml(a.tipo)}</t></is></c>` +
+        `<c r="G${r}"><v>${a.valor || 0}</v></c>` +
+        `<c r="H${r}" t="inlineStr"><is><t>${formatDateBR(a.novo_prazo) || '-'}</t></is></c>` +
+        `<c r="I${r}" t="inlineStr"><is><t>${escapeXml(a.descricao)}</t></is></c>` +
+      `</row>`;
+    });
+    sheet5Xml = sheet5Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${aditRows}$3`);
+    zip.file('xl/worksheets/sheet5.xml', sheet5Xml);
+  }
 
-   <Row ss:Height="15"/>
-   <Row>
-    <Cell ss:MergeAcross="3" ss:StyleID="SubHeader"><Data ss:Type="String">DIVISÃO POR CATEGORIA (CONTRATADO)</Data></Cell>
-   </Row>
-   <Row>
-    <Cell><Data ss:Type="String">Projetos Técnicos / Executivos:</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalProjetosContratado}</Data></Cell>
-    <Cell><Data ss:Type="String">Legalização &amp; Taxas:</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${kpis.totalLegalizacaoContratado}</Data></Cell>
-   </Row>
-  </Table>
- </Worksheet>
+  // 9. Preencher tbCurvaS (sheet6.xml)
+  const sheet6File = zip.file('xl/worksheets/sheet6.xml');
+  if (sheet6File) {
+    let sheet6Xml = await sheet6File.async('string');
+    let curvaRows = '';
+    curvaPontos.forEach((p, idx) => {
+      const r = idx + 2;
+      curvaRows += `<row r="${r}">` +
+        `<c r="A${r}" t="inlineStr"><is><t>${escapeXml(p.mes)}</t></is></c>` +
+        `<c r="B${r}" t="inlineStr"><is><t>${escapeXml(p.mesFormatado)}</t></is></c>` +
+        `<c r="C${r}"><v>${p.previsto || 0}</v></c>` +
+        `<c r="D${r}"><v>${p.realizado || 0}</v></c>` +
+        `<c r="E${r}"><v>${p.total || 0}</v></c>` +
+        `<c r="F${r}"><v>${p.acumuladoPrevisto || 0}</v></c>` +
+        `<c r="G${r}"><v>${p.acumuladoRealizado || 0}</v></c>` +
+        `<c r="H${r}"><v>${p.acumuladoTotal || 0}</v></c>` +
+      `</row>`;
+    });
+    sheet6Xml = sheet6Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${curvaRows}$3`);
+    zip.file('xl/worksheets/sheet6.xml', sheet6Xml);
+  }
 
- <!-- 2. ABA CONTRATOS -->
- <Worksheet ss:Name="tbContratos">
-  <Table ss:DefaultRowHeight="18">
-   <Column ss:Width="80"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="100"/>
-   <Column ss:Width="200"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="150"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="110"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="220"/>
+  // 10. Preencher tbObras (sheet7.xml)
+  const sheet7File = zip.file('xl/worksheets/sheet7.xml');
+  if (sheet7File) {
+    let sheet7Xml = await sheet7File.async('string');
+    let obrasRows = `<row r="2"><c r="A2" t="inlineStr"><is><t>TODAS</t></is></c><c r="B2" t="inlineStr"><is><t>Todas as Obras Consolidadas</t></is></c></row>`;
+    let r = 3;
+    obrasMap.forEach((nome, codigo) => {
+      obrasRows += `<row r="${r}"><c r="A${r}" t="inlineStr"><is><t>${escapeXml(codigo)}</t></is></c><c r="B${r}" t="inlineStr"><is><t>${escapeXml(nome)}</t></is></c></row>`;
+      r++;
+    });
+    sheet7Xml = sheet7Xml.replace(/(<row r="1"[\s\S]*?<\/row>)([\s\S]*?)(<\/sheetData>)/, `$1${obrasRows}$3`);
+    zip.file('xl/worksheets/sheet7.xml', sheet7Xml);
+  }
 
-   <Row ss:Height="24">
-    <Cell ss:StyleID="Header"><Data ss:Type="String">ID</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Categoria</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Nº Sienge</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Empresa / Fornecedor</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Obra</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Disciplina</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Subdisciplina</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Original</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Total Aditivos</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Vigente</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Medido</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Saldo a Medir</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">% Medido</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Detalhes Distrato / Obs</Data></Cell>
-   </Row>
+  // 11. Gerar e disparar o download do arquivo .xlsx
+  const blob = await zip.generateAsync({
+    type: 'blob',
+    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
 
-   ${contratos.map((c) => {
-     const statusStyle = c.status === 'Distratado' ? 'BadgeDistrato' : 'BadgeAtivo';
-     const distratoTxt = c.distrato
-       ? `Distratado em ${formatDateBR(c.distrato.data)}: ${c.distrato.motivo}${c.distrato.observacoes ? ` (${c.distrato.observacoes})` : ''}`
-       : '';
-
-     return `
-   <Row>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(c.id)}</Data></Cell>
-    <Cell ss:StyleID="${statusStyle}"><Data ss:Type="String">${escapeXml(c.status || 'Ativo')}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(c.categoria || 'Projeto')}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(c.num_sienge || '-')}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(c.empresa)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(c.obra)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(c.disciplina)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(c.subdisciplina)}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${c.valor_original ?? c.valor_contrato}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${c.valor_aditivos || 0}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${c.valor_contrato}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${c.valor_medido}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${c.saldo_a_medir}</Data></Cell>
-    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${c.percentual_medido || 0}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(distratoTxt)}</Data></Cell>
-   </Row>`;
-   }).join('')}
-  </Table>
- </Worksheet>
-
- <!-- 3. ABA TERMOS ADITIVOS -->
- <Worksheet ss:Name="tbAditivos">
-  <Table ss:DefaultRowHeight="18">
-   <Column ss:Width="90"/>
-   <Column ss:Width="200"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="100"/>
-   <Column ss:Width="300"/>
-
-   <Row ss:Height="24">
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Contrato ID</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Empresa</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Obra</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Nº Aditivo</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Data</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Tipo</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Aditivo</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Novo Prazo</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Justificativa / Escopo</Data></Cell>
-   </Row>
-
-   ${todosAditivos.length === 0 ? `
-   <Row>
-    <Cell ss:MergeAcross="8" ss:StyleID="Center"><Data ss:Type="String">Nenhum termo aditivo cadastrado.</Data></Cell>
-   </Row>` : todosAditivos.map(a => `
-   <Row>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(a.contrato_id)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(a.empresa)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(a.obra)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="Number">${a.numero}</Data></Cell>
-    <Cell ss:StyleID="Date"><Data ss:Type="String">${formatDateBR(a.data)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(a.tipo)}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${a.valor}</Data></Cell>
-    <Cell ss:StyleID="Date"><Data ss:Type="String">${formatDateBR(a.novo_prazo) || '-'}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(a.descricao)}</Data></Cell>
-   </Row>`).join('')}
-  </Table>
- </Worksheet>
-
- <!-- 4. ABA MEDIÇÕES -->
- <Worksheet ss:Name="tbMedicoes">
-  <Table ss:DefaultRowHeight="18">
-   <Column ss:Width="80"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="200"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="220"/>
-   <Column ss:Width="70"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="80"/>
-   <Column ss:Width="100"/>
-
-   <Row ss:Height="24">
-    <Cell ss:StyleID="Header"><Data ss:Type="String">ID Medição</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Contrato</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Empresa</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Obra</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Etapa / Descrição</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">% Etapa</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Medição</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Data Prevista</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Data Medição</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Mês Comp.</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">NF</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Data Pagto</Data></Cell>
-   </Row>
-
-   ${medicoes.map((m) => `
-   <Row>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.id)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.contrato_id)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(m.empresa)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.obra)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(m.etapa)}</Data></Cell>
-    <Cell ss:StyleID="Percent"><Data ss:Type="Number">${m.percentual}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${m.valor_medicao}</Data></Cell>
-    <Cell ss:StyleID="Date"><Data ss:Type="String">${formatDateBR(m.data_prevista)}</Data></Cell>
-    <Cell ss:StyleID="Date"><Data ss:Type="String">${formatDateBR(m.data_medicao)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.mes_competencia || '-')}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.status)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(m.nf || '-')}</Data></Cell>
-    <Cell ss:StyleID="Date"><Data ss:Type="String">${formatDateBR(m.data_pagamento)}</Data></Cell>
-   </Row>`).join('')}
-  </Table>
- </Worksheet>
-
- <!-- 5. ABA ORÇAMENTO BASE -->
- <Worksheet ss:Name="tbOrcamentoBase">
-  <Table ss:DefaultRowHeight="18">
-   <Column ss:Width="70"/>
-   <Column ss:Width="160"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="140"/>
-   <Column ss:Width="150"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="120"/>
-   <Column ss:Width="100"/>
-
-   <Row ss:Height="24">
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Obra</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Nome Empreendimento</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Categoria</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Disciplina</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Subdisciplina</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Orçamento Base</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Contratado</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Saldo a Contratar</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Valor Medido</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Saldo Medição</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Status</Data></Cell>
-   </Row>
-
-   ${orcamentos.map((o) => `
-   <Row>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(o.obra)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(o.nome_obra || o.obra)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(o.categoria || 'Projeto')}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(o.disciplina)}</Data></Cell>
-    <Cell><Data ss:Type="String">${escapeXml(o.subdisciplina)}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${o.orcamento_base}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${o.valor_contratado}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${o.saldo_a_contratar}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${o.valor_medido}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${o.saldo_medicao}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(o.status)}</Data></Cell>
-   </Row>`).join('')}
-  </Table>
- </Worksheet>
-
- <!-- 6. ABA CURVA DESEMBOLSO (CURVA S) -->
- <Worksheet ss:Name="CurvaDesembolso_S">
-  <Table ss:DefaultRowHeight="18">
-   <Column ss:Width="80"/>
-   <Column ss:Width="90"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="130"/>
-   <Column ss:Width="140"/>
-   <Column ss:Width="140"/>
-
-   <Row ss:Height="24">
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Mês Comp.</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Mês Extenso</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Previsto Mensal</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Realizado Mensal</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Total Mês</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Acumulado Previsto</Data></Cell>
-    <Cell ss:StyleID="Header"><Data ss:Type="String">Acumulado Realizado</Data></Cell>
-   </Row>
-
-   ${curvaPontos.map((p) => `
-   <Row>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(p.mes)}</Data></Cell>
-    <Cell ss:StyleID="Center"><Data ss:Type="String">${escapeXml(p.mesFormatado)}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${p.previsto}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${p.realizado}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${p.total}</Data></Cell>
-    <Cell ss:StyleID="Currency"><Data ss:Type="Number">${p.acumuladoPrevisto}</Data></Cell>
-    <Cell ss:StyleID="CurrencyBold"><Data ss:Type="Number">${p.acumuladoRealizado}</Data></Cell>
-   </Row>`).join('')}
-  </Table>
- </Worksheet>
-</Workbook>`;
-
-  const blob = new Blob([xmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', nomeArquivo);
+  link.setAttribute('download', nomeArquivo.endsWith('.xlsx') ? nomeArquivo : `${nomeArquivo}.xlsx`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
