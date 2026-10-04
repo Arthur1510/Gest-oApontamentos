@@ -107,13 +107,27 @@ export function OrcamentoDashboard({
     );
   }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam, criterioCurva]);
 
-  const countProjetos = useMemo(() => contratos.filter((c) => c.categoria === 'Projeto').length, [contratos]);
-  const countLegalizacao = useMemo(() => contratos.filter((c) => c.categoria === 'Legalização').length, [contratos]);
+  // Base de contratos filtrada por critérios exceto categoria
+  const contratosBase = useMemo(() => {
+    return contratos.filter((c) => {
+      if (filtroObra && c.obra !== filtroObra) return false;
+      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+      return true;
+    });
+  }, [contratos, filtroObra, filtroFornecedor]);
+
+  const countTodos = contratosBase.length;
+  const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
+  const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
 
   // Distribuição por Disciplina (Orçamento Base vs Contratado)
   const dadosDisciplinas = useMemo(() => {
     const map: Record<string, { base: number; contratado: number; medido: number }> = {};
-    const filteredOrc = filtroObra ? orcamentos.filter((o) => o.obra === filtroObra) : orcamentos;
+    const filteredOrc = orcamentos.filter((o) => {
+      if (filtroObra && o.obra !== filtroObra) return false;
+      if (catParam && o.categoria !== catParam) return false;
+      return true;
+    });
 
     for (const o of filteredOrc) {
       const disc = o.disciplina || 'OUTROS';
@@ -134,11 +148,22 @@ export function OrcamentoDashboard({
       }))
       .sort((a, b) => b.base - a.base)
       .slice(0, 8); // Top 8
-  }, [orcamentos, filtroObra]);
+  }, [orcamentos, filtroObra, catParam]);
 
   // Distribuição por Status das Medições
   const dadosStatusMedicoes = useMemo(() => {
-    const filteredMed = filtroObra ? medicoes.filter((m) => m.obra === filtroObra) : medicoes;
+    const catPorContrato: Record<string, string> = {};
+    contratos.forEach((c) => {
+      catPorContrato[c.id] = c.categoria || 'Projeto';
+    });
+
+    const filteredMed = medicoes.filter((m) => {
+      if (filtroObra && m.obra !== filtroObra) return false;
+      if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
+      if (catParam && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== catParam) return false;
+      return true;
+    });
+
     const map: Record<string, { count: number; valor: number }> = {
       'Pago': { count: 0, valor: 0 },
       'A Pagar': { count: 0, valor: 0 },
@@ -162,7 +187,7 @@ export function OrcamentoDashboard({
         count: dados.count,
         value: dados.valor,
       }));
-  }, [medicoes, filtroObra]);
+  }, [medicoes, contratos, filtroObra, filtroFornecedor, catParam]);
 
   const PIE_COLORS: Record<string, string> = {
     'Pago': '#10b981', // emerald
@@ -221,7 +246,7 @@ export function OrcamentoDashboard({
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              Todos ({contratos.length})
+              Todos ({countTodos})
             </button>
             <button
               type="button"

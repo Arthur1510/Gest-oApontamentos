@@ -101,25 +101,12 @@ export function OrcamentoBaseTable({
     );
   };
 
-  const countProjetos = useMemo(() => orcamentos.filter((o) => o.categoria === 'Projeto').length, [orcamentos]);
-  const countLegalizacao = useMemo(() => orcamentos.filter((o) => o.categoria === 'Legalização').length, [orcamentos]);
-
-  // Lista única de disciplinas
-  const disciplinasUnicas = useMemo(() => {
-    const set = new Set<string>();
-    orcamentos.forEach((o) => {
-      if (o.disciplina) set.add(o.disciplina);
-    });
-    return Array.from(set).sort();
-  }, [orcamentos]);
-
-  // Filtros aplicados
-  const orcamentosFiltrados = useMemo(() => {
+  // Base de orçamentos filtrada por critérios exceto categoria
+  const orcamentosBase = useMemo(() => {
     return orcamentos.filter((item) => {
       if (filtroObra && item.obra !== filtroObra) return false;
       if (filtroStatus && item.status !== filtroStatus) return false;
       if (filtroDisciplina && item.disciplina !== filtroDisciplina) return false;
-      if (filtroCategoria !== 'Todos' && item.categoria !== filtroCategoria) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -131,7 +118,27 @@ export function OrcamentoBaseTable({
 
       return true;
     });
-  }, [orcamentos, filtroObra, filtroStatus, filtroDisciplina, filtroCategoria, searchQuery]);
+  }, [orcamentos, filtroObra, filtroStatus, filtroDisciplina, searchQuery]);
+
+  const countTodos = orcamentosBase.length;
+  const countProjetos = useMemo(() => orcamentosBase.filter((o) => o.categoria === 'Projeto').length, [orcamentosBase]);
+  const countLegalizacao = useMemo(() => orcamentosBase.filter((o) => o.categoria === 'Legalização').length, [orcamentosBase]);
+
+  // Lista única de disciplinas (considera filtro de obra caso selecionado)
+  const disciplinasUnicas = useMemo(() => {
+    const set = new Set<string>();
+    const list = filtroObra ? orcamentos.filter((o) => o.obra === filtroObra) : orcamentos;
+    list.forEach((o) => {
+      if (o.disciplina) set.add(o.disciplina);
+    });
+    return Array.from(set).sort();
+  }, [orcamentos, filtroObra]);
+
+  // Filtros aplicados incluindo categoria
+  const orcamentosFiltrados = useMemo(() => {
+    if (filtroCategoria === 'Todos') return orcamentosBase;
+    return orcamentosBase.filter((item) => item.categoria === filtroCategoria);
+  }, [orcamentosBase, filtroCategoria]);
 
   // Lista ordenada: padrão hierárquico (Obra ➔ Disciplina ➔ Subdisciplina) ou pela coluna ativa
   const orcamentosOrdenados = useMemo(() => {
@@ -296,7 +303,7 @@ export function OrcamentoBaseTable({
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              Todos ({orcamentos.length})
+              Todos ({countTodos})
             </button>
             <button
               type="button"

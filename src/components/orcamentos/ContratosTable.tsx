@@ -73,16 +73,11 @@ export function ContratosTable({
     return map;
   }, [medicoes]);
 
-  const countProjetos = useMemo(() => contratos.filter((c) => c.categoria === 'Projeto').length, [contratos]);
-  const countLegalizacao = useMemo(() => contratos.filter((c) => c.categoria === 'Legalização').length, [contratos]);
-  const countDistratados = useMemo(() => contratos.filter((c) => c.status === 'Distratado').length, [contratos]);
-
-  // Contratos filtrados
-  const contratosFiltrados = useMemo(() => {
+  // Base de contratos filtrada por critérios exceto categoria
+  const contratosBase = useMemo(() => {
     return contratos.filter((c) => {
       if (filtroObra && c.obra !== filtroObra) return false;
       if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-      if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
       if (filtroStatus && (c.status || 'Ativo') !== filtroStatus) return false;
 
       if (searchQuery.trim()) {
@@ -97,7 +92,24 @@ export function ContratosTable({
 
       return true;
     });
-  }, [contratos, filtroObra, filtroFornecedor, filtroCategoria, filtroStatus, searchQuery]);
+  }, [contratos, filtroObra, filtroFornecedor, filtroStatus, searchQuery]);
+
+  const countTodos = contratosBase.length;
+  const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
+  const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
+  const countDistratados = useMemo(() => {
+    return contratos.filter((c) => {
+      if (filtroObra && c.obra !== filtroObra) return false;
+      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+      return c.status === 'Distratado';
+    }).length;
+  }, [contratos, filtroObra, filtroFornecedor]);
+
+  // Contratos filtrados (aplicando categoria)
+  const contratosFiltrados = useMemo(() => {
+    if (filtroCategoria === 'Todos') return contratosBase;
+    return contratosBase.filter((c) => c.categoria === filtroCategoria);
+  }, [contratosBase, filtroCategoria]);
 
   // Totais
   const totais = useMemo(() => {
@@ -188,7 +200,7 @@ export function ContratosTable({
                     : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
                 }`}
               >
-                Todos ({contratos.length})
+                Todos ({countTodos})
               </button>
               <button
                 type="button"

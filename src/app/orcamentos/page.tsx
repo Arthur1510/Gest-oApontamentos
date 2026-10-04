@@ -1060,6 +1060,27 @@ export default function OrcamentosPage() {
     return calculateCurvaDesembolso(medicoes, filtroObra || null, filtroFornecedor || null);
   }, [medicoes, filtroObra, filtroFornecedor]);
 
+  // Contagens reativas das abas com base no filtro de obra ativo
+  const countOrcamentosTab = useMemo(() => {
+    if (!filtroObra) return orcamentosCalculados.length;
+    return orcamentosCalculados.filter((o) => o.obra === filtroObra).length;
+  }, [orcamentosCalculados, filtroObra]);
+
+  const countContratosTab = useMemo(() => {
+    if (!filtroObra) return contratosRecalculados.length;
+    return contratosRecalculados.filter((c) => c.obra === filtroObra).length;
+  }, [contratosRecalculados, filtroObra]);
+
+  const countMedicoesTab = useMemo(() => {
+    if (!filtroObra) return medicoes.length;
+    return medicoes.filter((m) => m.obra === filtroObra).length;
+  }, [medicoes, filtroObra]);
+
+  const countMedicoesEmAtrasoTab = useMemo(() => {
+    const list = filtroObra ? medicoes.filter((m) => m.obra === filtroObra) : medicoes;
+    return list.filter((m) => isMedicaoEmAtraso(m)).length;
+  }, [medicoes, filtroObra]);
+
   // Exportação consolidada para Excel com Dashboard & 6 Planilhas
   const handleExportarExcelConsolidado = useCallback(() => {
     const kpis = calculateKpis(orcamentosCalculados, contratosRecalculados, medicoes, filtroObra || null, null);
@@ -1158,7 +1179,7 @@ export default function OrcamentosPage() {
           }`}
         >
           <DollarSign className="h-4 w-4" />
-          Orçamento Base ({orcamentosCalculados.length})
+          Orçamento Base ({countOrcamentosTab})
         </button>
 
         <button
@@ -1170,7 +1191,7 @@ export default function OrcamentosPage() {
           }`}
         >
           <Briefcase className="h-4 w-4" />
-          Contratos ({contratosRecalculados.length})
+          Contratos ({countContratosTab})
         </button>
 
         <button
@@ -1182,8 +1203,8 @@ export default function OrcamentosPage() {
           }`}
         >
           <FileCheck className="h-4 w-4" />
-          Medições ({medicoes.length})
-          {medicoes.some((m) => isMedicaoEmAtraso(m)) && (
+          Medições ({countMedicoesTab})
+          {countMedicoesEmAtrasoTab > 0 && (
             <span
               className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
                 activeTab === 'medicoes'
@@ -1192,7 +1213,7 @@ export default function OrcamentosPage() {
               }`}
               title="Medições em atraso"
             >
-              {medicoes.filter((m) => isMedicaoEmAtraso(m)).length}
+              {countMedicoesEmAtrasoTab}
             </span>
           )}
         </button>
