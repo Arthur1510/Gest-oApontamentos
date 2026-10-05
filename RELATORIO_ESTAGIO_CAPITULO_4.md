@@ -116,7 +116,7 @@ O período de estágio supervisionado no setor de engenharia e coordenação de 
 
 As atividades desenvolvidas permitiram cumprir rigorosamente os objetivos estabelecidos no termo de compromisso de estágio:
 1. **Gestão do conhecimento técnico e documental:** Viabilizada pela padronização do ambiente comum de dados e pela análise crítica dos fluxos de entrega de projetos.
-2. **Apoio ao processo de compatibilização:** Consubstanciado no exame detalhado de relatórios de interferências (RSC/ARCIS), inspeção de modelos BIM e mediação de soluções entre arquitetura, estrutura e instalações prediais.
+2. **Apoio ao processo de compatibilização:** Consubstanciado no exame detalhado de relatórios de interferências (RSC), inspeção de modelos BIM e mediação de soluções entre arquitetura, estrutura e instalações prediais.
 3. **Acompanhamento de aprovações legais:** Vivenciado nas interfaces regulatórias junto à Prefeitura Municipal de Uberlândia (PMU), concessionárias de infraestrutura urbana (DMAE e CEMIG) e Corpo de Bombeiros Militar (CBMMG).
 4. **Desenvolvimento de solução tecnológica inovadora:** A concepção e desenvolvimento da ferramenta web de gestão de apontamentos e digestão computacional de laudos técnicos demonstrou como ferramentas contemporâneas de tecnologia e Inteligência Artificial podem ser aplicadas de forma prática e pragmática à engenharia civil, gerando valor real aos processos de gestão.
 

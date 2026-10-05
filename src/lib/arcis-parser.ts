@@ -469,13 +469,13 @@ export async function parseArcisPdfBuffer(buffer: Buffer | Uint8Array | ArrayBuf
       tempImageFile: pages[i].imageFile || null,
       data_criacao_arcis: parseDateToISO(dataCriacao),
       data_ultima_alteracao: parseDateToISO(dtUltima) || parseDateToISO(dataCriacao),
-      numero_relatorio: cleanStr(`RSC_${empreendimento.replace(/\s+/g, '_')}`, 50, 'RSC_ARCIS'),
+      numero_relatorio: cleanStr(`RSC_${empreendimento.replace(/\s+/g, '_')}`, 50, 'RSC'),
       created_at: new Date().toISOString(),
     });
   }
 
   return {
-    empresa: 'Grupo ARCIS - RSC',
+    empresa: 'Relatório RSC',
     cliente,
     empreendimento,
     data_relatorio: dataRelatorio,

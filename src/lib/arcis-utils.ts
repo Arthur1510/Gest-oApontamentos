@@ -96,7 +96,7 @@ export function cleanArcisPdfText(text: string): string {
   if (!text || typeof text !== 'string') return '';
   let res = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 
-  // 1. Correções estruturais de rótulos e cabeçalhos do relatório ARCIS
+  // 1. Correções estruturais de rótulos e cabeçalhos do relatório RSC
   res = res
     .replace(/\bT\s*o\s*t\s*a\s*l\b/gi, 'Total')
     .replace(/\bS\s*e\s*r\s*v\s*i\s*ç\s*o\s*s\b/gi, 'Serviços')
@@ -115,7 +115,7 @@ export function cleanArcisPdfText(text: string): string {
     .replace(/D\s*e\s*s\s*c\s*r\s*i\s*ç\s*ã\s*o/gi, 'Descrição')
     .replace(/S\s*o\s*l\s*u\s*ç\s*ã\s*o/gi, 'Solução');
 
-  // Tipos de conflitos conhecidos da ARCIS
+  // Tipos de conflitos conhecidos do RSC
   res = res
     .replace(/C\s*o\s*n\s*f\s*l\s*i\s*t\s*o\s+N\s*o\s*r\s*m\s*a\s*t\s*i\s*v\s*o/gi, 'Conflito Normativo')
     .replace(/A\s*n\s*á\s*l\s*i\s*s\s*e\s+C\s*r\s*í\s*t\s*i\s*c\s*a\s+I\s*n\s*i\s*c\s*i\s*a\s*l/gi, 'Análise Crítica Inicial')

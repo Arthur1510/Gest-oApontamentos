@@ -143,7 +143,7 @@ export function ArcisConflictDetailModal({
       await onUpdateStatus(conflito.id, selectedStatus, solucaoText, finalUrl);
       onClose();
     } catch (err) {
-      console.error('Erro ao salvar atualização do conflito ARCIS:', err);
+      console.error('Erro ao salvar atualização do conflito RSC:', err);
     } finally {
       setIsSaving(false);
     }
@@ -167,7 +167,7 @@ export function ArcisConflictDetailModal({
           </div>
 
           <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white pt-1">
-            Ficha de Compatibilização Técnica ARCIS
+            Ficha de Compatibilização Técnica RSC
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
             Relatório de Origem: {conflito.numero_relatorio || 'RSC Oficial'} • Empreendimento:{' '}
@@ -255,7 +255,7 @@ export function ArcisConflictDetailModal({
           </div>
         )}
 
-        {/* Descrição Detalhada do Relatório ARCIS */}
+        {/* Descrição Detalhada do Relatório RSC */}
         <div className="space-y-2">
           <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="h-3.5 w-3.5 text-[#00A3C4]" /> Parecer Técnico & Descrição do Conflito:
@@ -265,12 +265,12 @@ export function ArcisConflictDetailModal({
           </div>
         </div>
 
-        {/* QUADRO DEDICADO DE FOTO TÉCNICA ARCIS */}
+        {/* QUADRO DEDICADO DE FOTO TÉCNICA RSC */}
         <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
               <Images className="h-3.5 w-3.5 text-[#00A3C4] dark:text-[#00C4EB]" />
-              Foto Técnica do Conflito ARCIS
+              Foto Técnica do Conflito RSC
             </span>
             <div className="flex items-center gap-2">
               {currentImageUrl && (
@@ -363,7 +363,7 @@ export function ArcisConflictDetailModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="modal-status-select" className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 uppercase tracking-wider">
-                Atualizar Status ARCIS:
+                Atualizar Status RSC:
               </label>
               <SelectNative
                 id="modal-status-select"

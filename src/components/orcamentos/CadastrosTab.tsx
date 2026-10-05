@@ -573,7 +573,7 @@ export function CadastrosTab({
                 <Input
                   value={fornNome}
                   onChange={(e) => setFornNome(e.target.value)}
-                  placeholder="Ex: ARCIS, SOMA..."
+                  placeholder="Ex: RSC, SOMA..."
                   className="text-xs h-9 rounded-xl"
                   required
                 />

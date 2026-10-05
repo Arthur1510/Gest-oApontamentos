@@ -52,7 +52,7 @@ export function ArcisConflictCard({
   return (
     <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 border-slate-200/90 dark:border-[#0B384D] dark:bg-[#072B3B] group flex flex-col justify-between rounded-2xl bg-white">
       <div>
-        {/* QUADRO DEDICADO DE IMAGEM TÉCNICA ARCIS */}
+        {/* QUADRO DEDICADO DE IMAGEM TÉCNICA RSC */}
         {conflictImage ? (
           <div
             onClick={() => onViewDetails(conflito)}
@@ -131,7 +131,7 @@ export function ArcisConflictCard({
               <ImageIcon className="h-5 w-5" />
             </div>
             <span className="text-[10.5px] font-semibold text-slate-400 dark:text-slate-400 mt-1.5">
-              Foto técnica do relatório ARCIS
+              Foto técnica do relatório RSC
             </span>
           </div>
         )}
@@ -245,7 +245,7 @@ export function ArcisConflictCard({
           onClick={() => onViewDetails(conflito)}
           className="text-xs font-bold text-[#00A3C4] dark:text-[#00C4EB] hover:bg-[#00A3C4]/10 h-8 gap-1.5 cursor-pointer"
         >
-          <Eye className="h-3.5 w-3.5" /> Ver Ficha ARCIS
+          <Eye className="h-3.5 w-3.5" /> Ver Ficha RSC
         </Button>
 
         <div className="flex items-center gap-1">
@@ -266,7 +266,7 @@ export function ArcisConflictCard({
               variant="ghost"
               size="icon"
               onClick={() => {
-                if (confirm(`Deseja excluir o conflito ARCIS #${conflito.codigo_conflito}?`)) {
+                if (confirm(`Deseja excluir o conflito RSC #${conflito.codigo_conflito}?`)) {
                   onDelete(conflito.id);
                 }
               }}

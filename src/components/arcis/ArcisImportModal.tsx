@@ -115,7 +115,7 @@ export function ArcisImportModal({
 
   const processFile = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setErrorMsg('Por favor selecione um arquivo de relatório PDF da ARCIS (.pdf).');
+      setErrorMsg('Por favor selecione um arquivo de relatório PDF RSC (.pdf).');
       return;
     }
 
@@ -256,13 +256,13 @@ export function ArcisImportModal({
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-6 space-y-6">
         <DialogHeader className="border-b border-slate-200 dark:border-[#0B384D] pb-4 space-y-1">
           <div className="flex items-center gap-2 text-xs font-black text-[#00A3C4] dark:text-[#00C4EB] uppercase tracking-wider">
-            <UploadCloud className="h-4 w-4" /> Importador Inteligente ARCIS
+            <UploadCloud className="h-4 w-4" /> Importador Inteligente RSC
           </div>
           <DialogTitle className="text-xl font-black text-[#072B3B] dark:text-white">
             Importar Relatório de Compatibilização (PDF RSC)
           </DialogTitle>
           <DialogDescription className="text-xs text-slate-500 dark:text-slate-400">
-            Carregue o arquivo exportado pela ARCIS (ex: RSC_WCC_CONSTRUTORA_ALTAMIRA_47_20260816.pdf) para extrair todos os conflitos automaticamente.
+            Carregue o arquivo do relatório RSC (ex: RSC_WCC_CONSTRUTORA_ALTAMIRA_47_20260816.pdf) para extrair todos os conflitos automaticamente.
           </DialogDescription>
         </DialogHeader>
 
@@ -295,7 +295,7 @@ export function ArcisImportModal({
                   {isParsing ? 'Processando e lendo páginas do relatório...' : 'Clique para selecionar ou arraste o PDF RSC aqui'}
                 </p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Formatos aceitos: Documentos PDF do padrão Grupo ARCIS
+                  Formatos aceitos: Documentos PDF do padrão RSC
                 </p>
               </div>
             </div>

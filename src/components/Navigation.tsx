@@ -73,7 +73,7 @@ export function Navigation() {
         { href: '/', label: 'Apontamentos', icon: ListFilter },
         { href: '/dashboard', label: 'Dashboard WCC', icon: LayoutDashboard },
         { href: '/relatorios', label: 'Relatórios PDF', icon: FileText },
-        { href: '/arcis', label: 'Módulo ARCIS (RSC)', icon: ShieldAlert },
+        { href: '/arcis', label: 'Módulo RSC', icon: ShieldAlert },
         { href: '/apresentacao', label: 'Resumo', icon: Presentation },
       ],
     },

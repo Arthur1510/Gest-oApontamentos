@@ -138,7 +138,7 @@ export const MOCK_PROJETOS: Projeto[] = [
     id: 'proj-4',
     created_at: new Date(Date.now() - 3600000 * 24 * 10).toISOString(),
     nome: 'ALTAMIRA 47',
-    descricao: 'Empreendimento Residencial WCC - Compatibilização externa por Grupo ARCIS (RSC).',
+    descricao: 'Empreendimento Residencial WCC - Compatibilização externa via Relatório de Solução de Conflitos (RSC).',
     status: 'Ativo',
     pavimentos: [
       'Térreo',
@@ -267,7 +267,7 @@ export const MOCK_APONTAMENTOS: Apontamento[] = [
   },
 ];
 
-// Mock data de Conflitos do Grupo ARCIS (RSC) extraídos fielmente de ALTAMIRA 47
+// Mock data de Conflitos RSC extraídos fielmente de ALTAMIRA 47
 export const MOCK_CONFLITOS_ARCIS: ConflitoArcis[] = [
   {
     id: 'arcis-mock-1',

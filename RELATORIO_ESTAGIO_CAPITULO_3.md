@@ -12,7 +12,7 @@ A gestão desses laudos no fluxo de trabalho tradicional apresentava pontos de a
 Com base nesse diagnóstico, delimitou-se a proposta de estruturar uma ferramenta em ambiente web voltada à centralização das informações de compatibilização. Os requisitos funcionais estabelecidos contemplaram:
 * Cadastro padronizado de empreendimentos e pavimentos da edificação;
 * Registro de ocorrências com vinculação de disciplina de origem, disciplina de destino, tipologia técnica e registros fotográficos da interferência e da solução;
-* Leitura computacional de arquivos de compatibilização externos no padrão ARCIS (RSC);
+* Leitura computacional de arquivos de compatibilização externos no padrão RSC;
 * Consolidação de métricas em painel gráfico (dashboard) para acompanhamento da taxa de resolução;
 * Módulo de projeção em tela cheia voltado à condução de reuniões (desenvolvido como protótipo funcional para etapas subsequentes);
 * Emissão de relatórios técnicos com diagramação em formato A4.
@@ -44,7 +44,7 @@ flowchart TD
 
     subgraph Aplicacao ["Aplicação Web (Vercel)"]
         F1["Triagem de Apontamentos (Em Teste)"]
-        F2["Módulo ARCIS / Parser PDF (Em Teste)"]
+        F2["Módulo RSC / Parser PDF (Em Teste)"]
         F3["Dashboard de Indicadores (Em Teste)"]
         F4["Apresentação de Slides (Proposta Futura)"]
         F5["Relatórios Técnicos A4 (Em Teste)"]
@@ -83,7 +83,7 @@ A estrutura de dados foi organizada para refletir os parâmetros adotados na rot
 É relevante registrar que a ferramenta encontra-se em **fase de projeto-piloto e implantação gradual na construtora**. O sistema não está disseminado para a totalidade dos empreendimentos da empresa; sua utilização está delimitada a um projeto específico para validação prática dos fluxos e verificação da aderência técnica da solução.
 
 Nesse estágio de teste, os módulos da ferramenta possuem diferentes níveis de maturidade e aplicação na rotina:
-* **Módulos em teste ativo na rotina:** Cadastro e triagem de apontamentos internos, módulo de leitura/importação de relatórios de compatibilização no padrão ARCIS (RSC) e acompanhamento métrico por meio do dashboard de indicadores.
+* **Módulos em teste ativo na rotina:** Cadastro e triagem de apontamentos internos, módulo de leitura/importação de relatórios de compatibilização no padrão RSC e acompanhamento métrico por meio do dashboard de indicadores.
 * **Módulos concebidos para fases futuras de implantação:** O módulo de Apresentação Executiva em formato de slides foi implementado na estrutura do sistema, mas **ainda não é adotado de forma rotineira nas reuniões de coordenação com projetistas**. Sua inclusão no desenvolvimento visou demonstrar a viabilidade técnica da transição do PowerPoint manual para uma solução integrada, constituindo uma proposta de evolução para as próximas etapas de maturação do processo na empresa.
 
 ---
@@ -107,8 +107,8 @@ Ao selecionar um cartão, uma janela modal detalha o histórico do apontamento, 
 *Figura 3.1b – Modal de inspeção técnica contendo imagem da interferência em planta e campos para inserção da diretriz adotada.*  
 *Fonte: Dados da pesquisa capturados via automação Playwright (2026).*
 
-### 3.5.2 Módulo ARCIS / Ingestão de Relatórios de Compatibilização (Em Uso Piloto)
-Este módulo foi desenvolvido para testar a integração computacional com laudos de compatibilização externos (padrão Grupo ARCIS / RSC), frequentemente recebidos em arquivos PDF com dezenas de páginas.
+### 3.5.2 Módulo RSC / Ingestão de Relatórios de Compatibilização (Em Uso Piloto)
+Este módulo foi desenvolvido para testar a integração computacional com laudos de compatibilização externos (padrão RSC), frequentemente recebidos em arquivos PDF com dezenas de páginas.
 
 O procedimento baseia-se na extração automatizada de dados:
 1. O operador anexa o arquivo PDF do relatório na interface web.
@@ -119,7 +119,7 @@ O procedimento baseia-se na extração automatizada de dados:
 Esse teste demonstrou a viabilidade de eliminar a transcrição manual de laudos, reduzindo o tempo de entrada dos dados de horas para poucos minutos de processamento digital.
 
 ![Figura 3.2: Módulo de Gestão de Conflitos e Ingestão de Relatórios RSC](figuras_relatorio/figura_4_2_modulo_rsc_arcis.png)  
-*Figura 3.2 – Módulo de controle de conflitos do laudo RSC (Grupo ARCIS) com dados e imagens extraídos de PDF.*  
+*Figura 3.2 – Módulo de controle de conflitos do laudo RSC com dados e imagens extraídos de PDF.*  
 *Fonte: Dados da pesquisa capturados via automação Playwright (2026).*
 
 ### 3.5.3 Módulo de Apresentação Executiva em Slides (Proposta Funcional em Validação)

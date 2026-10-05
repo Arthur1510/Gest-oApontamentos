@@ -74,8 +74,8 @@ async function run() {
     await page.keyboard.press('Escape');
     await page.waitForTimeout(800);
 
-    // 3. Módulo ARCIS / Conflitos RSC (Tema Claro)
-    console.log('3. Acessando Módulo ARCIS / Conflitos RSC...');
+    // 3. Módulo RSC (Tema Claro)
+    console.log('3. Acessando Módulo RSC...');
     await page.goto(`${BASE_URL}/arcis`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
     await ensureLightMode();

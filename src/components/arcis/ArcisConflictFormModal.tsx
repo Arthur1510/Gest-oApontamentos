@@ -59,7 +59,7 @@ export function ArcisConflictFormModal({
   const [descricao, setDescricao] = useState<string>('');
   const [solucao, setSolucao] = useState<string>('');
   
-  // Imagem do Conflito ARCIS
+  // Imagem do Conflito RSC
   const [imagemPreview, setImagemPreview] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrlInput, setImageUrlInput] = useState<string>('');
@@ -231,7 +231,7 @@ export function ArcisConflictFormModal({
           <DialogHeader className="border-b border-slate-200 dark:border-[#0B384D] pb-3">
             <DialogTitle className="text-lg font-black text-[#072B3B] dark:text-white flex items-center gap-2">
               {conflitoParaEditar ? <Edit2 className="h-5 w-5 text-[#00A3C4]" /> : <Plus className="h-5 w-5 text-[#00A3C4]" />}
-              {conflitoParaEditar ? `Editar Conflito ARCIS #${conflitoParaEditar.codigo_conflito}` : 'Novo Conflito ARCIS'}
+              {conflitoParaEditar ? `Editar Conflito RSC #${conflitoParaEditar.codigo_conflito}` : 'Novo Conflito RSC'}
             </DialogTitle>
             <DialogDescription className="text-xs text-slate-500">
               Preencha os campos conforme o padrão do Relatório de Serviços de Compatibilização (RSC).
@@ -272,7 +272,7 @@ export function ArcisConflictFormModal({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 uppercase">
-                Status ARCIS:
+                Status RSC:
               </label>
               <SelectNative
                 value={statusArcis}
@@ -390,7 +390,7 @@ export function ArcisConflictFormModal({
 
           <div>
             <label className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1 uppercase">
-              Descrição / Parecer Técnico ARCIS:
+              Descrição / Parecer Técnico RSC:
             </label>
             <Textarea
               value={descricao}

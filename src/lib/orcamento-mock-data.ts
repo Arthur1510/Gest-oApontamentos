@@ -588,7 +588,7 @@ export const MOCK_FORNECEDORES: Fornecedor[] = [
   {
     "id": "FOR003",
     "id_sienge": "1532",
-    "fornecedor": "ARCIS",
+    "fornecedor": "RSC",
     "tipo": "COMPLEMENTARES"
   },
   {
@@ -2789,7 +2789,7 @@ export const MOCK_CONTRATOS: Contrato[] = [
   {
     "id": "CT038",
     "num_sienge": "488",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "disciplina": "COMPLEMENTARES",
     "subdisciplina": "COMPLEMENTARES",
@@ -2802,7 +2802,7 @@ export const MOCK_CONTRATOS: Contrato[] = [
   {
     "id": "CT039",
     "num_sienge": "528",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "disciplina": "COMPLEMENTARES",
     "subdisciplina": "COMPLEMENTARES",
@@ -2815,7 +2815,7 @@ export const MOCK_CONTRATOS: Contrato[] = [
   {
     "id": "CT040",
     "num_sienge": "598",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "disciplina": "COMPLEMENTARES",
     "subdisciplina": "COMPLEMENTARES",
@@ -2828,7 +2828,7 @@ export const MOCK_CONTRATOS: Contrato[] = [
   {
     "id": "CT041",
     "num_sienge": "505",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "disciplina": "COMPLEMENTARES",
     "subdisciplina": "COMPLEMENTARES",
@@ -2841,7 +2841,7 @@ export const MOCK_CONTRATOS: Contrato[] = [
   {
     "id": "CT042",
     "num_sienge": "608",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "disciplina": "COMPLEMENTARES",
     "subdisciplina": "COMPLEMENTARES",
@@ -4864,7 +4864,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED111",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Entrada",
     "percentual": 0.1,
@@ -4880,7 +4880,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED112",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Análise técnica",
     "percentual": 0.1,
@@ -4896,7 +4896,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED113",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Estudo preliminar",
     "percentual": 0.1,
@@ -4912,7 +4912,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED114",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Anteprojeto",
     "percentual": 0.2,
@@ -4928,7 +4928,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED115",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Pré-executivo",
     "percentual": 0.2,
@@ -4944,7 +4944,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED116",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Executivo",
     "percentual": 0.15,
@@ -4960,7 +4960,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED117",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "Comp ARQxEST",
     "percentual": 0.05,
@@ -4976,7 +4976,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED118",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "1ª Comp geral",
     "percentual": 0.05,
@@ -4992,7 +4992,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED119",
     "contrato_id": "CT039",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "ALT",
     "etapa": "2ª Comp geral",
     "percentual": 0.05,
@@ -5008,7 +5008,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED120",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Entrada",
     "percentual": 0.1,
@@ -5024,7 +5024,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED121",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Análise técnica",
     "percentual": 0.1,
@@ -5040,7 +5040,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED122",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Estudo preliminar",
     "percentual": 0.1,
@@ -5056,7 +5056,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED123",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Anteprojeto",
     "percentual": 0.2,
@@ -5072,7 +5072,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED124",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Pré-executivo",
     "percentual": 0.2,
@@ -5088,7 +5088,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED125",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Executivo",
     "percentual": 0.15,
@@ -5104,7 +5104,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED126",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "Comp ARQxEST",
     "percentual": 0.05,
@@ -5120,7 +5120,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED127",
     "contrato_id": "CT040",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "GAL",
     "etapa": "1ª Comp geral",
     "percentual": 0.05,
@@ -5136,7 +5136,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED128",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "2ª Comp geral",
     "percentual": 0.05,
@@ -5152,7 +5152,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED129",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Entrada",
     "percentual": 0.1,
@@ -5168,7 +5168,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED130",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Análise técnica",
     "percentual": 0.1,
@@ -5184,7 +5184,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED131",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Estudo preliminar",
     "percentual": 0.1,
@@ -5200,7 +5200,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED132",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Anteprojeto",
     "percentual": 0.2,
@@ -5216,7 +5216,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED133",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Pré-executivo",
     "percentual": 0.2,
@@ -5232,7 +5232,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED134",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Executivo",
     "percentual": 0.15,
@@ -5248,7 +5248,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED135",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "Comp ARQxEST",
     "percentual": 0.05,
@@ -5264,7 +5264,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED136",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "1ª Comp geral",
     "percentual": 0.05,
@@ -5280,7 +5280,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED137",
     "contrato_id": "CT038",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "PQSUL",
     "etapa": "2ª Comp geral",
     "percentual": 0.05,
@@ -5296,7 +5296,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED138",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Entrada",
     "percentual": 0.1,
@@ -5312,7 +5312,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED139",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Análise técnica",
     "percentual": 0.1,
@@ -5328,7 +5328,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED140",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Estudo preliminar",
     "percentual": 0.1,
@@ -5344,7 +5344,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED141",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Anteprojeto",
     "percentual": 0.2,
@@ -5360,7 +5360,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED142",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Pré-executivo",
     "percentual": 0.2,
@@ -5376,7 +5376,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED143",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Executivo",
     "percentual": 0.15,
@@ -5392,7 +5392,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED144",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "Comp ARQxEST",
     "percentual": 0.05,
@@ -5408,7 +5408,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED145",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "1ª Comp geral",
     "percentual": 0.05,
@@ -5424,7 +5424,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED146",
     "contrato_id": "CT041",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "UNA",
     "etapa": "2ª Comp geral",
     "percentual": 0.05,
@@ -5440,7 +5440,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED147",
     "contrato_id": "CT042",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "etapa": "Entrada",
     "percentual": 0.441340782122905,
@@ -5456,7 +5456,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED148",
     "contrato_id": "CT042",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "etapa": "Modelagem arq",
     "percentual": 0.09,
@@ -5472,7 +5472,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED149",
     "contrato_id": "CT042",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "etapa": "Modelagem terraplanagem",
     "percentual": 0.13966480446927373,
@@ -5488,7 +5488,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED150",
     "contrato_id": "CT042",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "etapa": "Comp ARQxTER",
     "percentual": 0.13966480446927373,
@@ -5504,7 +5504,7 @@ export const MOCK_MEDICOES: Medicao[] = [
   {
     "id": "MED151",
     "contrato_id": "CT042",
-    "empresa": "ARCIS",
+    "empresa": "RSC",
     "obra": "MON",
     "etapa": "Comp geral - implantação",
     "percentual": 0.13966480446927373,

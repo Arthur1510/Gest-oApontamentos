@@ -2,7 +2,7 @@
 
 Este apêndice reúne os procedimentos operacionais de utilização da ferramenta web desenvolvida para a gestão e triagem de apontamentos de compatibilização de projetos. 
 
-O conteúdo reflete o estado atual da ferramenta, que se encontra em **fase de projeto-piloto em um único empreendimento da construtora**, documentando tanto os módulos sob teste prático ativo (triagem de apontamentos, módulo ARCIS e painel de indicadores) quanto aqueles desenvolvidos como propostas funcionais para etapas subsequentes de implantação (modo de apresentação em slides e relatórios A4).
+O conteúdo reflete o estado atual da ferramenta, que se encontra em **fase de projeto-piloto em um único empreendimento da construtora**, documentando tanto os módulos sob teste prático ativo (triagem de apontamentos, módulo RSC e painel de indicadores) quanto aqueles desenvolvidos como propostas funcionais para etapas subsequentes de implantação (modo de apresentação em slides e relatórios A4).
 
 Todas as interfaces e passos descritos foram registrados a partir da execução de rotina de testes ponta a ponta com o framework **Playwright**, atestando o funcionamento das telas no ambiente de testes.
 
@@ -41,20 +41,20 @@ Para consultar o registro fotográfico ou croqui da interferência e formalizar 
 
 ---
 
-## 3. Procedimento 3: Ingestão Computacional de Laudos no Padrão ARCIS / RSC (Em Teste Piloto)
+## 3. Procedimento 3: Ingestão Computacional de Laudos no Padrão RSC (Em Teste Piloto)
 
-O sistema conta com rotina de leitura computacional para processamento direto de relatórios de compatibilização externos emitidos em formato PDF (padrão Grupo ARCIS / RSC).
+O sistema conta com rotina de leitura computacional para processamento direto de relatórios de compatibilização externos emitidos em formato PDF (padrão RSC).
 
 ![Figura A.3: Módulo de Conflitos RSC com Dados e Imagens Importados](figuras_relatorio/figura_4_2_modulo_rsc_arcis.png)  
 *Figura A.3 – Listagem de conflitos RSC sincronizados com dados e imagens extraídos do documento PDF.*  
 *Fonte: Captura automatizada via Playwright (2026).*
 
-![Figura A.3b: Janela Modal para Importação de Laudo PDF no Padrão ARCIS](figuras_relatorio/figura_4_2b_modal_importacao_rsc.png)  
+![Figura A.3b: Janela Modal para Importação de Laudo PDF no Padrão RSC](figuras_relatorio/figura_4_2b_modal_importacao_rsc.png)  
 *Figura A.3b – Janela de diálogo para seleção ou arrasto do arquivo PDF do laudo RSC para extração computacional.*  
 *Fonte: Captura automatizada via Playwright (2026).*
 
 ### Roteiro de Operação:
-1. Acessar o menu lateral e selecionar a opção **Módulo ARCIS (RSC)**.
+1. Acessar o menu lateral e selecionar a opção **Módulo RSC**.
 2. Clicar no botão **Importar PDF RSC** para abrir a janela modal de transferência (Figura A.3b).
 3. Arraste ou selecione o arquivo PDF emitido pela empresa de compatibilização.
 4. Aguardar o processamento automático:

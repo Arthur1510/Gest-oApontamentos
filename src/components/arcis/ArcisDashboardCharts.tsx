@@ -325,7 +325,7 @@ export function ArcisDashboardCharts({ conflitos }: ArcisDashboardChartsProps) {
     return { rows, tipos: tiposList };
   }, [conflitos]);
 
-  // ========== 6. PROPORÇÃO GERAL DE STATUS ARCIS ==========
+  // ========== 6. PROPORÇÃO GERAL DE STATUS RSC ==========
   const dataStatus = useMemo(() => {
     const counts: Record<string, number> = {};
     conflitosFiltrados.forEach((c) => {
@@ -557,13 +557,13 @@ export function ArcisDashboardCharts({ conflitos }: ArcisDashboardChartsProps) {
           </CardContent>
         </Card>
 
-        {/* GRÁFICO 2: PROPORÇÃO DE STATUS ARCIS */}
+        {/* GRÁFICO 2: PROPORÇÃO DE STATUS RSC */}
         <Card className="lg:col-span-5 dark:bg-[#072B3B] dark:border-[#0B384D]">
           <CardHeader>
             <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
-              <PieIcon className="h-4 w-4" /> Distribuição ARCIS
+              <PieIcon className="h-4 w-4" /> Distribuição RSC
             </div>
-            <CardTitle className="text-lg">Status dos Conflitos ARCIS</CardTitle>
+            <CardTitle className="text-lg">Status dos Conflitos RSC</CardTitle>
             <CardDescription>
               Acompanhamento do fluxo entre Aguardando Solução, Propostas e Encerrados.
             </CardDescription>
@@ -783,7 +783,7 @@ export function ArcisDashboardCharts({ conflitos }: ArcisDashboardChartsProps) {
               <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] text-xs font-bold uppercase tracking-wider">
                 <FolderKanban className="h-4 w-4" /> Segmentação por Empreendimento
               </div>
-              <CardTitle className="text-lg">Conflitos ARCIS por Projeto Cadastrado</CardTitle>
+              <CardTitle className="text-lg">Conflitos RSC por Projeto Cadastrado</CardTitle>
               <CardDescription>
                 Comparativo de pendências técnicas, soluções propostas e conflitos normativos entre os empreendimentos.
               </CardDescription>

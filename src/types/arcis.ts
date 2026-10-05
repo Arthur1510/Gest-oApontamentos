@@ -68,7 +68,7 @@ export interface ConflitoArcis {
 export type NovoConflitoArcis = Omit<ConflitoArcis, 'id' | 'created_at' | 'projetos'>;
 
 export interface RelatorioArcisMetadata {
-  empresa: string; // 'Grupo ARCIS - RSC'
+  empresa: string; // 'Relatório RSC'
   cliente: string; // 'WCC CONSTRUTORA'
   empreendimento: string; // 'ALTAMIRA 47'
   data_relatorio: string; // '16/08/2026'

@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
       return NextResponse.json(
-        { error: 'O arquivo precisa ser um documento PDF do relatório RSC da ARCIS.' },
+        { error: 'O arquivo precisa ser um documento PDF do relatório RSC.' },
         { status: 400 }
       );
     }
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       sizeBytes: file.size,
     });
   } catch (error: unknown) {
-    console.error('Erro ao processar PDF da ARCIS:', error);
+    console.error('Erro ao processar PDF RSC:', error);
     const msg = error instanceof Error ? error.message : 'Falha desconhecida na extração do PDF';
     return NextResponse.json(
       { error: `Erro na leitura do relatório PDF: ${msg}` },

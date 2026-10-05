@@ -451,7 +451,7 @@ export default function ArcisPage() {
           imagens: c.imagens || [],
           data_criacao_arcis: parseDateToISO(c.data_criacao_arcis),
           data_ultima_alteracao: parseDateToISO(c.data_ultima_alteracao) || parseDateToISO(c.data_criacao_arcis) || new Date().toISOString().slice(0, 10),
-          numero_relatorio: cleanStr(c.numero_relatorio, 50, 'RSC_ARCIS'),
+          numero_relatorio: cleanStr(c.numero_relatorio, 50, 'RSC'),
         }));
 
         // 2. Tentar upsert nativo com base na chave (projeto_id, codigo_conflito)
@@ -560,11 +560,11 @@ export default function ArcisPage() {
         {/* Banner de Status Supabase */}
         <SupabaseStatusBanner />
 
-        {/* Cabeçalho Principal do Módulo ARCIS Dinâmico por Projeto */}
+        {/* Cabeçalho Principal do Módulo RSC Dinâmico por Projeto */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-[#0B384D]">
           <div>
             <div className="flex items-center gap-2 text-[#00A3C4] dark:text-[#00C4EB] font-black text-xs uppercase tracking-widest">
-              <ShieldAlert className="h-4 w-4" /> Módulo Anexo • Grupo ARCIS (RSC) • WCC Participações
+              <ShieldAlert className="h-4 w-4" /> Módulo RSC • WCC Participações
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#072B3B] dark:text-white mt-1">
               {textoProjetoDinamico}
@@ -590,7 +590,7 @@ export default function ArcisPage() {
               onClick={handleOpenNew}
               className="text-xs font-bold gap-1.5 shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
             >
-              <Plus className="h-4 w-4" /> Novo Conflito ARCIS
+              <Plus className="h-4 w-4" /> Novo Conflito RSC
             </Button>
           </div>
         </div>
@@ -689,7 +689,7 @@ export default function ArcisPage() {
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Total Conflitos ARCIS
+                Total Conflitos RSC
               </span>
               <div className="p-2 rounded-xl bg-slate-100 dark:bg-[#0B384D] text-[#00A3C4]">
                 <Layers className="h-4 w-4" />
@@ -773,7 +773,7 @@ export default function ArcisPage() {
           </div>
         </div>
 
-        {/* Abas de Navegação do Módulo ARCIS */}
+        {/* Abas de Navegação do Módulo RSC */}
         <div className="flex items-center justify-between border-b border-slate-200 dark:border-[#0B384D] gap-4">
           <div className="flex items-center gap-2">
             <button
@@ -830,7 +830,7 @@ export default function ArcisPage() {
         <div className="bg-white dark:bg-[#072B3B]/90 border border-slate-200/80 dark:border-[#0B384D] rounded-2xl p-4 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-              <Filter className="h-3.5 w-3.5 text-[#00A3C4]" /> Filtros de Análise ARCIS
+              <Filter className="h-3.5 w-3.5 text-[#00A3C4]" /> Filtros de Análise RSC
             </span>
 
             {(selectedProjetos.length > 0 ||
@@ -888,10 +888,10 @@ export default function ArcisPage() {
               />
             </div>
 
-            {/* Status ARCIS */}
+            {/* Status RSC */}
             <div>
               <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase">
-                Status ARCIS:
+                Status RSC:
               </label>
               <MultiSelectFilter
                 label="Status"
@@ -1034,7 +1034,7 @@ export default function ArcisPage() {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-[#00A3C4]" />
-            <p className="text-xs text-slate-500 font-medium">Carregando dados da ARCIS...</p>
+            <p className="text-xs text-slate-500 font-medium">Carregando dados do RSC...</p>
           </div>
         ) : (
           <>

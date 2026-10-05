@@ -35,7 +35,7 @@
   * [3.4 Contexto de Aplicação: Projeto-Piloto em Andamento](#34-contexto-de-aplicação-projeto-piloto-em-andamento)
   * [3.5 Módulos do Sistema e Resultados dos Testes Operacionais](#35-módulos-do-sistema-e-resultados-dos-testes-operacionais)
     * [3.5.1 Módulo de Gestão e Triagem de Apontamentos](#351-módulo-de-gestão-e-triagem-de-apontamentos)
-    * [3.5.2 Módulo ARCIS e Ingestão Automatizada de Relatórios](#352-módulo-arcis-e-ingestão-automatizada-de-relatórios)
+    * [3.5.2 Módulo RSC e Ingestão Automatizada de Relatórios](#352-módulo-rsc-e-ingestão-automatizada-de-relatórios)
     * [3.5.3 Módulo de Apresentação Executiva em Slides](#353-módulo-de-apresentação-executiva-em-slides)
     * [3.5.4 Painel Analítico e Dashboards de Indicadores](#354-painel-analítico-e-dashboards-de-indicadores)
     * [3.5.5 Módulo de Emissão de Relatórios Técnicos](#355-módulo-de-emissão-de-relatórios-técnicos)
@@ -93,7 +93,7 @@ A análise crítica e a compatibilização multidisciplinar de projetos compleme
 
 O acompanhamento dos processos de aprovação legal junto aos órgãos públicos e concessionárias reguladoras locais, envolvendo a montagem de pranchas, conferência de memoriais e acompanhamento de processos perante a Prefeitura Municipal de Uberlândia (PMU), o Departamento Municipal de Água e Esgoto (DMAE), a Companhia Energética de Minas Gerais (CEMIG) e o Corpo de Bombeiros Militar de Minas Gerais (CBMMG).
 
-A concepção, desenvolvimento experimental e validação prática de uma ferramenta computacional aplicada, voltada à centralização, triagem de ocorrências e ingestão automatizada de laudos de compatibilização multidisciplinar (padrão ARCIS/RSC), avaliando seu desempenho em um projeto-piloto da construtora.
+A concepção, desenvolvimento experimental e validação prática de uma ferramenta computacional aplicada, voltada à centralização, triagem de ocorrências e ingestão automatizada de laudos de compatibilização multidisciplinar (padrão RSC), avaliando seu desempenho em um projeto-piloto da construtora.
 
 ---
 
@@ -183,7 +183,7 @@ No que tange ao desempenho térmico (NBR 15575-1 e 15575-4), procedeu-se à veri
 
 ## 2.4 Eixo 4: Compatibilização Multidisciplinar e Resolução de Conflitos
 
-A compatibilização técnica representa a atividade nuclear da coordenação de projetos, permitindo identificar e solucionar incompatibilidades físicas e espaciais entre subsistemas antes do início da mobilização no canteiro de obras (EASTMAN et al., 2014). No contexto específico dos empreendimentos acompanhados, a WCC Participações contratou a empresa de engenharia especializada Grupo ARCIS para elaborar os projetos de instalações prediais complementares e conduzir o processo de compatibilização espacial desses subsistemas com a arquitetura e a estrutura de concreto armado.
+A compatibilização técnica representa a atividade nuclear da coordenação de projetos, permitindo identificar e solucionar incompatibilidades físicas e espaciais entre subsistemas antes do início da mobilização no canteiro de obras (EASTMAN et al., 2014). No contexto específico dos empreendimentos acompanhados, a WCC Participações contratou empresa de engenharia especializada para elaborar os projetos de instalações prediais complementares e conduzir o processo de compatibilização espacial desses subsistemas com a arquitetura e a estrutura de concreto armado.
 
 Nesse modelo operacional, o setor de coordenação de projetos da construtora posiciona-se no centro do fluxo decisório: cabe à equipe interna receber os laudos de interferências emitidos pela consultoria, analisá-los criticamente, convocar os projetistas responsáveis para deliberação técnica, acompanhar a incorporação das soluções acordadas nas revisões subsequentes e assegurar que as versões finais atendam aos padrões executivos da empresa.
 
@@ -202,7 +202,7 @@ Esse diagnóstico operacional consolidou a necessidade de conceber uma ferrament
 
 ## 3.1 Concepção e Levantamento de Requisitos da Solução
 
-O processo de coordenação e compatibilização multidisciplinar demanda a convergência precisa entre arquitetura, estrutura e os múltiplos subsistemas de instalações prediais. Conforme diagnosticado na rotina operacional do estágio, a gestão de interferências (*hard clashes*) e incoerências normativas a partir de documentos estáticos em PDF (como os laudos RSC emitidos pela ARCIS) impunha lentidão à triagem dos dados, fragmentava o histórico das deliberações técnicas e tornava a preparação de reuniões um processo redundante e manual.
+O processo de coordenação e compatibilização multidisciplinar demanda a convergência precisa entre arquitetura, estrutura e os múltiplos subsistemas de instalações prediais. Conforme diagnosticado na rotina operacional do estágio, a gestão de interferências (*hard clashes*) e incoerências normativas a partir de documentos estáticos em PDF (como os laudos RSC) impunha lentidão à triagem dos dados, fragmentava o histórico das deliberações técnicas e tornava a preparação de reuniões um processo redundante e manual.
 
 A partir desse cenário, estruturou-se a proposta de desenvolver uma aplicação em ambiente web voltada a centralizar o controle dessas ocorrências em uma base de dados relacional. Os requisitos funcionais do sistema foram delimitados para permitir o cadastro hierárquico de empreendimentos e pavimentos; o registro padronizado de apontamentos com identificação de disciplinas, níveis de severidade e imagens de evidência; a leitura automatizada dos relatórios técnicos em PDF; a consolidação de métricas em painéis visuais (*dashboards*); a diagramação de relatórios técnicos em formato A4; e a disponibilização de uma interface de projeção em tela cheia orientada à condução de conferências técnicas.
 
@@ -242,7 +242,7 @@ A gestão do ciclo de vida do apontamento estabelece níveis de prioridade (Baix
 É indispensável ressaltar que a ferramenta computacional desenvolvida encontra-se em fase de projeto-piloto e implantação gradual na WCC Participações. A aplicação não foi disseminada para a totalidade dos empreendimentos da empresa; sua operação permanece circunscrita a um projeto residencial vertical em desenvolvimento técnico, visando à validação prática dos fluxos de trabalho e à verificação da aderência da solução à rotina corporativa.
 
 Nesse estágio experimental, os módulos do sistema apresentam diferentes graus de maturidade operacional:
-* Módulos em uso operacional no piloto: O cadastro e triagem manual de apontamentos internos, a ingestão automatizada de laudos no padrão ARCIS (RSC) e a visualização métrica por meio do painel analítico de indicadores operam ativamente no acompanhamento do empreendimento em teste.
+* Módulos em uso operacional no piloto: O cadastro e triagem manual de apontamentos internos, a ingestão automatizada de laudos no padrão RSC e a visualização métrica por meio do painel analítico de indicadores operam ativamente no acompanhamento do empreendimento em teste.
 * Módulos concebidos como propostas funcionais: O módulo de Apresentação Executiva em formato de slides foi plenamente desenvolvido e prototipado no sistema, mas ainda não é adotado de forma rotineira nas reuniões semanais de coordenação com os escritórios projetistas. A inclusão dessa funcionalidade buscou comprovar a viabilidade técnica de superar o uso de apresentações estáticas em PowerPoint, consolidando uma proposta de inovação processual para as fases subsequentes de maturação tecnológica da empresa.
 
 ---
@@ -265,14 +265,14 @@ Ao acionar um cartão informativo, abre-se uma janela modal de detalhamento téc
 *Figura 3.1b – Modal de inspeção técnica contendo imagem da interferência em planta e campos para inserção da diretriz adotada.*  
 *Fonte: Dados da pesquisa capturados via automação Playwright (2026).*
 
-### 3.5.2 Módulo ARCIS e Ingestão Automatizada de Relatórios
+### 3.5.2 Módulo RSC e Ingestão Automatizada de Relatórios
 
-Este módulo foi desenvolvido para automatizar o tratamento de laudos de compatibilização externos no padrão emitido pelo Grupo ARCIS (Relatórios de Solução de Conflitos – RSC). O fluxo computacional inicia-se com o upload do arquivo PDF na plataforma web. Em seguida, uma rotina de processamento textual (*parser*) examina o conteúdo do documento, identificando por meio de expressões estruturadas os códigos de conflito, disciplinas envolvidas, pavimento, localização espacial e o parecer emitido pela consultoria.
+Este módulo foi desenvolvido para automatizar o tratamento de laudos de compatibilização externos de Relatórios de Solução de Conflitos (RSC). O fluxo computacional inicia-se com o upload do arquivo PDF na plataforma web. Em seguida, uma rotina de processamento textual (*parser*) examina o conteúdo do documento, identificando por meio de expressões estruturadas os códigos de conflito, disciplinas envolvidas, pavimento, localização espacial e o parecer emitido pela consultoria.
 
 Concomitantemente, a rotina extrai as figuras gráficas e plantas contidas no documento, converte-as para o formato WebP para redução de consumo de dados e efetua seu upload no repositório de armazenamento em nuvem. As informações textuais e as referências aos arquivos visuais são integradas ao banco PostgreSQL por operações de inserção/atualização (*upsert*), prevenindo duplicidades e convertendo laudos estáticos de dezenas de páginas em registros estruturados e indexados em poucos minutos.
 
 ![Figura 3.2: Módulo de Gestão de Conflitos e Ingestão de Relatórios RSC](figuras_relatorio/figura_4_2_modulo_rsc_arcis.png)  
-*Figura 3.2 – Módulo de controle de conflitos do laudo RSC (Grupo ARCIS) com dados e imagens extraídos de PDF.*  
+*Figura 3.2 – Módulo de controle de conflitos do laudo RSC com dados e imagens extraídos de PDF.*  
 *Fonte: Dados da pesquisa capturados via automação Playwright (2026).*
 
 ### 3.5.3 Módulo de Apresentação Executiva em Slides
