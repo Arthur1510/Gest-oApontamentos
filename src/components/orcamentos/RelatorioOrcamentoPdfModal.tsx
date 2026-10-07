@@ -243,13 +243,22 @@ export function RelatorioOrcamentoPdfModal({
   }, [medicoes, contratos, localFiltroObra, filtroFornecedor, filtroCategoria]);
 
   // 4. Totais da Curva S com foco nos próximos meses
-  const totalPrevistoFuturo = useMemo(() => {
-    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.previsto || 0), 0);
+  const totalPagoCurva = useMemo(() => {
+    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.pago || 0), 0);
   }, [curvaPontosRelatorio]);
 
-  const totalRealizadoCurva = useMemo(() => {
-    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.realizado || 0), 0);
+  const totalAPagarCurva = useMemo(() => {
+    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.aPagar || 0), 0);
   }, [curvaPontosRelatorio]);
+
+  const totalAMedirCurva = useMemo(() => {
+    return curvaPontosRelatorio.reduce((acc, p) => acc + (p.aMedir || 0), 0);
+  }, [curvaPontosRelatorio]);
+
+  const totalRealizadoCurva = totalPagoCurva;
+  const totalPrevistoFuturo = useMemo(() => {
+    return totalAPagarCurva + totalAMedirCurva;
+  }, [totalAPagarCurva, totalAMedirCurva]);
 
   const totalMedicoesValor = useMemo(() => {
     return dadosStatusMedicoes.reduce((acc, d) => acc + d.value, 0);
@@ -601,6 +610,11 @@ export function RelatorioOrcamentoPdfModal({
                         </div>
                         <span className="text-[9px] text-purple-700 block mt-1.5 pt-1.5 border-t border-purple-200/70">
                           Saldo a medir: <strong className="font-mono">{formatCurrency(kpis.saldoAMedir)}</strong>
+                          {kpis.saldoSemCronograma && kpis.saldoSemCronograma > 0 ? (
+                            <span className="text-[8px] text-slate-500 block">
+                              (Prog: {formatCurrencyShort(kpis.totalPrevistoAMedir)} • Sem cronog.: {formatCurrencyShort(kpis.saldoSemCronograma)})
+                            </span>
+                          ) : null}
                         </span>
                       </div>
                     </div>
@@ -659,7 +673,10 @@ export function RelatorioOrcamentoPdfModal({
                           Realizado (Pago): <strong className="text-emerald-700 font-mono">{formatCurrency(totalRealizadoCurva)}</strong>
                         </span>
                         <span className="text-slate-500">
-                          Previsto a Pagar: <strong className="text-amber-600 font-mono">{formatCurrency(totalPrevistoFuturo)}</strong>
+                          A Pagar (Com NF): <strong className="text-indigo-600 font-mono">{formatCurrency(totalAPagarCurva)}</strong>
+                        </span>
+                        <span className="text-slate-500">
+                          A Medir (Sem NF): <strong className="text-amber-600 font-mono">{formatCurrency(totalAMedirCurva)}</strong>
                         </span>
                       </div>
                     </div>
@@ -698,20 +715,29 @@ export function RelatorioOrcamentoPdfModal({
                             <Legend wrapperStyle={{ fontSize: 9.5, paddingTop: 2 }} />
                             <Bar
                               yAxisId="left"
-                              dataKey="realizado"
-                              name="Realizado Mensal (Pago)"
-                              fill="#00A3C4"
+                              dataKey="pago"
+                              name="Desembolso Realizado (Pago)"
+                              fill="#10B981"
                               isAnimationActive={false}
-                              barSize={13}
+                              barSize={11}
                               radius={[3, 3, 0, 0]}
                             />
                             <Bar
                               yAxisId="left"
-                              dataKey="previsto"
-                              name="Previsto Mensal (A pagar)"
+                              dataKey="aPagar"
+                              name="Comprometido a Pagar (Com NF)"
+                              fill="#6366F1"
+                              isAnimationActive={false}
+                              barSize={11}
+                              radius={[3, 3, 0, 0]}
+                            />
+                            <Bar
+                              yAxisId="left"
+                              dataKey="aMedir"
+                              name="Previsto a Medir (Sem NF)"
                               fill="#F59E0B"
                               isAnimationActive={false}
-                              barSize={13}
+                              barSize={11}
                               radius={[3, 3, 0, 0]}
                             />
                             <Line
@@ -882,36 +908,48 @@ export function RelatorioOrcamentoPdfModal({
                       <table className="w-full text-[10px] border-collapse">
                         <thead className="bg-[#072B3B] text-white font-bold">
                           <tr>
-                            <th className="py-2 px-3 text-left w-[24%]">Mês Competência</th>
-                            <th className="py-2 px-3 text-right w-[19%]">Realizado (Pago)</th>
-                            <th className="py-2 px-3 text-right w-[19%] bg-[#00A3C4]/30">Previsto (A pagar)</th>
-                            <th className="py-2 px-3 text-right w-[19%]">Total do Mês</th>
-                            <th className="py-2 px-3 text-right w-[19%]">Acumulado</th>
+                            <th className="py-2 px-3 text-left w-[20%]">Mês Competência / Caixa</th>
+                            <th className="py-2 px-3 text-right w-[16%]">Realizado (Pago)</th>
+                            <th className="py-2 px-3 text-right w-[16%] text-indigo-200">A Pagar (Com NF)</th>
+                            <th className="py-2 px-3 text-right w-[16%] text-amber-200">Previsto (A Medir)</th>
+                            <th className="py-2 px-3 text-right w-[16%]">Total do Mês</th>
+                            <th className="py-2 px-3 text-right w-[16%]">Acumulado</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-mono text-[9.5px]">
                           {curvaPontosRelatorio.map((p) => {
-                            const isFuturo = p.previsto > 0 && (p.realizado === 0 || p.realizado === null);
+                            const temAPagar = (p.aPagar || 0) > 0;
+                            const temAMedir = (p.aMedir || 0) > 0;
                             return (
                               <tr
                                 key={p.mesSortKey || p.mes}
-                                className={isFuturo ? 'bg-amber-50/50 font-semibold' : 'even:bg-slate-50/50'}
+                                className={temAPagar ? 'bg-indigo-50/30 font-semibold' : temAMedir ? 'bg-amber-50/30' : 'even:bg-slate-50/50'}
                               >
                                 <td className="py-1.5 px-3 text-left font-sans font-semibold text-slate-800">
                                   {p.mesFormatado} <span className="font-mono text-[8.5px] text-slate-500">({p.mes})</span>
                                 </td>
                                 <td className="py-1.5 px-3 text-right text-emerald-700 font-semibold">
-                                  {p.realizado > 0 ? formatCurrency(p.realizado) : '-'}
+                                  {(p.pago || 0) > 0 ? formatCurrency(p.pago || 0) : '-'}
                                 </td>
-                                <td className="py-1.5 px-3 text-right bg-amber-50/40 text-amber-700 font-bold">
-                                  {p.previsto > 0 ? (
+                                <td className="py-1.5 px-3 text-right text-indigo-700 font-semibold">
+                                  {(p.aPagar || 0) > 0 ? (
                                     <span className="inline-flex items-center gap-1">
-                                      {formatCurrency(p.previsto)}
-                                      {isFuturo && (
-                                        <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-500 text-white font-sans">
-                                          A PAGAR
-                                        </span>
-                                      )}
+                                      {formatCurrency(p.aPagar || 0)}
+                                      <span className="px-1 py-0.2 rounded text-[7px] font-black bg-indigo-600 text-white font-sans">
+                                        COM NF
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td className="py-1.5 px-3 text-right text-amber-700 font-bold">
+                                  {(p.aMedir || 0) > 0 ? (
+                                    <span className="inline-flex items-center gap-1">
+                                      {formatCurrency(p.aMedir || 0)}
+                                      <span className="px-1 py-0.2 rounded text-[7px] font-black bg-amber-500 text-white font-sans">
+                                        A MEDIR
+                                      </span>
                                     </span>
                                   ) : (
                                     '-'
@@ -930,13 +968,12 @@ export function RelatorioOrcamentoPdfModal({
                         <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-[10px]">
                           <tr>
                             <td className="py-2 px-3 uppercase text-left font-sans">Totais Consolidados:</td>
-                            <td className="py-2 px-3 text-right font-mono text-emerald-700">{formatCurrency(totalRealizadoCurva)}</td>
-                            <td className="py-2 px-3 text-right font-mono text-amber-700 bg-amber-100/50 font-black">
-                              {formatCurrency(totalPrevistoFuturo)}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono text-slate-900 font-black">{formatCurrency(totalRealizadoCurva + totalPrevistoFuturo)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-emerald-700">{formatCurrency(totalPagoCurva)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-indigo-700">{formatCurrency(totalAPagarCurva)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-amber-700">{formatCurrency(totalAMedirCurva)}</td>
+                            <td className="py-2 px-3 text-right font-mono text-slate-900 font-black">{formatCurrency(totalPagoCurva + totalAPagarCurva + totalAMedirCurva)}</td>
                             <td className="py-2 px-3 text-right font-mono text-[#008EA9] font-black">
-                              {formatCurrency(totalRealizadoCurva + totalPrevistoFuturo)}
+                              {formatCurrency(totalPagoCurva + totalAPagarCurva + totalAMedirCurva)}
                             </td>
                           </tr>
                         </tfoot>

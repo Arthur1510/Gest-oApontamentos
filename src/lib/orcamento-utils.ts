@@ -442,11 +442,12 @@ export type CriterioCurvaS = 'competencia' | 'desembolso' | 'medicao';
  */
 export function resolveMesMedicao(
   m: Medicao,
-  criterio: CriterioCurvaS = 'competencia'
+  criterio: CriterioCurvaS = 'desembolso'
 ): string {
   // 1. Se critério for 'desembolso' (Fluxo de Caixa Real)
   if (criterio === 'desembolso') {
-    if (m.status === 'Pago' && m.data_pagamento) {
+    // Se tiver data_pagamento (seja 'Pago' ou 'A Pagar' com quitação agendada), prioriza o mês do desembolso
+    if (m.data_pagamento) {
       const extraido = extractMesAno(m.data_pagamento);
       if (extraido) return extraido;
     }
@@ -480,7 +481,7 @@ export function resolveMesMedicao(
   }
 
   // Fallbacks automáticos se mes_competencia estiver vazio:
-  if (m.status === 'Pago' && m.data_pagamento) {
+  if (m.data_pagamento) {
     const extraido = extractMesAno(m.data_pagamento);
     if (extraido) return extraido;
   }
@@ -509,7 +510,7 @@ export function calculateCurvaDesembolso(
   filtroEmpresa?: string | null,
   contratos?: Contrato[] | null,
   filtroCategoria?: 'Projeto' | 'Legalização' | null,
-  criterio: CriterioCurvaS = 'competencia'
+  criterio: CriterioCurvaS = 'desembolso'
 ): CurvaDesembolsoPonto[] {
   // Mapa de categoria por contrato_id
   const catPorContrato: Record<string, string> = {};
@@ -529,19 +530,48 @@ export function calculateCurvaDesembolso(
     return true;
   });
 
-  const mesMap: Record<string, { previsto: number; realizado: number }> = {};
+  const mesMap: Record<
+    string,
+    { pago: number; aPagar: number; aMedir: number; previsto: number; realizado: number }
+  > = {};
 
   for (const m of filtered) {
     const mesKey = resolveMesMedicao(m, criterio);
     if (!mesMap[mesKey]) {
-      mesMap[mesKey] = { previsto: 0, realizado: 0 };
+      mesMap[mesKey] = { pago: 0, aPagar: 0, aMedir: 0, previsto: 0, realizado: 0 };
     }
 
-    if (m.status === 'Pago' || m.status === 'Medido' || m.status === 'A Pagar') {
-      mesMap[mesKey].realizado += m.valor_medicao;
+    const valor = Number(m.valor_medicao) || 0;
+
+    // Classificação por status
+    if (m.status === 'Pago') {
+      mesMap[mesKey].pago += valor;
+    } else if (m.status === 'Medido' || m.status === 'A Pagar') {
+      // Medido / A Pagar: serviço atestado/com nota fiscal emitida, aguardando quitação
+      mesMap[mesKey].aPagar += valor;
     } else {
-      // 'A Medir'
-      mesMap[mesKey].previsto += m.valor_medicao;
+      // 'A Medir': serviço futuro sem nota fiscal emitida
+      mesMap[mesKey].aMedir += valor;
+    }
+
+    // Alocação de previsto x realizado conforme o critério
+    if (criterio === 'desembolso') {
+      // Fluxo de Caixa Real: Realizado é apenas o que já foi liquidado (Pago).
+      // Previsto a desembolsar no futuro é o comprometido (A Pagar com NF) + estimado (A Medir sem NF).
+      if (m.status === 'Pago') {
+        mesMap[mesKey].realizado += valor;
+      } else {
+        mesMap[mesKey].previsto += valor;
+      }
+    } else {
+      // 'medicao' (Avanço Físico) ou 'competencia' (Despesa Incorrida):
+      // Realizado é tudo o que já foi medido/atestado em campo (Pago + Medido + A Pagar).
+      // Previsto é apenas o que ainda está A Medir.
+      if (m.status === 'Pago' || m.status === 'Medido' || m.status === 'A Pagar') {
+        mesMap[mesKey].realizado += valor;
+      } else {
+        mesMap[mesKey].previsto += valor;
+      }
     }
   }
 
@@ -553,6 +583,9 @@ export function calculateCurvaDesembolso(
         mesOriginal: mes,
         mesFormatado: label,
         mesSortKey: sortKey,
+        pago: mesMap[mes].pago,
+        aPagar: mesMap[mes].aPagar,
+        aMedir: mesMap[mes].aMedir,
         previsto: mesMap[mes].previsto,
         realizado: mesMap[mes].realizado,
       };
@@ -564,7 +597,7 @@ export function calculateCurvaDesembolso(
   let acumTotal = 0;
 
   return mesesOrdenados.map((item) => {
-    const totalMes = item.previsto + item.realizado;
+    const totalMes = item.pago + item.aPagar + item.aMedir;
     acumPrevisto += item.previsto;
     acumRealizado += item.realizado;
     acumTotal += totalMes;
@@ -573,6 +606,9 @@ export function calculateCurvaDesembolso(
       mes: item.mesOriginal,
       mesFormatado: item.mesFormatado,
       mesSortKey: item.mesSortKey,
+      pago: item.pago,
+      aPagar: item.aPagar,
+      aMedir: item.aMedir,
       previsto: item.previsto,
       realizado: item.realizado,
       total: totalMes,
@@ -663,6 +699,7 @@ export function calculateKpis(
   const totalMedido = totalPago + totalMedidoPendente;
   const saldoAMedir = Math.max(0, totalContratado - totalMedido);
   const percentualMedido = totalContratado > 0 ? totalMedido / totalContratado : 0;
+  const saldoSemCronograma = Math.max(0, saldoAMedir - totalPrevistoAMedir);
 
   const totalProjetosContratado = contratos
     .filter((c) => (!filtroObra || c.obra === filtroObra) && c.categoria === 'Projeto')
@@ -694,6 +731,7 @@ export function calculateKpis(
     qtdMedidoNaoPago,
     totalAMedirAtrasado,
     qtdAMedirAtrasado,
+    saldoSemCronograma,
   };
 }
 

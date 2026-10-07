@@ -177,21 +177,19 @@ export function ExportModal({
     const headers = [
       'MES',
       'MES_FORMATADO',
-      'PREVISTO',
-      'REALIZADO',
+      'PAGO',
+      'A_PAGAR_COM_NF',
+      'A_MEDIR_SEM_NF',
       'TOTAL_MES',
-      'ACUMULADO_PREVISTO',
-      'ACUMULADO_REALIZADO',
       'ACUMULADO_TOTAL',
     ];
     const rows = curvaPontos.map((p) => [
       p.mes,
       p.mesFormatado,
-      p.previsto.toFixed(2),
-      p.realizado.toFixed(2),
+      (p.pago || 0).toFixed(2),
+      (p.aPagar || 0).toFixed(2),
+      (p.aMedir || 0).toFixed(2),
       p.total.toFixed(2),
-      p.acumuladoPrevisto.toFixed(2),
-      p.acumuladoRealizado.toFixed(2),
       p.acumuladoTotal.toFixed(2),
     ]);
     downloadCsv('CurvaDesembolso_export.csv', headers, rows);

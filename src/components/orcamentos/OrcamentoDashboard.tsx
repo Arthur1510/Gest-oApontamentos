@@ -79,7 +79,7 @@ export function OrcamentoDashboard({
   onNavigateTab,
 }: OrcamentoDashboardProps) {
   const [showTabelaCurva, setShowTabelaCurva] = useState(false);
-  const [criterioCurva, setCriterioCurva] = useState<CriterioCurvaS>('competencia');
+  const [criterioCurva, setCriterioCurva] = useState<CriterioCurvaS>('desembolso');
   const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
 
   const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
@@ -106,6 +106,25 @@ export function OrcamentoDashboard({
       criterioCurva
     );
   }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam, criterioCurva]);
+
+  // Totais da Curva S
+  const totaisCurva = useMemo(() => {
+    let pago = 0;
+    let aPagar = 0;
+    let aMedir = 0;
+    let realizado = 0;
+    let previsto = 0;
+    let total = 0;
+    for (const p of curvaPontos) {
+      pago += p.pago || 0;
+      aPagar += p.aPagar || 0;
+      aMedir += p.aMedir || 0;
+      realizado += p.realizado || 0;
+      previsto += p.previsto || 0;
+      total += p.total || 0;
+    }
+    return { pago, aPagar, aMedir, realizado, previsto, total };
+  }, [curvaPontos]);
 
   // Base de contratos filtrada por critérios exceto categoria
   const contratosBase = useMemo(() => {
@@ -391,11 +410,23 @@ export function OrcamentoDashboard({
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-[#0B384D] pt-2">
-              <span>Pago: {formatCurrencyShort(kpis.totalPago)}</span>
-              <span className="font-semibold text-cyan-600 dark:text-cyan-400">
-                Pendente: {formatCurrencyShort(kpis.totalMedidoPendente)}
-              </span>
+            <div className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-[#0B384D] pt-2">
+              <div className="flex items-center justify-between">
+                <span>Pago: <strong>{formatCurrencyShort(kpis.totalPago)}</strong></span>
+                <span className="font-semibold text-indigo-600 dark:text-indigo-400" title="Medições atestadas/com NF aguardando quitação">
+                  A Pagar (NF): {formatCurrencyShort(kpis.totalMedidoPendente)}
+                </span>
+              </div>
+              {kpis.saldoSemCronograma && kpis.saldoSemCronograma > 0 ? (
+                <div className="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500 pt-1 border-t border-dashed border-slate-200 dark:border-slate-700/60">
+                  <span title="Saldo com medições futuras já lançadas no cronograma">
+                    Programado: <strong className="text-slate-700 dark:text-slate-200">{formatCurrencyShort(kpis.totalPrevistoAMedir)}</strong>
+                  </span>
+                  <span title="Saldo de contratos ainda sem medições programadas (ex: taxas globais e estimativas)">
+                    Sem cronograma: <strong className="text-amber-600 dark:text-amber-400">{formatCurrencyShort(kpis.saldoSemCronograma)}</strong>
+                  </span>
+                </div>
+              ) : null}
             </div>
           </CardContent>
         </Card>
@@ -442,39 +473,42 @@ export function OrcamentoDashboard({
 
       {/* 3. GRÁFICO PRINCIPAL: CURVA DE DESEMBOLSO / CURVA S (PREVISTO X REALIZADO) */}
       <Card className="border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] shadow-sm">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
+        <CardHeader className="pb-3">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-lg bg-[#00A3C4]/15 text-[#00A3C4] dark:text-[#00C4EB]">
                   <TrendingUp className="h-4 w-4" />
                 </div>
                 <CardTitle className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                  Curva de Desembolso & Curva S (Previsto x Realizado)
+                  Curva S
                 </CardTitle>
               </div>
-              <CardDescription className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                {criterioCurva === 'competencia' && 'Agrupamento padrão por Mês de Competência (com dedução automática por data quando em branco).'}
-                {criterioCurva === 'desembolso' && 'Fluxo de Caixa Real: medições pagas alocadas no mês efetivo de pagamento (data_pagamento) e futuras na data prevista.'}
-                {criterioCurva === 'medicao' && 'Avanço Físico de Obra: aloca os serviços no mês em que foram medidos e atestados em campo (data_medicao).'}
-              </CardDescription>
+
+              <div className="hidden sm:inline-block h-4 w-px bg-slate-200 dark:bg-[#0B384D]" />
+
+              <div className="flex flex-wrap items-center gap-2.5 text-xs">
+                <span className="text-slate-500 dark:text-slate-400">
+                  Pago: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{formatCurrency(totaisCurva.pago)}</strong>
+                </span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  A Pagar: <strong className="text-indigo-600 dark:text-indigo-400 font-mono">{formatCurrency(totaisCurva.aPagar)}</strong>
+                </span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  A Medir: <strong className="text-amber-600 dark:text-amber-400 font-mono">{formatCurrency(totaisCurva.aMedir)}</strong>
+                </span>
+                <span className="text-slate-300 dark:text-slate-600">•</span>
+                <span className="text-slate-500 dark:text-slate-400">
+                  Total: <strong className="text-[#00A3C4] dark:text-[#00C4EB] font-mono">{formatCurrency(totaisCurva.total)}</strong>
+                </span>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
               {/* Seletor de Critério */}
               <div className="inline-flex rounded-lg p-0.5 bg-slate-100 dark:bg-[#072432] border border-slate-200 dark:border-[#0B384D]">
-                <button
-                  type="button"
-                  onClick={() => setCriterioCurva('competencia')}
-                  className={`px-2.5 py-1 text-[11px] rounded-md transition-all ${
-                    criterioCurva === 'competencia'
-                      ? 'bg-white dark:bg-[#00A3C4] text-slate-900 dark:text-white shadow-sm font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
-                  }`}
-                  title="Agrupa pelo campo Mês Competência (com fallback dinâmico)"
-                >
-                  Competência
-                </button>
                 <button
                   type="button"
                   onClick={() => setCriterioCurva('desembolso')}
@@ -486,6 +520,18 @@ export function OrcamentoDashboard({
                   title="Visão Financeira / Caixa: agrupa no mês da data de pagamento"
                 >
                   Pagamento (Caixa)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCriterioCurva('competencia')}
+                  className={`px-2.5 py-1 text-[11px] rounded-md transition-all ${
+                    criterioCurva === 'competencia'
+                      ? 'bg-white dark:bg-[#00A3C4] text-slate-900 dark:text-white shadow-sm font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-medium'
+                  }`}
+                  title="Agrupa pelo campo Mês Competência (com fallback dinâmico)"
+                >
+                  Competência
                 </button>
                 <button
                   type="button"
@@ -558,22 +604,53 @@ export function OrcamentoDashboard({
                   wrapperStyle={{ paddingTop: 10, fontSize: 12 }}
                 />
                 {/* Barras mensais */}
-                <Bar
-                  yAxisId="left"
-                  dataKey="realizado"
-                  name="Desembolso Realizado (Pago/Medido)"
-                  fill="#00A3C4"
-                  radius={[4, 4, 0, 0]}
-                  barSize={20}
-                />
-                <Bar
-                  yAxisId="left"
-                  dataKey="previsto"
-                  name="Desembolso Previsto (A medir)"
-                  fill="#F59E0B"
-                  radius={[4, 4, 0, 0]}
-                  barSize={20}
-                />
+                {criterioCurva !== 'medicao' ? (
+                  <>
+                    <Bar
+                      yAxisId="left"
+                      dataKey="pago"
+                      name="Desembolso Realizado (Pago)"
+                      fill="#10B981"
+                      radius={[3, 3, 0, 0]}
+                      barSize={16}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="aPagar"
+                      name="Comprometido a Pagar (Com NF)"
+                      fill="#6366F1"
+                      radius={[3, 3, 0, 0]}
+                      barSize={16}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="aMedir"
+                      name="Previsto a Medir (Sem NF)"
+                      fill="#F59E0B"
+                      radius={[3, 3, 0, 0]}
+                      barSize={16}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Bar
+                      yAxisId="left"
+                      dataKey="realizado"
+                      name="Avanço Físico Medido"
+                      fill="#00A3C4"
+                      radius={[4, 4, 0, 0]}
+                      barSize={20}
+                    />
+                    <Bar
+                      yAxisId="left"
+                      dataKey="previsto"
+                      name="Avanço Físico a Medir"
+                      fill="#F59E0B"
+                      radius={[4, 4, 0, 0]}
+                      barSize={20}
+                    />
+                  </>
+                )}
                 {/* Linhas acumuladas (Curva S) */}
                 <Line
                   yAxisId="right"
@@ -594,38 +671,117 @@ export function OrcamentoDashboard({
             <div className="mt-6 border-t border-slate-200 dark:border-[#0B384D] pt-4">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#00A3C4]" />
-                Detalhamento Mensal de Desembolso
+                Detalhamento Mensal de Desembolso (Pago, A Pagar e A Medir)
               </h4>
               <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-[#0B384D]">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-slate-50 dark:bg-[#0B384D] text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-[#0B384D]">
-                    <tr>
-                      <th className="py-2.5 px-3">Mês Competência</th>
-                      <th className="py-2.5 px-3 text-right">Realizado (Pago/Medido)</th>
-                      <th className="py-2.5 px-3 text-right">Previsto (A medir)</th>
-                      <th className="py-2.5 px-3 text-right">Total do Mês</th>
-                      <th className="py-2.5 px-3 text-right">Acumulado</th>
-                    </tr>
+                    {criterioCurva !== 'medicao' ? (
+                      <tr>
+                        <th className="py-2.5 px-3">Mês Competência / Caixa</th>
+                        <th className="py-2.5 px-3 text-right">Realizado (Pago)</th>
+                        <th className="py-2.5 px-3 text-right text-indigo-600 dark:text-indigo-400">A Pagar (Com NF)</th>
+                        <th className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400">A Medir (Sem NF)</th>
+                        <th className="py-2.5 px-3 text-right">Total do Mês</th>
+                        <th className="py-2.5 px-3 text-right">Acumulado</th>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <th className="py-2.5 px-3">Mês Competência</th>
+                        <th className="py-2.5 px-3 text-right">Realizado (Medido)</th>
+                        <th className="py-2.5 px-3 text-right">Previsto (A medir)</th>
+                        <th className="py-2.5 px-3 text-right">Total do Mês</th>
+                        <th className="py-2.5 px-3 text-right">Acumulado</th>
+                      </tr>
+                    )}
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-[#0B384D]/60 text-slate-700 dark:text-slate-200">
                     {curvaPontos.map((p) => (
                       <tr key={p.mesSortKey} className="hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors">
                         <td className="py-2 px-3 font-semibold">{p.mesFormatado} ({p.mes})</td>
-                        <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
-                          {p.realizado > 0 ? formatCurrency(p.realizado) : '-'}
-                        </td>
-                        <td className="py-2 px-3 text-right font-medium text-amber-600 dark:text-amber-400">
-                          {p.previsto > 0 ? formatCurrency(p.previsto) : '-'}
-                        </td>
-                        <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white">
+                        {criterioCurva !== 'medicao' ? (
+                          <>
+                            <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400 font-mono">
+                              {(p.pago || 0) > 0 ? formatCurrency(p.pago || 0) : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-medium text-indigo-600 dark:text-indigo-400 font-mono">
+                              {(p.aPagar || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1">
+                                  {formatCurrency(p.aPagar || 0)}
+                                  <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                                    COM NF
+                                  </span>
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-medium text-amber-600 dark:text-amber-400 font-mono">
+                              {(p.aMedir || 0) > 0 ? (
+                                <span className="inline-flex items-center gap-1">
+                                  {formatCurrency(p.aMedir || 0)}
+                                  <span className="px-1 py-0.2 rounded text-[8px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                    A MEDIR
+                                  </span>
+                                </span>
+                              ) : '-'}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="py-2 px-3 text-right font-medium text-emerald-600 dark:text-emerald-400 font-mono">
+                              {p.realizado > 0 ? formatCurrency(p.realizado) : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-medium text-amber-600 dark:text-amber-400 font-mono">
+                              {p.previsto > 0 ? formatCurrency(p.previsto) : '-'}
+                            </td>
+                          </>
+                        )}
+                        <td className="py-2 px-3 text-right font-bold text-slate-900 dark:text-white font-mono">
                           {formatCurrency(p.total)}
                         </td>
-                        <td className="py-2 px-3 text-right font-bold text-[#00A3C4] dark:text-[#00C4EB]">
+                        <td className="py-2 px-3 text-right font-bold text-[#00A3C4] dark:text-[#00C4EB] font-mono">
                           {formatCurrency(p.acumuladoTotal)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot className="bg-slate-100 dark:bg-[#072432] font-bold border-t-2 border-slate-300 dark:border-[#0B384D] text-xs">
+                    {criterioCurva !== 'medicao' ? (
+                      <tr>
+                        <td className="py-2.5 px-3 uppercase">Totais Consolidados:</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 font-mono">
+                          {formatCurrency(totaisCurva.pago)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-indigo-600 dark:text-indigo-400 font-mono">
+                          {formatCurrency(totaisCurva.aPagar)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400 font-mono">
+                          {formatCurrency(totaisCurva.aMedir)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-900 dark:text-white font-mono font-black">
+                          {formatCurrency(totaisCurva.total)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-[#00A3C4] dark:text-[#00C4EB] font-mono font-black">
+                          {formatCurrency(totaisCurva.total)}
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr>
+                        <td className="py-2.5 px-3 uppercase">Totais Consolidados:</td>
+                        <td className="py-2.5 px-3 text-right text-emerald-600 dark:text-emerald-400 font-mono">
+                          {formatCurrency(totaisCurva.realizado)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-amber-600 dark:text-amber-400 font-mono">
+                          {formatCurrency(totaisCurva.previsto)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-slate-900 dark:text-white font-mono font-black">
+                          {formatCurrency(totaisCurva.total)}
+                        </td>
+                        <td className="py-2.5 px-3 text-right text-[#00A3C4] dark:text-[#00C4EB] font-mono font-black">
+                          {formatCurrency(totaisCurva.total)}
+                        </td>
+                      </tr>
+                    )}
+                  </tfoot>
                 </table>
               </div>
             </div>

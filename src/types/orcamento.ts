@@ -172,6 +172,9 @@ export interface CurvaDesembolsoPonto {
   mes: string; // "25/05"
   mesFormatado: string; // "Mai/25"
   mesSortKey: string; // "2025-05"
+  pago?: number; // Desembolso realizado (Pago)
+  aPagar?: number; // Comprometido / A Pagar (Medido/Com NF)
+  aMedir?: number; // Previsto a Medir (Sem NF / Futuro)
   previsto: number;
   realizado: number;
   total: number;
@@ -204,6 +207,8 @@ export interface KpiOrcamento {
   qtdMedidoNaoPago: number;
   totalAMedirAtrasado: number;
   qtdAMedirAtrasado: number;
+  // Saldo contratual ainda sem parcelas/cronograma de medição cadastrado
+  saldoSemCronograma?: number;
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {
