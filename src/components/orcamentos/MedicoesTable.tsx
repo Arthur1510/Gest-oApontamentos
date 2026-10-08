@@ -135,7 +135,8 @@ export function MedicoesTable({
         const matchContrato = (m.contrato_id || '').toLowerCase().includes(q);
         const matchEtapa = (m.etapa || '').toLowerCase().includes(q);
         const matchNf = (m.nf || '').toLowerCase().includes(q);
-        if (!matchEmpresa && !matchId && !matchContrato && !matchEtapa && !matchNf) return false;
+        const matchDataPagamento = (m.data_pagamento || '').toLowerCase().includes(q) || formatDateBR(m.data_pagamento).toLowerCase().includes(q);
+        if (!matchEmpresa && !matchId && !matchContrato && !matchEtapa && !matchNf && !matchDataPagamento) return false;
       }
 
       return true;
@@ -435,7 +436,7 @@ export function MedicoesTable({
                   </div>
 
                   {/* Datas e NF */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                     <div>
                       <span className="block text-[10px] text-slate-400">Previsão:</span>
                       <span className={isAtraso ? 'text-amber-600 dark:text-amber-400 font-bold' : 'font-medium'}>
@@ -451,6 +452,22 @@ export function MedicoesTable({
                       <span className="block text-[10px] text-slate-400">Medição / NF:</span>
                       <span className="font-medium text-slate-700 dark:text-slate-300">
                         {m.data_medicao ? formatDateBR(m.data_medicao) : '-'} {m.nf ? `(NF: ${m.nf})` : ''}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-slate-400">Data Pagamento:</span>
+                      <span
+                        className={`font-medium ${
+                          m.data_pagamento
+                            ? m.status === 'Pago'
+                              ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                              : m.status === 'A Pagar'
+                              ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                              : 'text-slate-700 dark:text-slate-300'
+                            : 'text-slate-400 dark:text-slate-500'
+                        }`}
+                      >
+                        {m.data_pagamento ? formatDateBR(m.data_pagamento) : '-'}
                       </span>
                     </div>
                   </div>
@@ -526,6 +543,7 @@ export function MedicoesTable({
                   <th className="py-3 px-3 text-right">Valor Medição</th>
                   <th className="py-3 px-3">Data Prevista</th>
                   <th className="py-3 px-3">Data Medição</th>
+                  <th className="py-3 px-3">Data Pagamento</th>
                   <th className="py-3 px-3 text-center">Mês</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3">NF</th>
@@ -623,6 +641,24 @@ export function MedicoesTable({
                         {formatDateBR(m.data_medicao)}
                       </td>
 
+                      <td className="py-2.5 px-3 font-medium whitespace-nowrap">
+                        {m.data_pagamento ? (
+                          <span
+                            className={
+                              m.status === 'Pago'
+                                ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                : m.status === 'A Pagar'
+                                ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
+                                : 'text-slate-700 dark:text-slate-200'
+                            }
+                          >
+                            {formatDateBR(m.data_pagamento)}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 dark:text-slate-500">-</span>
+                        )}
+                      </td>
+
                       <td className="py-2.5 px-3 text-center font-semibold whitespace-nowrap">
                         <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#0B384D] text-slate-600 dark:text-slate-300 text-[10px]">
                           {m.mes_competencia || '-'}
@@ -699,7 +735,7 @@ export function MedicoesTable({
                   <td className="py-3 px-3 text-right text-xs font-mono whitespace-nowrap">
                     {formatCurrency(totais.totalValor)}
                   </td>
-                  <td colSpan={3} className="py-3 px-3 text-right text-xs text-slate-500 dark:text-slate-400">
+                  <td colSpan={4} className="py-3 px-3 text-right text-xs text-slate-500 dark:text-slate-400">
                     <span className="text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">
                       Pago: {formatCurrency(totais.pago)}
                     </span>

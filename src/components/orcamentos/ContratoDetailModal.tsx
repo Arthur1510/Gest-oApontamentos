@@ -471,6 +471,7 @@ export function ContratoDetailModal({
                             <ArrowUpDown className="h-3 w-3 opacity-60" />
                           </div>
                         </th>
+                        <th className="py-2.5 px-3">Pagamento</th>
                         <th className="py-2.5 px-3 text-center">Status</th>
                         <th className="py-2.5 px-3">NF</th>
                         <th className="py-2.5 px-3 text-center">Ação</th>
@@ -500,6 +501,23 @@ export function ContratoDetailModal({
                             </td>
                             <td className="py-2 px-3 font-medium whitespace-nowrap">
                               {formatDateBR(m.data_medicao)}
+                            </td>
+                            <td className="py-2 px-3 font-medium whitespace-nowrap">
+                              {m.data_pagamento ? (
+                                <span
+                                  className={
+                                    m.status === 'Pago'
+                                      ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
+                                      : m.status === 'A Pagar'
+                                      ? 'text-indigo-600 dark:text-indigo-400 font-semibold'
+                                      : 'text-slate-700 dark:text-slate-200'
+                                  }
+                                >
+                                  {formatDateBR(m.data_pagamento)}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 dark:text-slate-500">-</span>
+                              )}
                             </td>
                             <td className="py-2 px-3 text-center">
                               <span
