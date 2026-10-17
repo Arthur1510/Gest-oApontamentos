@@ -183,6 +183,58 @@ export interface CurvaDesembolsoPonto {
   acumuladoTotal: number;
 }
 
+export interface MesJanela306090 {
+  mesSortKey: string;
+  mesFormatado: string;
+  medidoComNF: number; // 'A Pagar' ou 'Medido'
+  aMedirPrevisto: number; // 'A Medir'
+  total: number;
+}
+
+export interface JanelaCaixa306090 {
+  mes30: MesJanela306090;
+  mes60: MesJanela306090;
+  mes90: MesJanela306090;
+  total90Dias: {
+    medidoComNF: number;
+    aMedirPrevisto: number;
+    total: number;
+  };
+  atrasadoAnterior: number;
+}
+
+export interface ItemConsolidadoDisciplina {
+  disciplina: string;
+  orcamentoBase: number;
+  valorContratado: number;
+  faltaContratar: number; // Soma dos itens ainda abertos dessa disciplina
+  totalPrevisto: number;  // valorContratado + faltaContratar
+  diferencaOrcamento: number; // totalPrevisto - orcamentoBase (> 0 = acima do orçado, < 0 = abaixo do orçado)
+  valorMedido: number;
+  valorAMedir: number;
+  percentualContratadoSobreBase: number;
+  percentualMedidoSobreContratado: number;
+}
+
+export interface ItemConsolidadoContrato {
+  id: string;
+  num_sienge: string;
+  empresa: string;
+  obra: string;
+  disciplina: string;
+  subdisciplina: string;
+  categoria: CategoriaContrato;
+  status: StatusContrato;
+  valorContrato: number;
+  valorPago: number;
+  valorMedidoAPagar: number; // Medido ou A Pagar (ainda não Pago)
+  valorMedidoTotal: number;  // Pago + Medido a Pagar
+  valorAMedir: number;       // Saldo a medir
+  percentualPago: number;
+  percentualMedidoAPagar: number;
+  percentualMedidoTotal: number;
+}
+
 export interface KpiOrcamento {
   totalOrcado: number;
   totalContratado: number;
@@ -209,6 +261,11 @@ export interface KpiOrcamento {
   qtdAMedirAtrasado: number;
   // Saldo contratual ainda sem parcelas/cronograma de medição cadastrado
   saldoSemCronograma?: number;
+  //Valor real que ainda falta contratar (mesmo quando Contratado + Falta Contratar passa do Orçamento Base)
+  faltaContratar: number;
+  qtdFaltaContratar: number;
+  custoTotalPrevisto: number; // totalContratado + faltaContratar
+  diferencaOrcamento: number; // custoTotalPrevisto - totalOrcado (> 0 = ficará acima do orçado; < 0 = economia)
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {

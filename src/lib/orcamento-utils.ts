@@ -6,6 +6,10 @@ import {
   KpiOrcamento,
   Obra,
   StatusOrcamento,
+  MesJanela306090,
+  JanelaCaixa306090,
+  ItemConsolidadoDisciplina,
+  ItemConsolidadoContrato,
 } from '@/types/orcamento';
 
 /**
@@ -660,6 +664,30 @@ export function calculateKpis(
   const saldoAContratar = totalOrcado - totalContratado;
   const percentualContratado = totalOrcado > 0 ? totalContratado / totalOrcado : 0;
 
+  // Valor real que ainda falta contratar (mesmo que Contratado + Falta Contratar passe do Orçamento Base)
+  let faltaContratar = 0;
+  let qtdFaltaContratar = 0;
+
+  for (const o of filteredOrc) {
+    if (o.status === 'Cancelado') continue;
+    const base = Number(o.orcamento_base) || 0;
+    const contratadoItem = Number(o.valor_contratado) || 0;
+    const isFechado =
+      o.status === 'Contratado' ||
+      (contratadoItem > 0 && o.status !== 'Em contratação' && o.status !== 'Em cotação');
+
+    if (!isFechado) {
+      const saldoAberto = Math.max(0, base - contratadoItem);
+      if (saldoAberto > 0) {
+        faltaContratar += saldoAberto;
+        qtdFaltaContratar++;
+      }
+    }
+  }
+
+  const custoTotalPrevisto = totalContratado + faltaContratar;
+  const diferencaOrcamento = custoTotalPrevisto - totalOrcado; // > 0 = acima do orçado inicial; < 0 = economia
+
   let totalPago = 0;
   let totalMedidoPendente = 0;
   let totalPrevistoAMedir = 0;
@@ -732,7 +760,266 @@ export function calculateKpis(
     totalAMedirAtrasado,
     qtdAMedirAtrasado,
     saldoSemCronograma,
+    faltaContratar,
+    qtdFaltaContratar,
+    custoTotalPrevisto,
+    diferencaOrcamento,
   };
+}
+
+/**
+ * Calcula a relação limpa de desembolso para 30, 60 e 90 dias
+ */
+export function calculateJanela306090(
+  medicoes: Medicao[],
+  contratos?: Contrato[] | null,
+  filtroObra?: string | null,
+  filtroFornecedor?: string | null,
+  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  dataReferencia?: string
+): JanelaCaixa306090 {
+  const catPorContrato: Record<string, string> = {};
+  if (contratos) {
+    contratos.forEach((c) => {
+      catPorContrato[c.id] = c.categoria || 'Projeto';
+    });
+  }
+
+  const pendentes = medicoes.filter((m) => {
+    if (m.status === 'Pago' || m.status === 'Cancelado' || (m.status as any) === 'Cancelada') return false;
+    if (filtroObra && m.obra !== filtroObra) return false;
+    if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
+    if (filtroCategoria && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== filtroCategoria) {
+      return false;
+    }
+    return true;
+  });
+
+  const todayStr = dataReferencia || new Date().toISOString().split('T')[0];
+  const [anoRefStr, mesRefStr] = todayStr.split('-');
+  const anoBase = parseInt(anoRefStr, 10);
+  const mesBase = parseInt(mesRefStr, 10);
+
+  const buildMonth = (y: number, m: number): { sortKey: string; label: string } => {
+    const dt = new Date(y, m - 1, 1);
+    const yr = dt.getFullYear();
+    const mo = dt.getMonth() + 1;
+    const sortKey = `${yr}-${String(mo).padStart(2, '0')}`;
+    const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const label = `${mesesNomes[mo - 1]}/${String(yr).slice(-2)}`;
+    return { sortKey, label };
+  };
+
+  let m30 = buildMonth(anoBase, mesBase);
+  let m60 = buildMonth(anoBase, mesBase + 1);
+  let m90 = buildMonth(anoBase, mesBase + 2);
+
+  // Se o cronograma ativo estiver concentrado em outros meses, ancora nos 3 próximos meses com saldo pendente
+  const mesesAtivos = new Set<string>();
+  for (const m of pendentes) {
+    const { sortKey } = parseMesCompetencia(resolveMesMedicao(m, 'desembolso'));
+    if (sortKey !== '9999-99') mesesAtivos.add(sortKey);
+  }
+
+  if (
+    !mesesAtivos.has(m30.sortKey) &&
+    !mesesAtivos.has(m60.sortKey) &&
+    !mesesAtivos.has(m90.sortKey) &&
+    mesesAtivos.size > 0
+  ) {
+    const ordenados = Array.from(mesesAtivos).sort();
+    const idxFuturo = ordenados.findIndex((k) => k >= m30.sortKey);
+    const anchor = idxFuturo >= 0 ? ordenados[idxFuturo] : ordenados[Math.max(0, ordenados.length - 3)];
+    const [yS, mS] = anchor.split('-');
+    const yN = parseInt(yS, 10);
+    const mN = parseInt(mS, 10);
+    if (!isNaN(yN) && !isNaN(mN)) {
+      m30 = buildMonth(yN, mN);
+      m60 = buildMonth(yN, mN + 1);
+      m90 = buildMonth(yN, mN + 2);
+    }
+  }
+
+  const makeMes = (info: { sortKey: string; label: string }): MesJanela306090 => ({
+    mesSortKey: info.sortKey,
+    mesFormatado: info.label,
+    medidoComNF: 0,
+    aMedirPrevisto: 0,
+    total: 0,
+  });
+
+  const mes30 = makeMes(m30);
+  const mes60 = makeMes(m60);
+  const mes90 = makeMes(m90);
+  let atrasadoAnterior = 0;
+
+  for (const m of pendentes) {
+    const { sortKey } = parseMesCompetencia(resolveMesMedicao(m, 'desembolso'));
+    const val = Number(m.valor_medicao) || 0;
+    const isMedido = m.status === 'A Pagar' || m.status === 'Medido';
+
+    if (sortKey < m30.sortKey) {
+      atrasadoAnterior += val;
+    } else if (sortKey === m30.sortKey) {
+      if (isMedido) mes30.medidoComNF += val;
+      else mes30.aMedirPrevisto += val;
+      mes30.total += val;
+    } else if (sortKey === m60.sortKey) {
+      if (isMedido) mes60.medidoComNF += val;
+      else mes60.aMedirPrevisto += val;
+      mes60.total += val;
+    } else if (sortKey === m90.sortKey) {
+      if (isMedido) mes90.medidoComNF += val;
+      else mes90.aMedirPrevisto += val;
+      mes90.total += val;
+    }
+  }
+
+  return {
+    mes30,
+    mes60,
+    mes90,
+    total90Dias: {
+      medidoComNF: mes30.medidoComNF + mes60.medidoComNF + mes90.medidoComNF,
+      aMedirPrevisto: mes30.aMedirPrevisto + mes60.aMedirPrevisto + mes90.aMedirPrevisto,
+      total: mes30.total + mes60.total + mes90.total,
+    },
+    atrasadoAnterior,
+  };
+}
+
+/**
+ * Consolida os dados por Disciplina para exibição visual com barra de progresso
+ */
+export function calculateConsolidadoDisciplinas(
+  orcamentos: ItemOrcamento[],
+  filtroObra?: string | null,
+  filtroCategoria?: 'Projeto' | 'Legalização' | null
+): ItemConsolidadoDisciplina[] {
+  const filtered = orcamentos.filter((o) => {
+    if (filtroObra && o.obra !== filtroObra) return false;
+    if (filtroCategoria && o.categoria !== filtroCategoria) return false;
+    return true;
+  });
+
+  const map: Record<
+    string,
+    {
+      orcamentoBase: number;
+      valorContratado: number;
+      faltaContratar: number;
+      valorMedido: number;
+    }
+  > = {};
+
+  for (const o of filtered) {
+    const disc = o.disciplina || 'OUTROS';
+    if (!map[disc]) {
+      map[disc] = {
+        orcamentoBase: 0,
+        valorContratado: 0,
+        faltaContratar: 0,
+        valorMedido: 0,
+      };
+    }
+
+    const base = Number(o.orcamento_base) || 0;
+    const contratado = Number(o.valor_contratado) || 0;
+    const medido = Number(o.valor_medido) || 0;
+
+    map[disc].orcamentoBase += base;
+    map[disc].valorContratado += contratado;
+    map[disc].valorMedido += medido;
+
+    if (o.status !== 'Cancelado') {
+      const isFechado =
+        o.status === 'Contratado' ||
+        (contratado > 0 && o.status !== 'Em contratação' && o.status !== 'Em cotação');
+      if (!isFechado) {
+        map[disc].faltaContratar += Math.max(0, base - contratado);
+      }
+    }
+  }
+
+  return Object.entries(map)
+    .map(([disciplina, d]) => {
+      const totalPrevisto = d.valorContratado + d.faltaContratar;
+      const diferencaOrcamento = totalPrevisto - d.orcamentoBase;
+      const valorAMedir = Math.max(0, d.valorContratado - d.valorMedido);
+      return {
+        disciplina,
+        orcamentoBase: d.orcamentoBase,
+        valorContratado: d.valorContratado,
+        faltaContratar: d.faltaContratar,
+        totalPrevisto,
+        diferencaOrcamento,
+        valorMedido: d.valorMedido,
+        valorAMedir,
+        percentualContratadoSobreBase: d.orcamentoBase > 0 ? d.valorContratado / d.orcamentoBase : 0,
+        percentualMedidoSobreContratado: d.valorContratado > 0 ? d.valorMedido / d.valorContratado : 0,
+      };
+    })
+    .sort((a, b) => b.totalPrevisto - a.totalPrevisto);
+}
+
+/**
+ * Consolida os Contratos com barras de progresso (Pago, Medido a Pagar e Valor a Medir)
+ */
+export function calculateConsolidadoContratos(
+  contratos: Contrato[],
+  medicoes: Medicao[],
+  filtroObra?: string | null,
+  filtroFornecedor?: string | null,
+  filtroCategoria?: 'Projeto' | 'Legalização' | null
+): ItemConsolidadoContrato[] {
+  const pagoPorContrato: Record<string, number> = {};
+  const aPagarPorContrato: Record<string, number> = {};
+
+  for (const m of medicoes) {
+    const cid = String(m.contrato_id).trim();
+    const val = Number(m.valor_medicao) || 0;
+    if (m.status === 'Pago') {
+      pagoPorContrato[cid] = (pagoPorContrato[cid] || 0) + val;
+    } else if (m.status === 'Medido' || m.status === 'A Pagar') {
+      aPagarPorContrato[cid] = (aPagarPorContrato[cid] || 0) + val;
+    }
+  }
+
+  return contratos
+    .filter((c) => {
+      if (filtroObra && c.obra !== filtroObra) return false;
+      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+      if (filtroCategoria && c.categoria !== filtroCategoria) return false;
+      return true;
+    })
+    .map((c) => {
+      const cid = String(c.id).trim();
+      const valorContrato = Number(c.valor_contrato) || 0;
+      const valorPago = pagoPorContrato[cid] || 0;
+      const valorMedidoAPagar = aPagarPorContrato[cid] || 0;
+      const valorMedidoTotal = valorPago + valorMedidoAPagar;
+      const valorAMedir = Math.max(0, valorContrato - valorMedidoTotal);
+
+      return {
+        id: c.id,
+        num_sienge: c.num_sienge,
+        empresa: c.empresa,
+        obra: c.obra,
+        disciplina: c.disciplina,
+        subdisciplina: c.subdisciplina,
+        categoria: c.categoria || 'Projeto',
+        status: c.status || 'Ativo',
+        valorContrato,
+        valorPago,
+        valorMedidoAPagar,
+        valorMedidoTotal,
+        valorAMedir,
+        percentualPago: valorContrato > 0 ? Math.min(1, valorPago / valorContrato) : 0,
+        percentualMedidoAPagar: valorContrato > 0 ? Math.min(1, valorMedidoAPagar / valorContrato) : 0,
+        percentualMedidoTotal: valorContrato > 0 ? Math.min(1, valorMedidoTotal / valorContrato) : 0,
+      };
+    })
+    .sort((a, b) => b.valorContrato - a.valorContrato);
 }
 
 /**

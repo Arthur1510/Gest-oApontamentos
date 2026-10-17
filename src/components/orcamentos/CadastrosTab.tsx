@@ -124,8 +124,16 @@ export function CadastrosTab({
         tipo: fornTipo.trim().toUpperCase() || 'GERAL',
       });
     } else {
+      let maxNum = 0;
+      fornecedores.forEach((f) => {
+        const match = String(f.id).match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
       const novo: Fornecedor = {
-        id: `FOR${String(fornecedores.length + 1).padStart(3, '0')}`,
+        id: `FOR${String(maxNum + 1).padStart(3, '0')}`,
         id_sienge: fornSienge.trim() || null,
         fornecedor: fornNome.trim().toUpperCase(),
         tipo: fornTipo.trim().toUpperCase() || 'GERAL',
@@ -188,8 +196,16 @@ export function CadastrosTab({
         }
       );
     } else {
+      let maxNum = 0;
+      obras.forEach((o) => {
+        const match = String(o.id).match(/\d+/);
+        if (match) {
+          const num = parseInt(match[0], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      });
       const nova: Obra = {
-        id: `OBR${String(obras.length + 1).padStart(3, '0')}`,
+        id: `OBR${String(maxNum + 1).padStart(3, '0')}`,
         codigo: obraCodigo.trim().toUpperCase(),
         nome: obraNome.trim(),
         cc: obraCC.trim(),
