@@ -1134,9 +1134,12 @@ export default function OrcamentosPage() {
   }, [medicoes, filtroObra]);
 
   const countMedicoesEmAtrasoTab = useMemo(() => {
-    const list = filtroObra ? medicoes.filter((m) => m.obra === filtroObra) : medicoes;
-    return list.filter((m) => isMedicaoEmAtraso(m)).length;
-  }, [medicoes, filtroObra]);
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
+    const list = canonFiltro
+      ? medicoes.filter((m) => getCanonicalObra(m.obra, obras) === canonFiltro)
+      : medicoes;
+    return list.filter((m) => isMedicaoEmAtraso(m, undefined, obras)).length;
+  }, [medicoes, filtroObra, obras]);
 
   // Exportação consolidada para Excel com Dashboard dinâmico, fórmulas e gráficos (.xlsx)
   const handleExportarExcelConsolidado = useCallback(() => {

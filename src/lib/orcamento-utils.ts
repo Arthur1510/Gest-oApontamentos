@@ -778,7 +778,7 @@ export function calculateKpis(
     } else if (m.status === 'Medido' || m.status === 'A Pagar') {
       totalMedidoPendente += valMed;
       medidoPorContrato[cid] = (medidoPorContrato[cid] || 0) + valMed;
-      if (isMedicaoEmAtraso(m)) {
+      if (isMedicaoEmAtraso(m, undefined, obras)) {
         totalEmAtraso += valMed;
         qtdEmAtraso++;
         totalMedidoNaoPago += valMed;
@@ -790,7 +790,7 @@ export function calculateKpis(
       // 'A Medir' — apenas soma no previsto a medir ativo se a obra não estiver Paralisada nem Cancelada
       if (stObraMed !== 'Paralisada' && stObraMed !== 'Cancelada') {
         totalPrevistoAMedir += valMed;
-        if (isMedicaoEmAtraso(m)) {
+        if (isMedicaoEmAtraso(m, undefined, obras)) {
           totalEmAtraso += valMed;
           qtdEmAtraso++;
           totalAMedirAtrasado += valMed;
@@ -1252,12 +1252,22 @@ export function calculateConsolidadoContratos(
 
 /**
  * Verifica se uma medição está em atraso em relação à data atual
- * (Prevista para uma data/mês no passado, mas ainda não paga)
+ * (Prevista para uma data/mês no passado, mas ainda não paga).
+ * Medições de obras Paralisadas ou Canceladas NÃO são consideradas em atraso,
+ * a não ser que a respectiva obra volte a ter status ativo.
  */
-export function isMedicaoEmAtraso(m: Medicao, dataReferencia?: string): boolean {
+export function isMedicaoEmAtraso(m: Medicao, dataReferencia?: string, obras?: Obra[]): boolean {
   // O atraso é considerado exclusivamente quando o status da medição for 'A Medir'
   if (m.status !== 'A Medir') {
     return false;
+  }
+
+  // Obras Paralisadas ou Canceladas não entram em atraso
+  if (obras && obras.length > 0) {
+    const stObra = getObraStatus(m.obra, obras);
+    if (stObra === 'Paralisada' || stObra === 'Cancelada') {
+      return false;
+    }
   }
 
   const todayStr = dataReferencia || new Date().toISOString().split('T')[0];
@@ -1280,8 +1290,8 @@ export function isMedicaoEmAtraso(m: Medicao, dataReferencia?: string): boolean 
 /**
  * Retorna a quantidade de dias em atraso de uma medição
  */
-export function getDiasAtraso(m: Medicao, dataReferencia?: string): number {
-  if (!isMedicaoEmAtraso(m, dataReferencia)) return 0;
+export function getDiasAtraso(m: Medicao, dataReferencia?: string, obras?: Obra[]): number {
+  if (!isMedicaoEmAtraso(m, dataReferencia, obras)) return 0;
   const todayStr = dataReferencia || new Date().toISOString().split('T')[0];
   const refDate = new Date(todayStr);
 

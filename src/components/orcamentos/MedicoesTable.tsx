@@ -10,7 +10,7 @@ import {
   STATUS_MEDICAO_OPCOES,
   STATUS_MEDICAO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent, formatDateBR, isMedicaoEmAtraso, getDiasAtraso, getCanonicalObra } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, formatDateBR, isMedicaoEmAtraso, getDiasAtraso, getCanonicalObra, getObraStatus } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -97,7 +97,7 @@ export function MedicoesTable({
     return medicoes.filter((m) => {
       if (canonFiltro && getCanonicalObra(m.obra, obras) !== canonFiltro) return false;
       if (filtroFornecedorAtivo && m.empresa !== filtroFornecedorAtivo) return false;
-      return isMedicaoEmAtraso(m);
+      return isMedicaoEmAtraso(m, undefined, obras);
     }).length;
   }, [medicoes, obras, filtroObra, filtroFornecedorAtivo]);
 
@@ -128,7 +128,7 @@ export function MedicoesTable({
       if (filtroStatus && m.status !== filtroStatus) return false;
       if (filtroMes && m.mes_competencia !== filtroMes) return false;
       if (filtroContrato && m.contrato_id !== filtroContrato) return false;
-      if (filtroAtrasoApenas && !isMedicaoEmAtraso(m)) return false;
+      if (filtroAtrasoApenas && !isMedicaoEmAtraso(m, undefined, obras)) return false;
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
@@ -162,14 +162,14 @@ export function MedicoesTable({
       else if (m.status === 'Medido') medido += m.valor_medicao || 0;
       else if (m.status === 'A Medir') aMedir += m.valor_medicao || 0;
 
-      if (isMedicaoEmAtraso(m)) {
+      if (isMedicaoEmAtraso(m, undefined, obras)) {
         totalAtraso += m.valor_medicao || 0;
         countAtraso++;
       }
     }
 
     return { totalValor, pago, aPagar, medido, aMedir, totalAtraso, countAtraso };
-  }, [medicoesFiltradas]);
+  }, [medicoesFiltradas, obras]);
 
   const handleConfirmarPagamento = (status: 'Pago' | 'A Pagar' = 'Pago') => {
     if (pagamentoModalItem) {
@@ -360,8 +360,9 @@ export function MedicoesTable({
               text: 'text-slate-600',
               border: 'border-slate-300',
             };
-            const isAtraso = isMedicaoEmAtraso(m);
-            const diasAtraso = isAtraso ? getDiasAtraso(m) : 0;
+            const stObraMed = getObraStatus(m.obra, obras);
+            const isAtraso = isMedicaoEmAtraso(m, undefined, obras);
+            const diasAtraso = isAtraso ? getDiasAtraso(m, undefined, obras) : 0;
 
             return (
               <div
@@ -382,10 +383,20 @@ export function MedicoesTable({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
                       <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
                         {m.obra}
                       </span>
+                      {stObraMed === 'Paralisada' && (
+                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                          Pausada
+                        </span>
+                      )}
+                      {stObraMed === 'Cancelada' && (
+                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30">
+                          Cancelada
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusColor.bg} ${statusColor.text} ${statusColor.border}`}>
                         {m.status}
                       </span>
@@ -447,6 +458,16 @@ export function MedicoesTable({
                       {isAtraso && (
                         <span className="block text-[9px] font-bold text-amber-600">
                           {diasAtraso > 0 ? `${diasAtraso}d atraso` : 'Atrasada'}
+                        </span>
+                      )}
+                      {!isAtraso && stObraMed === 'Paralisada' && m.status === 'A Medir' && (
+                        <span className="block text-[9px] font-semibold text-amber-600 dark:text-amber-400">
+                          Obra Pausada
+                        </span>
+                      )}
+                      {!isAtraso && stObraMed === 'Cancelada' && m.status === 'A Medir' && (
+                        <span className="block text-[9px] font-semibold text-rose-600 dark:text-rose-400">
+                          Obra Cancelada
                         </span>
                       )}
                     </div>
@@ -559,8 +580,9 @@ export function MedicoesTable({
                     text: 'text-slate-600',
                     border: 'border-slate-300',
                   };
-                  const isAtraso = isMedicaoEmAtraso(m);
-                  const diasAtraso = isAtraso ? getDiasAtraso(m) : 0;
+                  const stObraMed = getObraStatus(m.obra, obras);
+                  const isAtraso = isMedicaoEmAtraso(m, undefined, obras);
+                  const diasAtraso = isAtraso ? getDiasAtraso(m, undefined, obras) : 0;
 
                   return (
                     <tr
@@ -584,9 +606,21 @@ export function MedicoesTable({
                       </td>
 
                       <td className="py-2.5 px-3 font-bold whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
-                          {m.obra}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
+                            {m.obra}
+                          </span>
+                          {stObraMed === 'Paralisada' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                              Pausada
+                            </span>
+                          )}
+                          {stObraMed === 'Cancelada' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30">
+                              Cancelada
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-2.5 px-3 text-slate-700 dark:text-slate-200 max-w-[220px] break-words">
@@ -634,6 +668,22 @@ export function MedicoesTable({
                             >
                               <AlertTriangle className="h-2.5 w-2.5 shrink-0" />
                               {diasAtraso > 0 ? `${diasAtraso}d atraso` : 'Em atraso'}
+                            </span>
+                          )}
+                          {!isAtraso && stObraMed === 'Paralisada' && m.status === 'A Medir' && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 w-fit"
+                              title="Obra paralisada — cronograma pausado"
+                            >
+                              Obra Pausada
+                            </span>
+                          )}
+                          {!isAtraso && stObraMed === 'Cancelada' && m.status === 'A Medir' && (
+                            <span
+                              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20 w-fit"
+                              title="Obra cancelada — medição suspensa"
+                            >
+                              Obra Cancelada
                             </span>
                           )}
                         </div>
