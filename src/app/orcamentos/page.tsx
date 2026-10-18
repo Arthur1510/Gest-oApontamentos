@@ -378,9 +378,7 @@ export default function OrcamentosPage() {
       const updatedOrcs = recalcOrc.map((item) => {
         if (isContratoMatchOrcamento(contratoFinal, item, obras, recalcOrc)) {
           let newStatus = item.status;
-          if (item.status === 'A contratar') {
-            newStatus = item.saldo_a_contratar <= 0.01 ? 'Contratado' : 'Em contratação';
-          } else if (item.status === 'Em contratação' && item.saldo_a_contratar <= 0.01) {
+          if (item.valor_contratado > 0 && (item.status === 'A contratar' || item.status === 'Em contratação' || item.status === 'Em cotação')) {
             newStatus = 'Contratado';
           }
 
@@ -441,8 +439,6 @@ export default function OrcamentosPage() {
             let newStatus = item.status;
             if (item.valor_contratado <= 0 && (item.status === 'Contratado' || item.status === 'Em contratação')) {
               newStatus = 'A contratar';
-            } else if (item.valor_contratado > 0 && item.saldo_a_contratar > 0.01 && item.status === 'Contratado') {
-              newStatus = 'Em contratação';
             }
 
             const targetItem = newStatus !== item.status ? { ...item, status: newStatus } : item;

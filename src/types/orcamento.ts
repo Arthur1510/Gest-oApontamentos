@@ -206,10 +206,14 @@ export interface JanelaCaixa306090 {
 export interface ItemConsolidadoDisciplina {
   disciplina: string;
   orcamentoBase: number;
+  orcadoContratados: number; // Orçamento base apenas dos itens já contratados
   valorContratado: number;
   faltaContratar: number; // Soma dos itens ainda abertos dessa disciplina
   totalPrevisto: number;  // valorContratado + faltaContratar
   diferencaOrcamento: number; // totalPrevisto - orcamentoBase (> 0 = acima do orçado, < 0 = abaixo do orçado)
+  diferencaContratados: number; // valorContratado - orcadoContratados (< 0 = economia nos contratados, > 0 = desvio nos contratados)
+  economiaContratados: number; // Soma das economias conquistadas nos itens contratados abaixo do orçado
+  estouroContratados: number;  // Soma dos desvios nos itens contratados acima do orçado
   valorMedido: number;
   valorAMedir: number;
   percentualContratadoSobreBase: number;
@@ -226,6 +230,8 @@ export interface ItemConsolidadoContrato {
   categoria: CategoriaContrato;
   status: StatusContrato;
   valorContrato: number;
+  orcamentoBase?: number;
+  valorDesvio?: number;      // Parcela do contrato acima do orçamento base (ou aditivo positivo)
   valorPago: number;
   valorMedidoAPagar: number; // Medido ou A Pagar (ainda não Pago)
   valorMedidoTotal: number;  // Pago + Medido a Pagar
@@ -241,10 +247,14 @@ export interface ItemConsolidadoObra {
   label: string;
   status?: StatusObra;
   orcamentoBase: number;
+  orcadoContratados: number;
   valorContratado: number;
   faltaContratar: number;
   totalPrevisto: number;
   diferencaOrcamento: number;
+  diferencaContratados: number;
+  economiaContratados: number;
+  estouroContratados: number;
   valorMedido: number;
   valorPago: number;
   valorAMedir: number;
@@ -256,6 +266,7 @@ export interface ItemConsolidadoObra {
 
 export interface KpiOrcamento {
   totalOrcado: number;
+  orcadoContratados: number; // Orçamento base apenas dos itens já contratados
   totalContratado: number;
   saldoAContratar: number;
   percentualContratado: number;
@@ -280,11 +291,14 @@ export interface KpiOrcamento {
   qtdAMedirAtrasado: number;
   // Saldo contratual ainda sem parcelas/cronograma de medição cadastrado
   saldoSemCronograma?: number;
-  //Valor real que ainda falta contratar (mesmo quando Contratado + Falta Contratar passa do Orçamento Base)
+  // Valor real que ainda falta contratar (mesmo quando Contratado + Falta Contratar passa do Orçamento Base)
   faltaContratar: number;
   qtdFaltaContratar: number;
   custoTotalPrevisto: number; // totalContratado + faltaContratar
   diferencaOrcamento: number; // custoTotalPrevisto - totalOrcado (> 0 = ficará acima do orçado; < 0 = economia)
+  diferencaContratados: number; // contratadoDosContratados - orcadoContratados (< 0 = economia líquida nos contratados)
+  totalEconomiaItens: number; // soma das economias em itens já contratados abaixo do orçado
+  totalEstouroItens: number;  // soma dos valores contratados acima do orçado nos itens
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {

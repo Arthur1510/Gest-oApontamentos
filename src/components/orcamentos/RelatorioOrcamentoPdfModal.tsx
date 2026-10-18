@@ -291,7 +291,15 @@ export function RelatorioOrcamentoPdfModal({
         calculateConsolidadoDisciplinas(orcamentos, obraCodigo, catParam)
       );
       const scopeContratos = sortContratosList(
-        calculateConsolidadoContratos(contratos, medicoes, obraCodigo, filtroFornecedor || null, catParam)
+        calculateConsolidadoContratos(
+          contratos,
+          medicoes,
+          obraCodigo,
+          filtroFornecedor || null,
+          catParam,
+          orcamentos,
+          obras
+        )
       );
       const scopeCurva = calculateCurvaDesembolso(
         medicoes,
@@ -1017,14 +1025,47 @@ export function RelatorioOrcamentoPdfModal({
               const pageCurva = page.curvaPontos;
               const pageTotaisCurva = page.totaisCurva;
 
-              const pctContratadoBarra =
-                pageKpis.totalOrcado > 0
-                  ? Math.min(100, (pageKpis.totalContratado / pageKpis.totalOrcado) * 100)
-                  : 0;
-              const pctFaltaContratarBarra =
-                pageKpis.custoTotalPrevisto > 0
-                  ? Math.min(100, (pageKpis.faltaContratar / pageKpis.custoTotalPrevisto) * 100)
-                  : 0;
+              const estourouProjecaoKpi =
+                pageKpis.diferencaOrcamento > 1 || pageKpis.diferencaContratados > 1;
+              const valorEstouroKpi = Math.max(
+                0,
+                pageKpis.diferencaOrcamento > 1
+                  ? pageKpis.diferencaOrcamento
+                  : pageKpis.diferencaContratados
+              );
+              const economizouKpi =
+                !estourouProjecaoKpi &&
+                (pageKpis.diferencaOrcamento < -1 || pageKpis.diferencaContratados < -1);
+              const economiaContratadosKpi = economizouKpi
+                ? Math.abs(
+                    pageKpis.diferencaOrcamento < -1
+                      ? pageKpis.diferencaOrcamento
+                      : pageKpis.diferencaContratados
+                  )
+                : 0;
+              const contratadoBaseKpi = estourouProjecaoKpi
+                ? Math.max(0, pageKpis.totalContratado - valorEstouroKpi)
+                : pageKpis.totalContratado;
+              const refMaxKpi = Math.max(
+                pageKpis.totalOrcado,
+                contratadoBaseKpi + economiaContratadosKpi + pageKpis.faltaContratar + valorEstouroKpi,
+                1
+              );
+              const pctContratadoBarra = Math.min(100, (contratadoBaseKpi / refMaxKpi) * 100);
+              const pctEconomiaBarra = Math.min(
+                100 - pctContratadoBarra,
+                (economiaContratadosKpi / refMaxKpi) * 100
+              );
+              const pctFaltaContratarBarra = Math.min(
+                100 - pctContratadoBarra - pctEconomiaBarra,
+                (pageKpis.faltaContratar / refMaxKpi) * 100
+              );
+              const pctDesvioBarra = estourouProjecaoKpi
+                ? Math.min(
+                    100 - pctContratadoBarra - pctEconomiaBarra - pctFaltaContratarBarra,
+                    (valorEstouroKpi / refMaxKpi) * 100
+                  )
+                : 0;
               const pctMedidoBarra =
                 pageKpis.totalContratado > 0
                   ? Math.min(100, (pageKpis.totalMedido / pageKpis.totalContratado) * 100)
@@ -1149,7 +1190,7 @@ export function RelatorioOrcamentoPdfModal({
 
                             <div
                               style={{ height: `${anyKpiExpanded ? 184 : 88}px` }}
-                              className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 shrink-0"
+                              className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 items-stretch shrink-0"
                             >
                               {/* Card 1: Já Contratado */}
                               <div
@@ -1183,16 +1224,28 @@ export function RelatorioOrcamentoPdfModal({
                                     {formatCurrency(pageKpis.totalContratado)}
                                   </span>
                                 </div>
-                                <div className="space-y-1">
-                                  <div className="w-full h-1.5 rounded-full bg-sky-200/70 overflow-hidden">
+                                <div className="space-y-1 mt-auto">
+                                  <div className="w-full h-1.5 rounded-full bg-sky-200/70 overflow-hidden flex">
                                     <div
-                                      className="h-full bg-[#00A3C4] rounded-full"
+                                      className="h-full bg-[#00A3C4]"
                                       style={{ width: `${pctContratadoBarra}%` }}
                                     />
+                                    {pctEconomiaBarra > 0 && (
+                                      <div
+                                        className="h-full bg-emerald-500"
+                                        style={{ width: `${pctEconomiaBarra}%` }}
+                                      />
+                                    )}
+                                    {pctDesvioBarra > 0 && pageKpis.faltaContratar === 0 && (
+                                      <div
+                                        className="h-full bg-rose-500"
+                                        style={{ width: `${pctDesvioBarra}%` }}
+                                      />
+                                    )}
                                   </div>
-                                  <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
-                                    <span>Orçado Base:</span>
-                                    <strong>{formatCurrency(pageKpis.totalOrcado)}</strong>
+                                  <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
+                                    <span className="truncate">Orçado Base:</span>
+                                    <strong className="shrink-0">{formatCurrency(pageKpis.totalOrcado)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -1229,28 +1282,52 @@ export function RelatorioOrcamentoPdfModal({
                                     {formatCurrency(pageKpis.faltaContratar)}
                                   </span>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 mt-auto">
                                   <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
                                     <div
                                       className="h-full bg-[#00A3C4]"
-                                      style={{ width: `${100 - pctFaltaContratarBarra}%` }}
+                                      style={{ width: `${pctContratadoBarra}%` }}
                                     />
-                                    <div
-                                      className="h-full bg-amber-500"
-                                      style={{ width: `${pctFaltaContratarBarra}%` }}
-                                    />
+                                    {pctEconomiaBarra > 0 && (
+                                      <div
+                                        className="h-full bg-emerald-500"
+                                        style={{ width: `${pctEconomiaBarra}%` }}
+                                      />
+                                    )}
+                                    {pctFaltaContratarBarra > 0 && (
+                                      <div
+                                        className="h-full bg-amber-400/80"
+                                        style={{ width: `${pctFaltaContratarBarra}%` }}
+                                      />
+                                    )}
+                                    {pctDesvioBarra > 0 && (
+                                      <div
+                                        className="h-full bg-rose-500"
+                                        style={{ width: `${pctDesvioBarra}%` }}
+                                      />
+                                    )}
                                   </div>
-                                  <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
-                                    <span>
-                                      {pageKpis.diferencaOrcamento > 0 ? 'Acima do Orçado:' : 'Projeção Total:'}
+                                  <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
+                                    <span className="truncate">
+                                      {estourouProjecaoKpi
+                                        ? 'Projeção vs. Orçado:'
+                                        : economizouKpi
+                                        ? 'Economia no Orçado:'
+                                        : 'Projeção Total:'}
                                     </span>
-                                    <strong
-                                      className={pageKpis.diferencaOrcamento > 0 ? 'text-rose-700' : 'text-slate-800'}
-                                    >
-                                      {pageKpis.diferencaOrcamento > 0
-                                        ? `+${formatCurrency(pageKpis.diferencaOrcamento)}`
-                                        : formatCurrency(pageKpis.custoTotalPrevisto)}
-                                    </strong>
+                                    {estourouProjecaoKpi ? (
+                                      <strong className="text-rose-700 shrink-0">
+                                        +{formatCurrency(valorEstouroKpi)}
+                                      </strong>
+                                    ) : economizouKpi ? (
+                                      <strong className="text-emerald-700 shrink-0">
+                                        -{formatCurrency(economiaContratadosKpi)}
+                                      </strong>
+                                    ) : (
+                                      <strong className="text-slate-800 shrink-0">
+                                        {formatCurrency(pageKpis.custoTotalPrevisto)}
+                                      </strong>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -1287,16 +1364,16 @@ export function RelatorioOrcamentoPdfModal({
                                     {formatCurrency(pageKpis.totalMedido)}
                                   </span>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 mt-auto">
                                   <div className="w-full h-1.5 rounded-full bg-emerald-200/70 overflow-hidden">
                                     <div
                                       className="h-full bg-emerald-500 rounded-full"
                                       style={{ width: `${pctMedidoBarra}%` }}
                                     />
                                   </div>
-                                  <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
-                                    <span>Avanço Físico:</span>
-                                    <strong className="text-emerald-700">{formatPercent(pageKpis.percentualMedido)}</strong>
+                                  <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
+                                    <span className="truncate">Avanço Físico:</span>
+                                    <strong className="text-emerald-700 shrink-0">{formatPercent(pageKpis.percentualMedido)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -1333,16 +1410,16 @@ export function RelatorioOrcamentoPdfModal({
                                     {formatCurrency(pageKpis.saldoAMedir)}
                                   </span>
                                 </div>
-                                <div className="space-y-1">
+                                <div className="space-y-1 mt-auto">
                                   <div className="w-full h-1.5 rounded-full bg-purple-200/70 overflow-hidden">
                                     <div
                                       className="h-full bg-purple-500 rounded-full"
                                       style={{ width: `${pctAMedirBarra}%` }}
                                     />
                                   </div>
-                                  <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
-                                    <span>Já Pago (Caixa):</span>
-                                    <strong className="text-slate-800">{formatCurrency(pageKpis.totalPago)}</strong>
+                                  <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
+                                    <span className="truncate">Já Pago (Caixa):</span>
+                                    <strong className="text-slate-800 shrink-0">{formatCurrency(pageKpis.totalPago)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -1477,18 +1554,32 @@ export function RelatorioOrcamentoPdfModal({
                                   ? `3. Quadro Resumo Comparativo por Obra — Continuação (${block.totalCount} obras)`
                                   : `3. Quadro Resumo Comparativo por Obra (${block.totalCount} empreendimentos ativos)`}
                               </h2>
-                              <button
-                                type="button"
-                                onClick={() => toggleBlockExpand('pdfQuadroObras')}
-                                className="no-print-btn text-slate-400 hover:text-slate-700 flex items-center gap-1 text-[10px]"
-                                title="Aumentar/Reduzir altura dos cards de obras"
-                              >
-                                {expandedPdfBlocks.pdfQuadroObras ? (
-                                  <Minimize2 className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Maximize2 className="h-3.5 w-3.5" />
-                                )}
-                              </button>
+                              <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-[#00A3C4]" /> Contratado
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Economia
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-amber-400/80" /> A Contratar
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBlockExpand('pdfQuadroObras')}
+                                  className="no-print-btn text-slate-400 hover:text-slate-700 flex items-center gap-1 text-[10px]"
+                                  title="Aumentar/Reduzir altura dos cards de obras"
+                                >
+                                  {expandedPdfBlocks.pdfQuadroObras ? (
+                                    <Minimize2 className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Maximize2 className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div
@@ -1496,10 +1587,43 @@ export function RelatorioOrcamentoPdfModal({
                               className="flex flex-col shrink-0"
                             >
                               {block.items.map((ob) => {
-                                const refMax = Math.max(ob.orcamentoBase, ob.totalPrevisto, 1);
-                                const pctContratado = Math.min(100, (ob.valorContratado / refMax) * 100);
-                                const pctFalta = Math.min(100 - pctContratado, (ob.faltaContratar / refMax) * 100);
-                                const estourou = ob.diferencaOrcamento > 1;
+                                const estourouProjecao =
+                                  ob.diferencaOrcamento > 1 || ob.diferencaContratados > 1;
+                                const valorEstouro = Math.max(
+                                  0,
+                                  ob.diferencaOrcamento > 1
+                                    ? ob.diferencaOrcamento
+                                    : ob.diferencaContratados
+                                );
+                                const valorEconomia = !estourouProjecao
+                                  ? ob.diferencaContratados < -1
+                                    ? Math.abs(ob.diferencaContratados)
+                                    : ob.economiaContratados
+                                  : 0;
+                                const economizou = !estourouProjecao && valorEconomia > 1;
+                                const contratadoSemDesvio = estourouProjecao
+                                  ? Math.max(0, ob.valorContratado - valorEstouro)
+                                  : ob.valorContratado;
+                                const refMax = Math.max(
+                                  ob.orcamentoBase,
+                                  contratadoSemDesvio + valorEconomia + ob.faltaContratar + valorEstouro,
+                                  1
+                                );
+                                const pctContratado = Math.min(100, (contratadoSemDesvio / refMax) * 100);
+                                const pctEconomia = Math.min(
+                                  100 - pctContratado,
+                                  (valorEconomia / refMax) * 100
+                                );
+                                const pctFalta = Math.min(
+                                  100 - pctContratado - pctEconomia,
+                                  (ob.faltaContratar / refMax) * 100
+                                );
+                                const pctDesvio = estourouProjecao
+                                  ? Math.min(
+                                      100 - pctContratado - pctEconomia - pctFalta,
+                                      (valorEstouro / refMax) * 100
+                                    )
+                                  : 0;
 
                                 return (
                                   <div
@@ -1515,11 +1639,15 @@ export function RelatorioOrcamentoPdfModal({
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
-                                        {estourou && (
+                                        {estourouProjecao ? (
                                           <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-rose-100 text-rose-700 leading-none">
-                                            +{formatCurrencyShort(ob.diferencaOrcamento)} acima do orçado
+                                            +{formatCurrencyShort(valorEstouro)} projeção vs. orçado
                                           </span>
-                                        )}
+                                        ) : economizou ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-emerald-100 text-emerald-700 leading-none">
+                                            -{formatCurrencyShort(valorEconomia)} de economia
+                                          </span>
+                                        ) : null}
                                         <span className="font-black text-slate-900">
                                           {formatCurrency(ob.totalPrevisto)}
                                         </span>
@@ -1527,12 +1655,29 @@ export function RelatorioOrcamentoPdfModal({
                                     </div>
 
                                     <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
-                                      <div
-                                        className={`h-full ${estourou ? 'bg-rose-500' : 'bg-[#00A3C4]'}`}
-                                        style={{ width: `${pctContratado}%` }}
-                                      />
-                                      {ob.faltaContratar > 0 && (
-                                        <div className="h-full bg-amber-400" style={{ width: `${pctFalta}%` }} />
+                                      {pctContratado > 0 && (
+                                        <div
+                                          className="h-full bg-[#00A3C4]"
+                                          style={{ width: `${pctContratado}%` }}
+                                        />
+                                      )}
+                                      {economizou && pctEconomia > 0 && (
+                                        <div
+                                          className="h-full bg-emerald-500"
+                                          style={{ width: `${pctEconomia}%` }}
+                                        />
+                                      )}
+                                      {ob.faltaContratar > 0 && pctFalta > 0 && (
+                                        <div
+                                          className="h-full bg-amber-400/75"
+                                          style={{ width: `${pctFalta}%` }}
+                                        />
+                                      )}
+                                      {estourouProjecao && pctDesvio > 0 && (
+                                        <div
+                                          className="h-full bg-rose-500"
+                                          style={{ width: `${pctDesvio}%` }}
+                                        />
                                       )}
                                     </div>
 
@@ -1548,11 +1693,27 @@ export function RelatorioOrcamentoPdfModal({
                                             {formatCurrency(ob.valorContratado)}
                                           </strong>
                                         </span>
+                                        {economizou && (
+                                          <span>
+                                            Economia:{' '}
+                                            <strong className="text-emerald-700">
+                                              {formatCurrency(valorEconomia)}
+                                            </strong>
+                                          </span>
+                                        )}
                                         {ob.faltaContratar > 0 && (
                                           <span>
-                                            Falta Contratar:{' '}
+                                            A Contratar:{' '}
                                             <strong className="text-amber-700">
                                               {formatCurrency(ob.faltaContratar)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                        {estourouProjecao && (
+                                          <span>
+                                            Desvio:{' '}
+                                            <strong className="text-rose-700">
+                                              +{formatCurrency(valorEstouro)}
                                             </strong>
                                           </span>
                                         )}
@@ -1594,20 +1755,34 @@ export function RelatorioOrcamentoPdfModal({
                                 <Layers className="h-3.5 w-3.5 text-[#00A3C4]" />
                                 {block.isContinuation
                                   ? `3. Consolidação por Disciplina — Continuação (${block.totalCount})`
-                                  : `3. Consolidação por Disciplina (Contratado + Falta Contratar vs. Orçado)`}
+                                  : `3. Consolidação por Disciplina (Contratado + A Contratar vs. Orçado)`}
                               </h2>
-                              <button
-                                type="button"
-                                onClick={() => toggleBlockExpand('pdfDisciplinas')}
-                                className="no-print-btn text-slate-400 hover:text-slate-700 flex items-center gap-1 text-[10px]"
-                                title="Aumentar/Reduzir altura dos cards de disciplinas"
-                              >
-                                {expandedPdfBlocks.pdfDisciplinas ? (
-                                  <Minimize2 className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Maximize2 className="h-3.5 w-3.5" />
-                                )}
-                              </button>
+                              <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-[#00A3C4]" /> Contratado
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Economia
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-amber-400/80" /> A Contratar
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBlockExpand('pdfDisciplinas')}
+                                  className="no-print-btn text-slate-400 hover:text-slate-700 flex items-center gap-1 text-[10px]"
+                                  title="Aumentar/Reduzir altura dos cards de disciplinas"
+                                >
+                                  {expandedPdfBlocks.pdfDisciplinas ? (
+                                    <Minimize2 className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Maximize2 className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div
@@ -1615,10 +1790,43 @@ export function RelatorioOrcamentoPdfModal({
                               className="flex flex-col shrink-0"
                             >
                               {block.items.map((d) => {
-                                const refMax = Math.max(d.orcamentoBase, d.totalPrevisto, 1);
-                                const pctContratado = Math.min(100, (d.valorContratado / refMax) * 100);
-                                const pctFalta = Math.min(100 - pctContratado, (d.faltaContratar / refMax) * 100);
-                                const estourou = d.diferencaOrcamento > 1;
+                                const estourouProjecao =
+                                  d.diferencaOrcamento > 1 || d.diferencaContratados > 1;
+                                const valorEstouro = Math.max(
+                                  0,
+                                  d.diferencaOrcamento > 1
+                                    ? d.diferencaOrcamento
+                                    : d.diferencaContratados
+                                );
+                                const valorEconomia = !estourouProjecao
+                                  ? d.diferencaContratados < -1
+                                    ? Math.abs(d.diferencaContratados)
+                                    : d.economiaContratados
+                                  : 0;
+                                const economizou = !estourouProjecao && valorEconomia > 1;
+                                const contratadoSemDesvio = estourouProjecao
+                                  ? Math.max(0, d.valorContratado - valorEstouro)
+                                  : d.valorContratado;
+                                const refMax = Math.max(
+                                  d.orcamentoBase,
+                                  contratadoSemDesvio + valorEconomia + d.faltaContratar + valorEstouro,
+                                  1
+                                );
+                                const pctContratado = Math.min(100, (contratadoSemDesvio / refMax) * 100);
+                                const pctEconomia = Math.min(
+                                  100 - pctContratado,
+                                  (valorEconomia / refMax) * 100
+                                );
+                                const pctFalta = Math.min(
+                                  100 - pctContratado - pctEconomia,
+                                  (d.faltaContratar / refMax) * 100
+                                );
+                                const pctDesvio = estourouProjecao
+                                  ? Math.min(
+                                      100 - pctContratado - pctEconomia - pctFalta,
+                                      (valorEstouro / refMax) * 100
+                                    )
+                                  : 0;
                                 const discLabel = d.disciplina === 'Projeto' ? 'Projetos' : d.disciplina;
 
                                 return (
@@ -1630,11 +1838,15 @@ export function RelatorioOrcamentoPdfModal({
                                     <div className="flex items-center justify-between text-[10px] leading-none">
                                       <span className="font-bold text-slate-800 truncate">{discLabel}</span>
                                       <div className="flex items-center gap-2 shrink-0">
-                                        {estourou && (
+                                        {estourouProjecao ? (
                                           <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-rose-100 text-rose-700 leading-none">
-                                            +{formatCurrencyShort(d.diferencaOrcamento)} acima do orçado
+                                            +{formatCurrencyShort(valorEstouro)} projeção vs. orçado
                                           </span>
-                                        )}
+                                        ) : economizou ? (
+                                          <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-emerald-100 text-emerald-700 leading-none">
+                                            -{formatCurrencyShort(valorEconomia)} de economia
+                                          </span>
+                                        ) : null}
                                         <span className="font-black text-slate-900">
                                           {formatCurrency(d.totalPrevisto)}
                                         </span>
@@ -1642,12 +1854,29 @@ export function RelatorioOrcamentoPdfModal({
                                     </div>
 
                                     <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
-                                      <div
-                                        className={`h-full ${estourou ? 'bg-rose-500' : 'bg-[#00A3C4]'}`}
-                                        style={{ width: `${pctContratado}%` }}
-                                      />
-                                      {d.faltaContratar > 0 && (
-                                        <div className="h-full bg-amber-400" style={{ width: `${pctFalta}%` }} />
+                                      {pctContratado > 0 && (
+                                        <div
+                                          className="h-full bg-[#00A3C4]"
+                                          style={{ width: `${pctContratado}%` }}
+                                        />
+                                      )}
+                                      {economizou && pctEconomia > 0 && (
+                                        <div
+                                          className="h-full bg-emerald-500"
+                                          style={{ width: `${pctEconomia}%` }}
+                                        />
+                                      )}
+                                      {d.faltaContratar > 0 && pctFalta > 0 && (
+                                        <div
+                                          className="h-full bg-amber-400/75"
+                                          style={{ width: `${pctFalta}%` }}
+                                        />
+                                      )}
+                                      {estourouProjecao && pctDesvio > 0 && (
+                                        <div
+                                          className="h-full bg-rose-500"
+                                          style={{ width: `${pctDesvio}%` }}
+                                        />
                                       )}
                                     </div>
 
@@ -1659,11 +1888,27 @@ export function RelatorioOrcamentoPdfModal({
                                             {formatCurrency(d.valorContratado)}
                                           </strong>
                                         </span>
+                                        {economizou && (
+                                          <span>
+                                            Economia:{' '}
+                                            <strong className="text-emerald-700">
+                                              {formatCurrency(valorEconomia)}
+                                            </strong>
+                                          </span>
+                                        )}
                                         {d.faltaContratar > 0 && (
                                           <span>
-                                            Falta Contratar:{' '}
+                                            A Contratar:{' '}
                                             <strong className="text-amber-700">
                                               {formatCurrency(d.faltaContratar)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                        {estourouProjecao && (
+                                          <span>
+                                            Desvio:{' '}
+                                            <strong className="text-rose-700">
+                                              +{formatCurrency(valorEstouro)}
                                             </strong>
                                           </span>
                                         )}
@@ -1698,18 +1943,29 @@ export function RelatorioOrcamentoPdfModal({
                                   ? `4. Consolidação dos Contratos — Continuação (${block.totalCount} contratos)`
                                   : `4. Consolidação dos Contratos (Avanço de Medições vs. Saldo a Medir)`}
                               </h2>
-                              <button
-                                type="button"
-                                onClick={() => toggleBlockExpand('pdfContratos')}
-                                className="no-print-btn text-slate-400 hover:text-slate-700"
-                                title="Aumentar/Reduzir altura dos cards de contratos"
-                              >
-                                {expandedPdfBlocks.pdfContratos ? (
-                                  <Minimize2 className="h-3.5 w-3.5" />
-                                ) : (
-                                  <Maximize2 className="h-3.5 w-3.5" />
-                                )}
-                              </button>
+                              <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Pago
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-indigo-500" /> Medido a Pagar
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleBlockExpand('pdfContratos')}
+                                  className="no-print-btn text-slate-400 hover:text-slate-700"
+                                  title="Aumentar/Reduzir altura dos cards de contratos"
+                                >
+                                  {expandedPdfBlocks.pdfContratos ? (
+                                    <Minimize2 className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <Maximize2 className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              </div>
                             </div>
 
                             <div
@@ -1717,8 +1973,16 @@ export function RelatorioOrcamentoPdfModal({
                               className="flex flex-col shrink-0"
                             >
                               {block.items.map((c) => {
-                                const pctPago = Math.min(100, c.percentualPago * 100);
-                                const pctAPagar = Math.min(100 - pctPago, c.percentualMedidoAPagar * 100);
+                                const valorDesvioContrato = c.valorDesvio || 0;
+                                const temDesvioContrato = valorDesvioContrato > 1;
+                                const pctDesvioContrato =
+                                  temDesvioContrato && c.valorContrato > 0
+                                    ? Math.min(100, (valorDesvioContrato / c.valorContrato) * 100)
+                                    : 0;
+                                const limiteBase = Math.max(0, 100 - pctDesvioContrato);
+                                const pctPago = Math.min(limiteBase, c.percentualPago * 100);
+                                const pctAPagar = Math.min(limiteBase - pctPago, c.percentualMedidoAPagar * 100);
+                                const pctRestanteBase = Math.max(0, limiteBase - pctPago - pctAPagar);
                                 const discLabel = c.disciplina === 'Projeto' ? 'Projetos' : c.disciplina;
 
                                 return (
@@ -1734,24 +1998,53 @@ export function RelatorioOrcamentoPdfModal({
                                           {discLabel}
                                         </span>
                                       </div>
-                                      <span className="font-black text-slate-900 shrink-0">
-                                        {formatCurrency(c.valorContrato)}
-                                      </span>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {temDesvioContrato && (
+                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 text-rose-700 leading-none">
+                                            +{formatCurrencyShort(valorDesvioContrato)} desvio
+                                          </span>
+                                        )}
+                                        <span className="font-black text-slate-900">
+                                          {formatCurrency(c.valorContrato)}
+                                        </span>
+                                      </div>
                                     </div>
 
                                     <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
                                       <div className="h-full bg-emerald-500" style={{ width: `${pctPago}%` }} />
                                       <div className="h-full bg-indigo-500" style={{ width: `${pctAPagar}%` }} />
+                                      {temDesvioContrato && pctRestanteBase > 0 && (
+                                        <div
+                                          className="h-full bg-transparent"
+                                          style={{ width: `${pctRestanteBase}%` }}
+                                        />
+                                      )}
+                                      {temDesvioContrato && pctDesvioContrato > 0 && (
+                                        <div
+                                          className="h-full bg-rose-500"
+                                          style={{ width: `${pctDesvioContrato}%` }}
+                                        />
+                                      )}
                                     </div>
 
                                     <div className="flex items-center justify-between text-[8.5px] text-slate-500 leading-none">
-                                      <span>
-                                        Medido:{' '}
-                                        <strong className="text-emerald-700">
-                                          {formatCurrency(c.valorMedidoTotal)}
-                                        </strong>{' '}
-                                        ({formatPercent(c.percentualMedidoTotal, 0)})
-                                      </span>
+                                      <div className="flex items-center gap-3">
+                                        <span>
+                                          Medido:{' '}
+                                          <strong className="text-emerald-700">
+                                            {formatCurrency(c.valorMedidoTotal)}
+                                          </strong>{' '}
+                                          ({formatPercent(c.percentualMedidoTotal, 0)})
+                                        </span>
+                                        {temDesvioContrato && (
+                                          <span>
+                                            Desvio:{' '}
+                                            <strong className="text-rose-700">
+                                              +{formatCurrency(valorDesvioContrato)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                      </div>
                                       <span>
                                         A Medir:{' '}
                                         <strong className="text-purple-700">{formatCurrency(c.valorAMedir)}</strong>

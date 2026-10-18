@@ -136,7 +136,9 @@ export function OrcamentoDashboard({
       medicoes,
       filtroObra || null,
       filtroFornecedor || null,
-      catParam
+      catParam,
+      orcamentos,
+      obras
     );
     const list = [...base];
     if (ordemContratos === 'alfabetica') {
@@ -150,7 +152,7 @@ export function OrcamentoDashboard({
       return list.sort((a, b) => b.valorAMedir - a.valorAMedir || b.valorContrato - a.valorContrato);
     }
     return list.sort((a, b) => b.valorContrato - a.valorContrato);
-  }, [contratos, medicoes, filtroObra, filtroFornecedor, catParam, ordemContratos]);
+  }, [contratos, medicoes, filtroObra, filtroFornecedor, catParam, orcamentos, obras, ordemContratos]);
 
   // Curva de Desembolso Mês a Mês
   const curvaPontos = useMemo(() => {
@@ -196,9 +198,33 @@ export function OrcamentoDashboard({
   const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
   const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
 
-  // Proporções visuais para as barras dos cards principais
-  const pctContratadoBarra = kpis.totalOrcado > 0 ? Math.min(100, (kpis.totalContratado / kpis.totalOrcado) * 100) : 0;
-  const pctFaltaContratarBarra = kpis.custoTotalPrevisto > 0 ? Math.min(100, (kpis.faltaContratar / kpis.custoTotalPrevisto) * 100) : 0;
+  // Proporções visuais para as barras dos cards principais (Contratado Base + Economia ou A Contratar + Desvio em vermelho)
+  const estourouProjecaoKpi = kpis.diferencaOrcamento > 1 || kpis.diferencaContratados > 1;
+  const valorEstouroKpi = estourouProjecaoKpi
+    ? Math.max(0, kpis.diferencaOrcamento > 1 ? kpis.diferencaOrcamento : kpis.diferencaContratados)
+    : 0;
+  const economizouKpi = !estourouProjecaoKpi && (kpis.diferencaOrcamento < -1 || kpis.diferencaContratados < -1);
+  const economiaContratadosKpi = economizouKpi
+    ? Math.abs(kpis.diferencaOrcamento < -1 ? kpis.diferencaOrcamento : kpis.diferencaContratados)
+    : 0;
+  const contratadoBaseKpi = estourouProjecaoKpi
+    ? Math.max(0, kpis.totalContratado - valorEstouroKpi)
+    : kpis.totalContratado;
+  const refMaxKpi = Math.max(
+    kpis.totalOrcado,
+    contratadoBaseKpi + economiaContratadosKpi + kpis.faltaContratar + valorEstouroKpi,
+    1
+  );
+  const pctContratadoBarra = Math.min(100, (contratadoBaseKpi / refMaxKpi) * 100);
+  const pctEconomiaBarra = Math.min(100 - pctContratadoBarra, (economiaContratadosKpi / refMaxKpi) * 100);
+  const pctFaltaContratarBarra = Math.min(
+    100 - pctContratadoBarra - pctEconomiaBarra,
+    (kpis.faltaContratar / refMaxKpi) * 100
+  );
+  const pctDesvioBarra = Math.min(
+    100 - pctContratadoBarra - pctEconomiaBarra - pctFaltaContratarBarra,
+    (valorEstouroKpi / refMaxKpi) * 100
+  );
   const pctMedidoBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.totalMedido / kpis.totalContratado) * 100) : 0;
   const pctAMedirBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.saldoAMedir / kpis.totalContratado) * 100) : 0;
 
@@ -302,10 +328,10 @@ export function OrcamentoDashboard({
       </div>
 
       {/* 2. OS 4 CARDS ESSENCIAIS (LIMPOS + BOTÃO INDIVIDUAL DE AUMENTAR) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
         {/* Card 1: Já Contratado */}
         <Card
-          className={`border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
+          className={`flex flex-col justify-between border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
             expandedCards.contratado ? 'sm:col-span-2 lg:col-span-2 ring-2 ring-[#00A3C4]/40' : ''
           }`}
         >
@@ -336,17 +362,32 @@ export function OrcamentoDashboard({
               {formatCurrency(kpis.totalContratado)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2.5">
-            {/* Barra de Progresso Limpa */}
-            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden">
+          <CardContent className="pt-0 space-y-2.5 mt-auto">
+            {/* Barra de Progresso com fatia de Economia ou Desvio */}
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden flex">
               <div
-                className="h-full bg-[#00A3C4] rounded-full transition-all"
+                className="h-full bg-[#00A3C4] transition-all"
                 style={{ width: `${pctContratadoBarra}%` }}
+                title={`Contratado (dentro do orçado): ${formatCurrency(contratadoBaseKpi)}`}
               />
+              {pctEconomiaBarra > 0 && (
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${pctEconomiaBarra}%` }}
+                  title={`Economia Conquistada: ${formatCurrency(economiaContratadosKpi)}`}
+                />
+              )}
+              {pctDesvioBarra > 0 && kpis.faltaContratar === 0 && (
+                <div
+                  className="h-full bg-rose-500 transition-all"
+                  style={{ width: `${pctDesvioBarra}%` }}
+                  title={`Desvio / Estouro vs. Orçado: +${formatCurrency(valorEstouroKpi)}`}
+                />
+              )}
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Orçamento Base:</span>
-              <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(kpis.totalOrcado)}</strong>
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+              <span className="truncate">Orçamento Base:</span>
+              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.totalOrcado)}</strong>
             </div>
 
             {expandedCards.contratado && (
@@ -364,9 +405,9 @@ export function OrcamentoDashboard({
           </CardContent>
         </Card>
 
-        {/* Card 2: Falta Contratar (Mesmo que passe do Orçamento Base) */}
+        {/* Card 2: Falta Contratar */}
         <Card
-          className={`border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
+          className={`flex flex-col justify-between border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
             expandedCards.faltaContratar ? 'sm:col-span-2 lg:col-span-2 ring-2 ring-amber-500/40' : ''
           }`}
         >
@@ -397,29 +438,55 @@ export function OrcamentoDashboard({
               {formatCurrency(kpis.faltaContratar)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2.5">
-            {/* Barra de Proporção */}
+          <CardContent className="pt-0 space-y-2.5 mt-auto">
+            {/* Barra de Proporção (Azul Contratado + Verde Economia + Âmbar A Contratar + Vermelho Desvio) */}
             <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden flex">
               <div
-                className="h-full bg-[#00A3C4]"
-                style={{ width: `${100 - pctFaltaContratarBarra}%` }}
+                className="h-full bg-[#00A3C4] transition-all"
+                style={{ width: `${pctContratadoBarra}%` }}
+                title={`Contratado (dentro do orçado): ${formatCurrency(contratadoBaseKpi)}`}
               />
-              <div
-                className="h-full bg-amber-500"
-                style={{ width: `${pctFaltaContratarBarra}%` }}
-              />
+              {pctEconomiaBarra > 0 && (
+                <div
+                  className="h-full bg-emerald-500 transition-all"
+                  style={{ width: `${pctEconomiaBarra}%` }}
+                  title={`Economia Conquistada: ${formatCurrency(economiaContratadosKpi)}`}
+                />
+              )}
+              {pctFaltaContratarBarra > 0 && (
+                <div
+                  className="h-full bg-amber-400/75 transition-all"
+                  style={{ width: `${pctFaltaContratarBarra}%` }}
+                  title={`A Contratar: ${formatCurrency(kpis.faltaContratar)}`}
+                />
+              )}
+              {pctDesvioBarra > 0 && (
+                <div
+                  className="h-full bg-rose-500 transition-all"
+                  style={{ width: `${pctDesvioBarra}%` }}
+                  title={`Desvio / Estouro vs. Orçado: +${formatCurrency(valorEstouroKpi)}`}
+                />
+              )}
             </div>
 
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400">
-                {kpis.diferencaOrcamento > 0 ? 'Acima do Orçado:' : 'Projeção Total:'}
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap">
+              <span className="text-slate-500 dark:text-slate-400 truncate">
+                {estourouProjecaoKpi
+                  ? 'Projeção vs. Orçado:'
+                  : economizouKpi
+                  ? 'Economia no Orçado:'
+                  : 'Projeção Total:'}
               </span>
-              {kpis.diferencaOrcamento > 0 ? (
-                <strong className="text-rose-600 dark:text-rose-400">
-                  +{formatCurrency(kpis.diferencaOrcamento)}
+              {estourouProjecaoKpi ? (
+                <strong className="text-rose-600 dark:text-rose-400 shrink-0">
+                  +{formatCurrency(valorEstouroKpi)}
+                </strong>
+              ) : economizouKpi ? (
+                <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                  -{formatCurrency(economiaContratadosKpi)}
                 </strong>
               ) : (
-                <strong className="text-slate-800 dark:text-slate-200">
+                <strong className="text-slate-800 dark:text-slate-200 shrink-0">
                   {formatCurrency(kpis.custoTotalPrevisto)}
                 </strong>
               )}
@@ -435,6 +502,22 @@ export function OrcamentoDashboard({
                   <span className="text-slate-400 block text-[11px]">Disciplinas em Aberto</span>
                   <strong className="text-amber-600 dark:text-amber-400 text-sm">{kpis.qtdFaltaContratar} item(ns)</strong>
                 </div>
+                {(kpis.totalEconomiaItens || 0) > 0 && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                    <span className="text-emerald-700 dark:text-emerald-400 block text-[11px]">Economia nos Contratados</span>
+                    <strong className="text-emerald-600 dark:text-emerald-400 text-sm">
+                      -{formatCurrency(kpis.totalEconomiaItens || 0)}
+                    </strong>
+                  </div>
+                )}
+                {(kpis.totalEstouroItens || 0) > 0 && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <span className="text-rose-700 dark:text-rose-400 block text-[11px]">Desvio nos Contratados</span>
+                    <strong className="text-rose-600 dark:text-rose-400 text-sm">
+                      +{formatCurrency(kpis.totalEstouroItens || 0)} vs. orçado
+                    </strong>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -442,7 +525,7 @@ export function OrcamentoDashboard({
 
         {/* Card 3: Valor Medido */}
         <Card
-          className={`border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
+          className={`flex flex-col justify-between border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
             expandedCards.medido ? 'sm:col-span-2 lg:col-span-2 ring-2 ring-emerald-500/40' : ''
           }`}
         >
@@ -473,7 +556,7 @@ export function OrcamentoDashboard({
               {formatCurrency(kpis.totalMedido)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2.5">
+          <CardContent className="pt-0 space-y-2.5 mt-auto">
             {/* Barra de Progresso Medido */}
             <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden">
               <div
@@ -482,9 +565,9 @@ export function OrcamentoDashboard({
               />
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Avanço dos Contratos:</span>
-              <strong className="text-emerald-600 dark:text-emerald-400">{formatPercent(kpis.percentualMedido)}</strong>
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+              <span className="truncate">Avanço dos Contratos:</span>
+              <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">{formatPercent(kpis.percentualMedido)}</strong>
             </div>
 
             {expandedCards.medido && (
@@ -504,7 +587,7 @@ export function OrcamentoDashboard({
 
         {/* Card 4: Valor a Medir */}
         <Card
-          className={`border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
+          className={`flex flex-col justify-between border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
             expandedCards.aMedir ? 'sm:col-span-2 lg:col-span-2 ring-2 ring-purple-500/40' : ''
           }`}
         >
@@ -535,7 +618,7 @@ export function OrcamentoDashboard({
               {formatCurrency(kpis.saldoAMedir)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pt-0 space-y-2.5">
+          <CardContent className="pt-0 space-y-2.5 mt-auto">
             {/* Barra de Proporção Saldo a Medir */}
             <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden">
               <div
@@ -544,9 +627,9 @@ export function OrcamentoDashboard({
               />
             </div>
 
-            <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-              <span>Já Pago:</span>
-              <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(kpis.totalPago)}</strong>
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+              <span className="truncate">Já Pago:</span>
+              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.totalPago)}</strong>
             </div>
 
             {expandedCards.aMedir && (
@@ -699,9 +782,25 @@ export function OrcamentoDashboard({
                 <div className="p-1.5 rounded-lg bg-[#00A3C4]/15 text-[#00A3C4] dark:text-[#00C4EB]">
                   <Layers className="h-4 w-4" />
                 </div>
-                <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
-                  Consolidação por Disciplina
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                    Consolidação por Disciplina
+                  </CardTitle>
+                  <div className="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-[#00A3C4]" /> Contratado
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> Economia
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-amber-400/80" /> A Contratar
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -754,10 +853,31 @@ export function OrcamentoDashboard({
               }`}
             >
               {consolidadoDisciplinas.map((d) => {
-                const refMax = Math.max(d.orcamentoBase, d.totalPrevisto, 1);
-                const pctContratado = Math.min(100, (d.valorContratado / refMax) * 100);
-                const pctFalta = Math.min(100 - pctContratado, (d.faltaContratar / refMax) * 100);
-                const estourou = d.diferencaOrcamento > 1;
+                const estourouProjecao = d.diferencaOrcamento > 1 || d.diferencaContratados > 1;
+                const valorEstouro = Math.max(0, d.diferencaOrcamento > 1 ? d.diferencaOrcamento : d.diferencaContratados);
+                const valorEconomia = !estourouProjecao
+                  ? d.diferencaContratados < -1
+                    ? Math.abs(d.diferencaContratados)
+                    : d.economiaContratados
+                  : 0;
+                const economizou = !estourouProjecao && valorEconomia > 1;
+                const contratadoSemDesvio = estourouProjecao
+                  ? Math.max(0, d.valorContratado - valorEstouro)
+                  : d.valorContratado;
+                const refMax = Math.max(
+                  d.orcamentoBase,
+                  contratadoSemDesvio + valorEconomia + d.faltaContratar + valorEstouro,
+                  1
+                );
+                const pctContratado = Math.min(100, (contratadoSemDesvio / refMax) * 100);
+                const pctEconomia = Math.min(100 - pctContratado, (valorEconomia / refMax) * 100);
+                const pctFalta = Math.min(
+                  100 - pctContratado - pctEconomia,
+                  (d.faltaContratar / refMax) * 100
+                );
+                const pctDesvio = estourouProjecao
+                  ? Math.min(100 - pctContratado - pctEconomia - pctFalta, (valorEstouro / refMax) * 100)
+                  : 0;
 
                 return (
                   <div
@@ -769,41 +889,71 @@ export function OrcamentoDashboard({
                         {d.disciplina}
                       </span>
                       <div className="flex items-center gap-2 shrink-0">
-                        {estourou && (
+                        {estourouProjecao ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                            +{formatCurrencyShort(d.diferencaOrcamento)} acima do orçado
+                            +{formatCurrencyShort(valorEstouro)} projeção vs. orçado
                           </span>
-                        )}
+                        ) : economizou ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            -{formatCurrencyShort(valorEconomia)} de economia
+                          </span>
+                        ) : null}
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                           {formatCurrency(d.totalPrevisto)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Barra de Progresso Visual da Disciplina */}
+                    {/* Barra de Progresso Visual da Disciplina (Azul Contratado + Verde Economia + Âmbar A Contratar + Vermelho Desvio) */}
                     <div className="w-full h-2.5 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex">
-                      <div
-                        className={`h-full transition-all ${estourou ? 'bg-rose-500' : 'bg-[#00A3C4]'}`}
-                        style={{ width: `${pctContratado}%` }}
-                        title={`Já Contratado: ${formatCurrency(d.valorContratado)}`}
-                      />
-                      {d.faltaContratar > 0 && (
+                      {pctContratado > 0 && (
                         <div
-                          className="h-full bg-amber-400 transition-all"
+                          className="h-full bg-[#00A3C4] transition-all"
+                          style={{ width: `${pctContratado}%` }}
+                          title={`Contratado (dentro do orçado): ${formatCurrency(contratadoSemDesvio)}`}
+                        />
+                      )}
+                      {economizou && pctEconomia > 0 && (
+                        <div
+                          className="h-full bg-emerald-500 transition-all"
+                          style={{ width: `${pctEconomia}%` }}
+                          title={`Economia Conquistada nos Contratados: ${formatCurrency(valorEconomia)}`}
+                        />
+                      )}
+                      {d.faltaContratar > 0 && pctFalta > 0 && (
+                        <div
+                          className="h-full bg-amber-400/75 transition-all"
                           style={{ width: `${pctFalta}%` }}
-                          title={`Falta Contratar: ${formatCurrency(d.faltaContratar)}`}
+                          title={`A Contratar: ${formatCurrency(d.faltaContratar)}`}
+                        />
+                      )}
+                      {estourouProjecao && pctDesvio > 0 && (
+                        <div
+                          className="h-full bg-rose-500 transition-all"
+                          style={{ width: `${pctDesvio}%` }}
+                          title={`Desvio / Estouro vs. Orçado: +${formatCurrency(valorEstouro)}`}
                         />
                       )}
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-3">
                         <span>
                           Contratado: <strong className="text-[#008EA9] dark:text-[#00C4EB]">{formatCurrency(d.valorContratado)}</strong>
                         </span>
+                        {economizou && (
+                          <span>
+                            Economia: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(valorEconomia)}</strong>
+                          </span>
+                        )}
                         {d.faltaContratar > 0 && (
                           <span>
-                            Falta Contratar: <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(d.faltaContratar)}</strong>
+                            A Contratar: <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(d.faltaContratar)}</strong>
+                          </span>
+                        )}
+                        {estourouProjecao && (
+                          <span>
+                            Desvio: <strong className="text-rose-600 dark:text-rose-400">+{formatCurrency(valorEstouro)}</strong>
                           </span>
                         )}
                       </div>
@@ -830,9 +980,22 @@ export function OrcamentoDashboard({
                 <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                   <Briefcase className="h-4 w-4" />
                 </div>
-                <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
-                  Consolidação dos Contratos ({consolidadoContratos.length})
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-base font-bold text-slate-900 dark:text-white">
+                    Consolidação dos Contratos ({consolidadoContratos.length})
+                  </CardTitle>
+                  <div className="flex flex-wrap items-center gap-3 mt-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" /> Pago
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-indigo-500" /> Medido a Pagar
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio vs. Orçado
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center gap-1.5">
@@ -885,8 +1048,15 @@ export function OrcamentoDashboard({
               }`}
             >
               {consolidadoContratos.map((c) => {
-                const pctPago = Math.min(100, c.percentualPago * 100);
-                const pctAPagar = Math.min(100 - pctPago, c.percentualMedidoAPagar * 100);
+                const valorDesvioContrato = c.valorDesvio || 0;
+                const temDesvioContrato = valorDesvioContrato > 1;
+                const pctDesvioContrato = temDesvioContrato && c.valorContrato > 0
+                  ? Math.min(100, (valorDesvioContrato / c.valorContrato) * 100)
+                  : 0;
+                const limiteBase = Math.max(0, 100 - pctDesvioContrato);
+                const pctPago = Math.min(limiteBase, c.percentualPago * 100);
+                const pctAPagar = Math.min(limiteBase - pctPago, c.percentualMedidoAPagar * 100);
+                const pctRestanteBase = Math.max(0, limiteBase - pctPago - pctAPagar);
 
                 return (
                   <div
@@ -902,12 +1072,19 @@ export function OrcamentoDashboard({
                           {c.disciplina}
                         </span>
                       </div>
-                      <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white shrink-0">
-                        {formatCurrency(c.valorContrato)}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {temDesvioContrato && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                            +{formatCurrencyShort(valorDesvioContrato)} desvio
+                          </span>
+                        )}
+                        <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
+                          {formatCurrency(c.valorContrato)}
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Barra de Progresso de Medição do Contrato */}
+                    {/* Barra de Progresso de Medição do Contrato + Fatia de Desvio em Vermelho */}
                     <div className="w-full h-2.5 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex">
                       <div
                         className="h-full bg-emerald-500 transition-all"
@@ -919,12 +1096,32 @@ export function OrcamentoDashboard({
                         style={{ width: `${pctAPagar}%` }}
                         title={`Medido a Pagar: ${formatCurrency(c.valorMedidoAPagar)}`}
                       />
+                      {temDesvioContrato && pctRestanteBase > 0 && (
+                        <div
+                          className="h-full bg-transparent"
+                          style={{ width: `${pctRestanteBase}%` }}
+                        />
+                      )}
+                      {temDesvioContrato && pctDesvioContrato > 0 && (
+                        <div
+                          className="h-full bg-rose-500 transition-all"
+                          style={{ width: `${pctDesvioContrato}%` }}
+                          title={`Desvio vs. Orçado / Aditivo: +${formatCurrency(valorDesvioContrato)}`}
+                        />
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>
-                        Medido: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(c.valorMedidoTotal)}</strong> ({formatPercent(c.percentualMedidoTotal, 0)})
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span>
+                          Medido: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(c.valorMedidoTotal)}</strong> ({formatPercent(c.percentualMedidoTotal, 0)})
+                        </span>
+                        {temDesvioContrato && (
+                          <span>
+                            Desvio: <strong className="text-rose-600 dark:text-rose-400">+{formatCurrency(valorDesvioContrato)}</strong>
+                          </span>
+                        )}
+                      </div>
                       <span>
                         A Medir: <strong className="text-purple-600 dark:text-purple-400">{formatCurrency(c.valorAMedir)}</strong>
                       </span>

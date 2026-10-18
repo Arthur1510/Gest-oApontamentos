@@ -370,9 +370,12 @@ export function recalculateOrcamentos(
     const saldoAContratar = o.orcamento_base - valorContratado;
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
-    // Preserva o status definido no item (inclusive escolhas manuais do usuário como 'Em cotação', 'Em contratação', 'Cancelado', etc.)
-    // Apenas infere automaticamente caso o item não possua status definido
-    const statusAtual: StatusOrcamento = o.status || (valorContratado > 0 ? (saldoAContratar <= 0.01 ? 'Contratado' : 'Em contratação') : 'A contratar');
+    // Preserva o status definido no item (inclusive escolhas manuais do usuário como 'Em cotação', 'Cancelado', etc.)
+    // Quando já possui valor contratado (> 0) e estava como 'A contratar' ou sem status, passa para 'Contratado'
+    const statusAtual: StatusOrcamento =
+      valorContratado > 0 && (!o.status || o.status === 'A contratar')
+        ? 'Contratado'
+        : o.status || (valorContratado > 0 ? 'Contratado' : 'A contratar');
 
     return {
       ...o,
@@ -525,9 +528,11 @@ export function calculateCurvaDesembolso(
     });
   }
 
+  const obraFiltroNorm = filtroObra ? filtroObra.trim().toUpperCase() : null;
+
   const filtered = medicoes.filter((m) => {
     if (m.status === 'Cancelado' || (m.status as any) === 'Cancelada') return false;
-    if (filtroObra && m.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (m.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroEmpresa && m.empresa !== filtroEmpresa) return false;
     if (filtroCategoria && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== filtroCategoria) {
       return false;
@@ -640,20 +645,22 @@ export function calculateKpis(
     catPorContrato[c.id] = c.categoria || 'Projeto';
   });
 
+  const obraFiltroNorm = filtroObra ? filtroObra.trim().toUpperCase() : null;
+
   const filteredOrc = orcamentos.filter((o) => {
-    if (filtroObra && o.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (o.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroCategoria && o.categoria !== filtroCategoria) return false;
     return true;
   });
 
   const filteredCt = contratos.filter((c) => {
-    if (filtroObra && c.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (c.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroCategoria && c.categoria !== filtroCategoria) return false;
     return true;
   });
 
   const filteredMed = medicoes.filter((m) => {
-    if (filtroObra && m.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (m.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroCategoria && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== filtroCategoria) {
       return false;
     }
@@ -665,17 +672,20 @@ export function calculateKpis(
   const saldoAContratar = totalOrcado - totalContratado;
   const percentualContratado = totalOrcado > 0 ? totalContratado / totalOrcado : 0;
 
-  // Valor real que ainda falta contratar (mesmo que Contratado + Falta Contratar passe do Orçamento Base)
+  // Valor real que ainda falta contratar e apuração de economia / desvio exclusivamente sobre os itens contratados
   let faltaContratar = 0;
   let qtdFaltaContratar = 0;
+  let orcadoContratados = 0;
+  let contratadoNosOrcamentos = 0;
+  let totalEconomiaItens = 0;
+  let totalEstouroItens = 0;
 
   for (const o of filteredOrc) {
     if (o.status === 'Cancelado') continue;
     const base = Number(o.orcamento_base) || 0;
     const contratadoItem = Number(o.valor_contratado) || 0;
-    const isFechado =
-      o.status === 'Contratado' ||
-      (contratadoItem > 0 && o.status !== 'Em contratação' && o.status !== 'Em cotação');
+    // Um item é considerado contratado/fechado se possuir status 'Contratado' ou já tiver contrato vinculado (contratadoItem > 0)
+    const isFechado = o.status === 'Contratado' || contratadoItem > 0;
 
     if (!isFechado) {
       const saldoAberto = Math.max(0, base - contratadoItem);
@@ -683,11 +693,21 @@ export function calculateKpis(
         faltaContratar += saldoAberto;
         qtdFaltaContratar++;
       }
+    } else {
+      orcadoContratados += base;
+      contratadoNosOrcamentos += contratadoItem;
+      if (contratadoItem < base) {
+        totalEconomiaItens += base - contratadoItem;
+      } else if (contratadoItem > base) {
+        totalEstouroItens += contratadoItem - base;
+      }
     }
   }
 
+  // Compara o valor contratado dos itens fechados apenas contra o Orçado Base desses itens já contratados
+  const diferencaContratados = contratadoNosOrcamentos - orcadoContratados; // < 0 = economia nos contratados; > 0 = desvio nos contratados
   const custoTotalPrevisto = totalContratado + faltaContratar;
-  const diferencaOrcamento = custoTotalPrevisto - totalOrcado; // > 0 = acima do orçado inicial; < 0 = economia
+  const diferencaOrcamento = custoTotalPrevisto - totalOrcado; // > 0 = projeção acima do orçado; < 0 = projeção abaixo do orçado
 
   let totalPago = 0;
   let totalMedidoPendente = 0;
@@ -731,15 +751,16 @@ export function calculateKpis(
   const saldoSemCronograma = Math.max(0, saldoAMedir - totalPrevistoAMedir);
 
   const totalProjetosContratado = contratos
-    .filter((c) => (!filtroObra || c.obra === filtroObra) && c.categoria === 'Projeto')
+    .filter((c) => (!obraFiltroNorm || (c.obra || '').trim().toUpperCase() === obraFiltroNorm) && c.categoria === 'Projeto')
     .reduce((acc, c) => acc + c.valor_contrato, 0);
 
   const totalLegalizacaoContratado = contratos
-    .filter((c) => (!filtroObra || c.obra === filtroObra) && c.categoria === 'Legalização')
+    .filter((c) => (!obraFiltroNorm || (c.obra || '').trim().toUpperCase() === obraFiltroNorm) && c.categoria === 'Legalização')
     .reduce((acc, c) => acc + c.valor_contrato, 0);
 
   return {
     totalOrcado,
+    orcadoContratados,
     totalContratado,
     saldoAContratar,
     percentualContratado,
@@ -765,6 +786,9 @@ export function calculateKpis(
     qtdFaltaContratar,
     custoTotalPrevisto,
     diferencaOrcamento,
+    diferencaContratados,
+    totalEconomiaItens,
+    totalEstouroItens,
   };
 }
 
@@ -786,9 +810,11 @@ export function calculateJanela306090(
     });
   }
 
+  const obraFiltroNorm = filtroObra ? filtroObra.trim().toUpperCase() : null;
+
   const pendentes = medicoes.filter((m) => {
     if (m.status === 'Pago' || m.status === 'Cancelado' || (m.status as any) === 'Cancelada') return false;
-    if (filtroObra && m.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (m.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
     if (filtroCategoria && catPorContrato[m.contrato_id] && catPorContrato[m.contrato_id] !== filtroCategoria) {
       return false;
@@ -897,8 +923,10 @@ export function calculateConsolidadoDisciplinas(
   filtroObra?: string | null,
   filtroCategoria?: 'Projeto' | 'Legalização' | null
 ): ItemConsolidadoDisciplina[] {
+  const obraFiltroNorm = filtroObra ? filtroObra.trim().toUpperCase() : null;
+
   const filtered = orcamentos.filter((o) => {
-    if (filtroObra && o.obra !== filtroObra) return false;
+    if (obraFiltroNorm && (o.obra || '').trim().toUpperCase() !== obraFiltroNorm) return false;
     if (filtroCategoria && o.categoria !== filtroCategoria) return false;
     return true;
   });
@@ -907,8 +935,11 @@ export function calculateConsolidadoDisciplinas(
     string,
     {
       orcamentoBase: number;
+      orcadoContratados: number;
       valorContratado: number;
       faltaContratar: number;
+      economiaContratados: number;
+      estouroContratados: number;
       valorMedido: number;
     }
   > = {};
@@ -918,8 +949,11 @@ export function calculateConsolidadoDisciplinas(
     if (!map[disc]) {
       map[disc] = {
         orcamentoBase: 0,
+        orcadoContratados: 0,
         valorContratado: 0,
         faltaContratar: 0,
+        economiaContratados: 0,
+        estouroContratados: 0,
         valorMedido: 0,
       };
     }
@@ -933,11 +967,16 @@ export function calculateConsolidadoDisciplinas(
     map[disc].valorMedido += medido;
 
     if (o.status !== 'Cancelado') {
-      const isFechado =
-        o.status === 'Contratado' ||
-        (contratado > 0 && o.status !== 'Em contratação' && o.status !== 'Em cotação');
+      const isFechado = o.status === 'Contratado' || contratado > 0;
       if (!isFechado) {
         map[disc].faltaContratar += Math.max(0, base - contratado);
+      } else {
+        map[disc].orcadoContratados += base;
+        if (contratado < base) {
+          map[disc].economiaContratados += base - contratado;
+        } else if (contratado > base) {
+          map[disc].estouroContratados += contratado - base;
+        }
       }
     }
   }
@@ -946,14 +985,19 @@ export function calculateConsolidadoDisciplinas(
     .map(([disciplina, d]) => {
       const totalPrevisto = d.valorContratado + d.faltaContratar;
       const diferencaOrcamento = totalPrevisto - d.orcamentoBase;
+      const diferencaContratados = d.valorContratado - d.orcadoContratados;
       const valorAMedir = Math.max(0, d.valorContratado - d.valorMedido);
       return {
         disciplina,
         orcamentoBase: d.orcamentoBase,
+        orcadoContratados: d.orcadoContratados,
         valorContratado: d.valorContratado,
         faltaContratar: d.faltaContratar,
         totalPrevisto,
         diferencaOrcamento,
+        diferencaContratados,
+        economiaContratados: d.economiaContratados,
+        estouroContratados: d.estouroContratados,
         valorMedido: d.valorMedido,
         valorAMedir,
         percentualContratadoSobreBase: d.orcamentoBase > 0 ? d.valorContratado / d.orcamentoBase : 0,
@@ -964,14 +1008,16 @@ export function calculateConsolidadoDisciplinas(
 }
 
 /**
- * Consolida os Contratos com barras de progresso (Pago, Medido a Pagar e Valor a Medir)
+ * Consolida os Contratos com barras de progresso (Pago, Medido a Pagar, Valor a Medir e Desvio vs. Orçado)
  */
 export function calculateConsolidadoContratos(
   contratos: Contrato[],
   medicoes: Medicao[],
   filtroObra?: string | null,
   filtroFornecedor?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null
+  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  orcamentos?: ItemOrcamento[] | null,
+  obras?: Obra[]
 ): ItemConsolidadoContrato[] {
   const pagoPorContrato: Record<string, number> = {};
   const aPagarPorContrato: Record<string, number> = {};
@@ -1001,6 +1047,34 @@ export function calculateConsolidadoContratos(
       const valorMedidoTotal = valorPago + valorMedidoAPagar;
       const valorAMedir = Math.max(0, valorContrato - valorMedidoTotal);
 
+      let orcamentoBase = 0;
+      let valorDesvio = 0;
+
+      if (orcamentos && orcamentos.length > 0) {
+        const cObraCanon = getCanonicalObra(c.obra, obras);
+        const orcamentosDaObra = orcamentos.filter(
+          (o) => o.status !== 'Cancelado' && getCanonicalObra(o.obra || o.nome_obra, obras) === cObraCanon
+        );
+        const matchedOrc = orcamentosDaObra.find((o) =>
+          isContratoMatchOrcamento(c, o, obras, orcamentosDaObra)
+        );
+        if (matchedOrc) {
+          const baseItem = Number(matchedOrc.orcamento_base) || 0;
+          const totalCtItem = Number(matchedOrc.valor_contratado) || valorContrato;
+          if (baseItem > 0 && totalCtItem > 0) {
+            orcamentoBase = baseItem * (valorContrato / totalCtItem);
+            if (valorContrato > orcamentoBase + 1) {
+              valorDesvio = valorContrato - orcamentoBase;
+            }
+          }
+        }
+      }
+
+      if (valorDesvio <= 1 && Number(c.valor_aditivos) > 1) {
+        valorDesvio = Number(c.valor_aditivos);
+        orcamentoBase = Math.max(0, valorContrato - valorDesvio);
+      }
+
       return {
         id: c.id,
         num_sienge: c.num_sienge,
@@ -1011,6 +1085,8 @@ export function calculateConsolidadoContratos(
         categoria: c.categoria || 'Projeto',
         status: c.status || 'Ativo',
         valorContrato,
+        orcamentoBase,
+        valorDesvio,
         valorPago,
         valorMedidoAPagar,
         valorMedidoTotal,
@@ -1140,10 +1216,14 @@ export function calculateConsolidadoObras(
       label: getObraLabel(obraObj ? obraObj.codigo : codigo, obras),
       status: obraObj?.status,
       orcamentoBase: kpiObra.totalOrcado,
+      orcadoContratados: kpiObra.orcadoContratados,
       valorContratado: kpiObra.totalContratado,
       faltaContratar: kpiObra.faltaContratar,
       totalPrevisto: kpiObra.custoTotalPrevisto,
       diferencaOrcamento: kpiObra.diferencaOrcamento,
+      diferencaContratados: kpiObra.diferencaContratados,
+      economiaContratados: kpiObra.totalEconomiaItens,
+      estouroContratados: kpiObra.totalEstouroItens,
       valorMedido: kpiObra.totalMedido,
       valorPago: kpiObra.totalPago,
       valorAMedir: kpiObra.saldoAMedir,

@@ -525,6 +525,9 @@ export function OrcamentoBaseTable({
                     text: 'text-slate-700 dark:text-slate-300',
                     border: 'border-slate-300',
                   };
+                  const isContratado = item.status === 'Contratado' || item.valor_contratado > 0;
+                  const isEstouro = item.saldo_a_contratar < -0.01;
+                  const isEconomia = isContratado && item.saldo_a_contratar > 0.01;
 
                   return (
                     <tr
@@ -561,12 +564,26 @@ export function OrcamentoBaseTable({
                       </td>
                       <td
                         className={`py-2.5 px-3.5 text-right font-semibold font-mono whitespace-nowrap ${
-                          item.saldo_a_contratar < 0
+                          isEstouro
                             ? 'text-rose-600 dark:text-rose-400'
+                            : isEconomia
+                            ? 'text-emerald-600 dark:text-emerald-400'
                             : 'text-slate-700 dark:text-slate-300'
                         }`}
                       >
-                        {formatCurrency(item.saldo_a_contratar)}
+                        <div className="flex flex-col items-end">
+                          <span>{formatCurrency(item.saldo_a_contratar)}</span>
+                          {isEstouro && (
+                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-rose-500 dark:text-rose-400">
+                              Acima do orçado
+                            </span>
+                          )}
+                          {isEconomia && (
+                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              Economia
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-2.5 px-3.5 text-right font-semibold text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                         {formatCurrency(item.valor_medido)}
@@ -628,6 +645,8 @@ export function OrcamentoBaseTable({
                   className={`py-3 px-3.5 text-right text-xs ${
                     totais.saldoContratar < 0
                       ? 'text-rose-600 dark:text-rose-400'
+                      : totais.contratado > 0 && totais.saldoContratar > 0
+                      ? 'text-emerald-600 dark:text-emerald-400'
                       : 'text-slate-900 dark:text-white'
                   }`}
                 >
