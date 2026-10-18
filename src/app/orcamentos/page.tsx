@@ -969,10 +969,23 @@ export default function OrcamentosPage() {
         return c;
       });
 
-      const { recalcCt } = salvarDados(medicoes, updatedContratos, orcamentos, updated);
+      const updatedMedicoes = medicoes.map((m) => {
+        if (pertenceAEstaObra(m.obra) && m.status === 'Cancelado') {
+          return {
+            ...m,
+            status: 'A Medir' as const,
+          };
+        }
+        return m;
+      });
+
+      const { recalcCt } = salvarDados(updatedMedicoes, updatedContratos, orcamentos, updated);
 
       recalcCt.filter((c) => pertenceAEstaObra(c.obra)).forEach((c) => {
         saveContratoSupabase(c).catch(console.warn);
+      });
+      updatedMedicoes.filter((m) => pertenceAEstaObra(m.obra) && m.status === 'A Medir').forEach((m) => {
+        saveMedicaoSupabase(m).catch(console.warn);
       });
     } else {
       salvarDados(medicoes, contratos, orcamentos, updated);

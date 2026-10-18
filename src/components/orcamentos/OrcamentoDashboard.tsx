@@ -18,6 +18,7 @@ import {
   calculateConsolidadoDisciplinas,
   calculateConsolidadoContratos,
   getObraLabel,
+  getObraStatus,
   CriterioCurvaS,
 } from '@/lib/orcamento-utils';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -89,6 +90,7 @@ export function OrcamentoDashboard({
   };
 
   const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
+  const statusObraSelecionada = filtroObra ? getObraStatus(filtroObra, obras) : null;
 
   // KPIs consolidados
   const kpis = useMemo(() => {
@@ -97,9 +99,10 @@ export function OrcamentoDashboard({
       contratos,
       medicoes,
       filtroObra || null,
-      catParam
+      catParam,
+      obras
     );
-  }, [orcamentos, contratos, medicoes, filtroObra, catParam]);
+  }, [orcamentos, contratos, medicoes, filtroObra, catParam, obras]);
 
   // Relação 30 / 60 / 90 dias limpa
   const janela306090 = useMemo(() => {
@@ -108,16 +111,19 @@ export function OrcamentoDashboard({
       contratos,
       filtroObra || null,
       filtroFornecedor || null,
-      catParam
+      catParam,
+      undefined,
+      obras
     );
-  }, [medicoes, contratos, filtroObra, filtroFornecedor, catParam]);
+  }, [medicoes, contratos, filtroObra, filtroFornecedor, catParam, obras]);
 
   // Consolidação por Disciplina (Barras de Progresso) + Ordenação Selecionada
   const consolidadoDisciplinas = useMemo(() => {
     const base = calculateConsolidadoDisciplinas(
       orcamentos,
       filtroObra || null,
-      catParam
+      catParam,
+      obras
     );
     const list = [...base];
     if (ordemDisciplinas === 'alfabetica') {
@@ -127,7 +133,7 @@ export function OrcamentoDashboard({
       return list.sort((a, b) => b.faltaContratar - a.faltaContratar || b.totalPrevisto - a.totalPrevisto);
     }
     return list.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
-  }, [orcamentos, filtroObra, catParam, ordemDisciplinas]);
+  }, [orcamentos, filtroObra, catParam, obras, ordemDisciplinas]);
 
   // Consolidação dos Contratos (Barras de Progresso) + Ordenação Selecionada
   const consolidadoContratos = useMemo(() => {
@@ -162,9 +168,10 @@ export function OrcamentoDashboard({
       filtroFornecedor || null,
       contratos,
       catParam,
-      criterioCurva
+      criterioCurva,
+      obras
     );
-  }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam, criterioCurva]);
+  }, [medicoes, filtroObra, filtroFornecedor, contratos, catParam, criterioCurva, obras]);
 
   // Totais da Curva S
   const totaisCurva = useMemo(() => {
@@ -198,7 +205,7 @@ export function OrcamentoDashboard({
   const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
   const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
 
-  // Proporções visuais para as barras dos cards principais (Contratado Base + Economia ou A Contratar + Desvio em vermelho)
+  // Proporções visuais para as barras dos cards principais (Contratado Base + Economia ou A Contratar + Suspenso + Desvio em vermelho)
   const estourouProjecaoKpi = kpis.diferencaOrcamento > 1 || kpis.diferencaContratados > 1;
   const valorEstouroKpi = estourouProjecaoKpi
     ? Math.max(0, kpis.diferencaOrcamento > 1 ? kpis.diferencaOrcamento : kpis.diferencaContratados)
@@ -212,7 +219,7 @@ export function OrcamentoDashboard({
     : kpis.totalContratado;
   const refMaxKpi = Math.max(
     kpis.totalOrcado,
-    contratadoBaseKpi + economiaContratadosKpi + kpis.faltaContratar + valorEstouroKpi,
+    contratadoBaseKpi + economiaContratadosKpi + kpis.faltaContratar + kpis.faltaContratarPausado + valorEstouroKpi,
     1
   );
   const pctContratadoBarra = Math.min(100, (contratadoBaseKpi / refMaxKpi) * 100);
@@ -221,12 +228,22 @@ export function OrcamentoDashboard({
     100 - pctContratadoBarra - pctEconomiaBarra,
     (kpis.faltaContratar / refMaxKpi) * 100
   );
-  const pctDesvioBarra = Math.min(
+  const pctFaltaPausadoBarra = Math.min(
     100 - pctContratadoBarra - pctEconomiaBarra - pctFaltaContratarBarra,
+    (kpis.faltaContratarPausado / refMaxKpi) * 100
+  );
+  const pctDesvioBarra = Math.min(
+    100 - pctContratadoBarra - pctEconomiaBarra - pctFaltaContratarBarra - pctFaltaPausadoBarra,
     (valorEstouroKpi / refMaxKpi) * 100
   );
   const pctMedidoBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.totalMedido / kpis.totalContratado) * 100) : 0;
   const pctAMedirBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.saldoAMedir / kpis.totalContratado) * 100) : 0;
+  const pctPausadoBarra = kpis.totalContratado > 0
+    ? Math.min(100 - pctAMedirBarra, (kpis.saldoPausado / kpis.totalContratado) * 100)
+    : 0;
+  const pctADistratarBarra = kpis.totalContratado > 0
+    ? Math.min(100 - pctAMedirBarra - pctPausadoBarra, (kpis.saldoADistratar / kpis.totalContratado) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -418,7 +435,11 @@ export function OrcamentoDashboard({
                   <FilePlus2 className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Falta Contratar
+                  {statusObraSelecionada === 'Paralisada'
+                    ? 'Contratação Suspensa'
+                    : statusObraSelecionada === 'Cancelada'
+                    ? 'Falta Contratar (Encerrado)'
+                    : 'Falta Contratar'}
                 </span>
               </div>
               <button
@@ -431,15 +452,21 @@ export function OrcamentoDashboard({
               </button>
             </div>
             <CardTitle
-              className={`font-black text-amber-600 dark:text-amber-400 pt-1 ${
-                expandedCards.faltaContratar ? 'text-3xl sm:text-4xl' : 'text-2xl'
-              }`}
+              className={`font-black pt-1 ${
+                statusObraSelecionada === 'Paralisada'
+                  ? 'text-slate-600 dark:text-slate-300'
+                  : 'text-amber-600 dark:text-amber-400'
+              } ${expandedCards.faltaContratar ? 'text-3xl sm:text-4xl' : 'text-2xl'}`}
             >
-              {formatCurrency(kpis.faltaContratar)}
+              {formatCurrency(
+                statusObraSelecionada === 'Paralisada'
+                  ? kpis.faltaContratarPausado
+                  : kpis.faltaContratar
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-2.5 mt-auto">
-            {/* Barra de Proporção (Azul Contratado + Verde Economia + Âmbar A Contratar + Vermelho Desvio) */}
+            {/* Barra de Proporção (Azul Contratado + Verde Economia + Âmbar A Contratar + Cinza Suspenso + Vermelho Desvio) */}
             <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden flex">
               <div
                 className="h-full bg-[#00A3C4] transition-all"
@@ -457,7 +484,14 @@ export function OrcamentoDashboard({
                 <div
                   className="h-full bg-amber-400/75 transition-all"
                   style={{ width: `${pctFaltaContratarBarra}%` }}
-                  title={`A Contratar: ${formatCurrency(kpis.faltaContratar)}`}
+                  title={`A Contratar (Obras Ativas): ${formatCurrency(kpis.faltaContratar)}`}
+                />
+              )}
+              {pctFaltaPausadoBarra > 0 && (
+                <div
+                  className="h-full bg-slate-400 transition-all"
+                  style={{ width: `${pctFaltaPausadoBarra}%` }}
+                  title={`Contratação Suspensa (Obras Paralisadas): ${formatCurrency(kpis.faltaContratarPausado)}`}
                 />
               )}
               {pctDesvioBarra > 0 && (
@@ -475,6 +509,8 @@ export function OrcamentoDashboard({
                   ? 'Projeção vs. Orçado:'
                   : economizouKpi
                   ? 'Economia no Orçado:'
+                  : !filtroObra && kpis.faltaContratarPausado > 0
+                  ? 'Suspenso (Paralisadas):'
                   : 'Projeção Total:'}
               </span>
               {estourouProjecaoKpi ? (
@@ -484,6 +520,10 @@ export function OrcamentoDashboard({
               ) : economizouKpi ? (
                 <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
                   -{formatCurrency(economiaContratadosKpi)}
+                </strong>
+              ) : !filtroObra && kpis.faltaContratarPausado > 0 ? (
+                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
+                  {formatCurrency(kpis.faltaContratarPausado)}
                 </strong>
               ) : (
                 <strong className="text-slate-800 dark:text-slate-200 shrink-0">
@@ -495,13 +535,21 @@ export function OrcamentoDashboard({
             {expandedCards.faltaContratar && (
               <div className="pt-2.5 border-t border-slate-100 dark:border-[#0B384D] grid grid-cols-2 gap-3 text-xs animate-in fade-in-0">
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
-                  <span className="text-slate-400 block text-[11px]">Contratado + Falta Contratar</span>
+                  <span className="text-slate-400 block text-[11px]">Projeção Consolidada</span>
                   <strong className="text-slate-900 dark:text-white text-sm">{formatCurrency(kpis.custoTotalPrevisto)}</strong>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
-                  <span className="text-slate-400 block text-[11px]">Disciplinas em Aberto</span>
+                  <span className="text-slate-400 block text-[11px]">Disciplinas Ativas em Aberto</span>
                   <strong className="text-amber-600 dark:text-amber-400 text-sm">{kpis.qtdFaltaContratar} item(ns)</strong>
                 </div>
+                {kpis.faltaContratarPausado > 0 && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-amber-700 dark:text-amber-400 block text-[11px]">Contratação Suspensa (Pausadas)</span>
+                    <strong className="text-amber-600 dark:text-amber-400 text-sm">
+                      {formatCurrency(kpis.faltaContratarPausado)} ({kpis.qtdFaltaContratarPausado})
+                    </strong>
+                  </div>
+                )}
                 {(kpis.totalEconomiaItens || 0) > 0 && (
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                     <span className="text-emerald-700 dark:text-emerald-400 block text-[11px]">Economia nos Contratados</span>
@@ -585,7 +633,7 @@ export function OrcamentoDashboard({
           </CardContent>
         </Card>
 
-        {/* Card 4: Valor a Medir */}
+        {/* Card 4: Valor a Medir (Obras Ativas) / Saldo Pausado / Saldo a Distratar */}
         <Card
           className={`flex flex-col justify-between border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:shadow-md transition-all ${
             expandedCards.aMedir ? 'sm:col-span-2 lg:col-span-2 ring-2 ring-purple-500/40' : ''
@@ -594,11 +642,23 @@ export function OrcamentoDashboard({
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                <div
+                  className={`p-2 rounded-xl ${
+                    statusObraSelecionada === 'Paralisada'
+                      ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                      : statusObraSelecionada === 'Cancelada'
+                      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                      : 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
+                  }`}
+                >
                   <Clock className="h-4 w-4" />
                 </div>
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Valor a Medir
+                  {statusObraSelecionada === 'Paralisada'
+                    ? 'Saldo Pausado'
+                    : statusObraSelecionada === 'Cancelada'
+                    ? 'Saldo a Distratar'
+                    : 'Valor a Medir'}
                 </span>
               </div>
               <button
@@ -611,25 +671,81 @@ export function OrcamentoDashboard({
               </button>
             </div>
             <CardTitle
-              className={`font-black text-purple-600 dark:text-purple-400 pt-1 ${
-                expandedCards.aMedir ? 'text-3xl sm:text-4xl' : 'text-2xl'
-              }`}
+              className={`font-black pt-1 ${
+                statusObraSelecionada === 'Paralisada'
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : statusObraSelecionada === 'Cancelada'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : 'text-purple-600 dark:text-purple-400'
+              } ${expandedCards.aMedir ? 'text-3xl sm:text-4xl' : 'text-2xl'}`}
             >
-              {formatCurrency(kpis.saldoAMedir)}
+              {formatCurrency(
+                statusObraSelecionada === 'Paralisada'
+                  ? kpis.saldoPausado
+                  : statusObraSelecionada === 'Cancelada'
+                  ? kpis.saldoADistratar
+                  : kpis.saldoAMedir
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0 space-y-2.5 mt-auto">
-            {/* Barra de Proporção Saldo a Medir */}
-            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden">
-              <div
-                className="h-full bg-purple-500 rounded-full transition-all"
-                style={{ width: `${pctAMedirBarra}%` }}
-              />
+            {/* Barra de Proporção: Roxo (A Medir Ativo) + Âmbar (Saldo Pausado) + Vermelho (Saldo a Distratar) */}
+            <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-[#0B384D] overflow-hidden flex">
+              {pctAMedirBarra > 0 && (
+                <div
+                  className="h-full bg-purple-500 transition-all"
+                  style={{ width: `${pctAMedirBarra}%` }}
+                  title={`A Medir (Obras Ativas): ${formatCurrency(kpis.saldoAMedir)}`}
+                />
+              )}
+              {pctPausadoBarra > 0 && (
+                <div
+                  className="h-full bg-amber-500 transition-all"
+                  style={{ width: `${pctPausadoBarra}%` }}
+                  title={`Saldo Pausado / Suspenso (Obras Paralisadas): ${formatCurrency(kpis.saldoPausado)}`}
+                />
+              )}
+              {pctADistratarBarra > 0 && (
+                <div
+                  className="h-full bg-rose-500 transition-all"
+                  style={{ width: `${pctADistratarBarra}%` }}
+                  title={`Saldo a Distratar (Obras Canceladas): ${formatCurrency(kpis.saldoADistratar)}`}
+                />
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
-              <span className="truncate">Já Pago:</span>
-              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.totalPago)}</strong>
+              {kpis.saldoPausado > 0 && kpis.saldoADistratar > 0 ? (
+                <>
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold truncate">
+                    Pausado: {formatCurrencyShort(kpis.saldoPausado)}
+                  </span>
+                  <span className="text-rose-600 dark:text-rose-400 font-semibold shrink-0">
+                    Distratar: {formatCurrencyShort(kpis.saldoADistratar)}
+                  </span>
+                </>
+              ) : kpis.saldoPausado > 0 && statusObraSelecionada !== 'Paralisada' ? (
+                <>
+                  <span className="truncate">Saldo Pausado:</span>
+                  <strong className="text-amber-600 dark:text-amber-400 shrink-0">
+                    {formatCurrency(kpis.saldoPausado)}
+                  </strong>
+                </>
+              ) : kpis.saldoADistratar > 0 && statusObraSelecionada !== 'Cancelada' ? (
+                <>
+                  <span className="truncate">Saldo a Distratar:</span>
+                  <strong className="text-rose-600 dark:text-rose-400 shrink-0">
+                    {formatCurrency(kpis.saldoADistratar)}
+                  </strong>
+                </>
+              ) : (
+                <>
+                  <span className="truncate">Já Pago:</span>
+                  <strong className="text-slate-800 dark:text-slate-200 shrink-0">
+                    {formatCurrency(kpis.totalPago)}
+                  </strong>
+                </>
+              )}
             </div>
 
             {expandedCards.aMedir && (
@@ -642,6 +758,18 @@ export function OrcamentoDashboard({
                   <span className="text-slate-400 block text-[11px]">Sem Cronograma Definido</span>
                   <strong className="text-amber-600 dark:text-amber-400 text-sm">{formatCurrency(kpis.saldoSemCronograma || 0)}</strong>
                 </div>
+                {kpis.saldoPausado > 0 && (
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-amber-700 dark:text-amber-400 block text-[11px]">Saldo Pausado (Paralisadas)</span>
+                    <strong className="text-amber-600 dark:text-amber-400 text-sm">{formatCurrency(kpis.saldoPausado)}</strong>
+                  </div>
+                )}
+                {kpis.saldoADistratar > 0 && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                    <span className="text-rose-700 dark:text-rose-400 block text-[11px]">Saldo a Distratar (Canceladas)</span>
+                    <strong className="text-rose-600 dark:text-rose-400 text-sm">{formatCurrency(kpis.saldoADistratar)}</strong>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>
@@ -861,12 +989,13 @@ export function OrcamentoDashboard({
                     : d.economiaContratados
                   : 0;
                 const economizou = !estourouProjecao && valorEconomia > 1;
+                const faltaSuspenso = d.faltaContratarPausado || 0;
                 const contratadoSemDesvio = estourouProjecao
                   ? Math.max(0, d.valorContratado - valorEstouro)
                   : d.valorContratado;
                 const refMax = Math.max(
                   d.orcamentoBase,
-                  contratadoSemDesvio + valorEconomia + d.faltaContratar + valorEstouro,
+                  contratadoSemDesvio + valorEconomia + d.faltaContratar + faltaSuspenso + valorEstouro,
                   1
                 );
                 const pctContratado = Math.min(100, (contratadoSemDesvio / refMax) * 100);
@@ -875,8 +1004,12 @@ export function OrcamentoDashboard({
                   100 - pctContratado - pctEconomia,
                   (d.faltaContratar / refMax) * 100
                 );
+                const pctSuspenso = Math.min(
+                  100 - pctContratado - pctEconomia - pctFalta,
+                  (faltaSuspenso / refMax) * 100
+                );
                 const pctDesvio = estourouProjecao
-                  ? Math.min(100 - pctContratado - pctEconomia - pctFalta, (valorEstouro / refMax) * 100)
+                  ? Math.min(100 - pctContratado - pctEconomia - pctFalta - pctSuspenso, (valorEstouro / refMax) * 100)
                   : 0;
 
                 return (
@@ -897,6 +1030,10 @@ export function OrcamentoDashboard({
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                             -{formatCurrencyShort(valorEconomia)} de economia
                           </span>
+                        ) : faltaSuspenso > 0 && d.faltaContratar === 0 ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            Suspenso ({formatCurrencyShort(faltaSuspenso)})
+                          </span>
                         ) : null}
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
                           {formatCurrency(d.totalPrevisto)}
@@ -904,7 +1041,7 @@ export function OrcamentoDashboard({
                       </div>
                     </div>
 
-                    {/* Barra de Progresso Visual da Disciplina (Azul Contratado + Verde Economia + Âmbar A Contratar + Vermelho Desvio) */}
+                    {/* Barra de Progresso Visual da Disciplina (Azul Contratado + Verde Economia + Âmbar A Contratar + Slate Suspenso + Vermelho Desvio) */}
                     <div className="w-full h-2.5 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex">
                       {pctContratado > 0 && (
                         <div
@@ -925,6 +1062,13 @@ export function OrcamentoDashboard({
                           className="h-full bg-amber-400/75 transition-all"
                           style={{ width: `${pctFalta}%` }}
                           title={`A Contratar: ${formatCurrency(d.faltaContratar)}`}
+                        />
+                      )}
+                      {faltaSuspenso > 0 && pctSuspenso > 0 && (
+                        <div
+                          className="h-full bg-slate-400/80 transition-all"
+                          style={{ width: `${pctSuspenso}%` }}
+                          title={`Contratação Suspensa (Obra Paralisada): ${formatCurrency(faltaSuspenso)}`}
                         />
                       )}
                       {estourouProjecao && pctDesvio > 0 && (
@@ -949,6 +1093,11 @@ export function OrcamentoDashboard({
                         {d.faltaContratar > 0 && (
                           <span>
                             A Contratar: <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(d.faltaContratar)}</strong>
+                          </span>
+                        )}
+                        {faltaSuspenso > 0 && (
+                          <span>
+                            Suspenso: <strong className="text-slate-600 dark:text-slate-300">{formatCurrency(faltaSuspenso)}</strong>
                           </span>
                         )}
                         {estourouProjecao && (
@@ -1057,6 +1206,8 @@ export function OrcamentoDashboard({
                 const pctPago = Math.min(limiteBase, c.percentualPago * 100);
                 const pctAPagar = Math.min(limiteBase - pctPago, c.percentualMedidoAPagar * 100);
                 const pctRestanteBase = Math.max(0, limiteBase - pctPago - pctAPagar);
+                const saldoPausadoContrato = c.saldoPausado || 0;
+                const saldoADistratarContrato = c.saldoADistratar || 0;
 
                 return (
                   <div
@@ -1071,6 +1222,16 @@ export function OrcamentoDashboard({
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/70 dark:bg-[#0B384D] text-slate-600 dark:text-slate-300 shrink-0">
                           {c.disciplina}
                         </span>
+                        {c.statusObra === 'Paralisada' && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                            Paralisada
+                          </span>
+                        )}
+                        {c.statusObra === 'Cancelada' && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
+                            Cancelada
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {temDesvioContrato && (
@@ -1122,9 +1283,19 @@ export function OrcamentoDashboard({
                           </span>
                         )}
                       </div>
-                      <span>
-                        A Medir: <strong className="text-purple-600 dark:text-purple-400">{formatCurrency(c.valorAMedir)}</strong>
-                      </span>
+                      {saldoADistratarContrato > 0 ? (
+                        <span>
+                          A Distratar: <strong className="text-rose-600 dark:text-rose-400">{formatCurrency(saldoADistratarContrato)}</strong>
+                        </span>
+                      ) : saldoPausadoContrato > 0 ? (
+                        <span>
+                          Saldo Pausado: <strong className="text-amber-600 dark:text-amber-400">{formatCurrency(saldoPausadoContrato)}</strong>
+                        </span>
+                      ) : (
+                        <span>
+                          A Medir: <strong className="text-purple-600 dark:text-purple-400">{formatCurrency(c.valorAMedir)}</strong>
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

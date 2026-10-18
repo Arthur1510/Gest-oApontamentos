@@ -208,14 +208,17 @@ export interface ItemConsolidadoDisciplina {
   orcamentoBase: number;
   orcadoContratados: number; // Orçamento base apenas dos itens já contratados
   valorContratado: number;
-  faltaContratar: number; // Soma dos itens ainda abertos dessa disciplina
-  totalPrevisto: number;  // valorContratado + faltaContratar
+  faltaContratar: number; // Soma dos itens ainda abertos dessa disciplina (obras ativas)
+  faltaContratarPausado?: number; // Soma dos itens abertos em obras paralisadas
+  totalPrevisto: number;  // valorContratado + faltaContratar (+ faltaContratarPausado)
   diferencaOrcamento: number; // totalPrevisto - orcamentoBase (> 0 = acima do orçado, < 0 = abaixo do orçado)
   diferencaContratados: number; // valorContratado - orcadoContratados (< 0 = economia nos contratados, > 0 = desvio nos contratados)
   economiaContratados: number; // Soma das economias conquistadas nos itens contratados abaixo do orçado
   estouroContratados: number;  // Soma dos desvios nos itens contratados acima do orçado
   valorMedido: number;
   valorAMedir: number;
+  saldoPausado?: number;
+  saldoADistratar?: number;
   percentualContratadoSobreBase: number;
   percentualMedidoSobreContratado: number;
 }
@@ -229,13 +232,16 @@ export interface ItemConsolidadoContrato {
   subdisciplina: string;
   categoria: CategoriaContrato;
   status: StatusContrato;
+  statusObra?: StatusObra;
   valorContrato: number;
   orcamentoBase?: number;
   valorDesvio?: number;      // Parcela do contrato acima do orçamento base (ou aditivo positivo)
   valorPago: number;
   valorMedidoAPagar: number; // Medido ou A Pagar (ainda não Pago)
   valorMedidoTotal: number;  // Pago + Medido a Pagar
-  valorAMedir: number;       // Saldo a medir
+  valorAMedir: number;       // Saldo a medir (apenas obras Ativas/Concluídas)
+  saldoPausado?: number;     // Saldo não medido de contratos em obras Paralisadas
+  saldoADistratar?: number;  // Saldo não medido de contratos ativos em obras Canceladas
   percentualPago: number;
   percentualMedidoAPagar: number;
   percentualMedidoTotal: number;
@@ -250,6 +256,7 @@ export interface ItemConsolidadoObra {
   orcadoContratados: number;
   valorContratado: number;
   faltaContratar: number;
+  faltaContratarPausado?: number;
   totalPrevisto: number;
   diferencaOrcamento: number;
   diferencaContratados: number;
@@ -258,6 +265,8 @@ export interface ItemConsolidadoObra {
   valorMedido: number;
   valorPago: number;
   valorAMedir: number;
+  saldoPausado?: number;
+  saldoADistratar?: number;
   percentualContratadoSobreBase: number;
   percentualMedidoSobreContratado: number;
   contratosCount: number;
@@ -271,7 +280,9 @@ export interface KpiOrcamento {
   saldoAContratar: number;
   percentualContratado: number;
   totalMedido: number;
-  saldoAMedir: number;
+  saldoAMedir: number;       // Saldo a medir de obras Ativas
+  saldoPausado: number;      // Saldo de contratos em obras Paralisadas (possivelmente será medido)
+  saldoADistratar: number;   // Saldo de contratos ativos em obras Canceladas (a distratar)
   percentualMedido: number;
   totalPago: number;
   totalMedidoPendente: number;
@@ -291,10 +302,13 @@ export interface KpiOrcamento {
   qtdAMedirAtrasado: number;
   // Saldo contratual ainda sem parcelas/cronograma de medição cadastrado
   saldoSemCronograma?: number;
-  // Valor real que ainda falta contratar (mesmo quando Contratado + Falta Contratar passa do Orçamento Base)
+  // Valor real que ainda falta contratar (obras Ativas)
   faltaContratar: number;
   qtdFaltaContratar: number;
-  custoTotalPrevisto: number; // totalContratado + faltaContratar
+  // Valor de contratação suspensa (obras Paralisadas)
+  faltaContratarPausado: number;
+  qtdFaltaContratarPausado: number;
+  custoTotalPrevisto: number; // totalContratado + faltaContratar + faltaContratarPausado
   diferencaOrcamento: number; // custoTotalPrevisto - totalOrcado (> 0 = ficará acima do orçado; < 0 = economia)
   diferencaContratados: number; // contratadoDosContratados - orcadoContratados (< 0 = economia líquida nos contratados)
   totalEconomiaItens: number; // soma das economias em itens já contratados abaixo do orçado

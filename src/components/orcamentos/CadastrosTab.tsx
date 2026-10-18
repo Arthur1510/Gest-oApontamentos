@@ -93,7 +93,7 @@ export function CadastrosTab({
   const [obraCC, setObraCC] = useState('');
   const [obraEndereco, setObraEndereco] = useState('');
   const [obraStatus, setObraStatus] = useState<StatusObra>('Ativa');
-  const [autoDistratarContratos, setAutoDistratarContratos] = useState<boolean>(true);
+  const [autoDistratarContratos, setAutoDistratarContratos] = useState<boolean>(false);
   const [autoReativarContratos, setAutoReativarContratos] = useState<boolean>(true);
 
   // 3. Disciplina / Subdisciplina Modal
@@ -160,7 +160,7 @@ export function CadastrosTab({
     setObraCC('');
     setObraEndereco('');
     setObraStatus('Ativa');
-    setAutoDistratarContratos(true);
+    setAutoDistratarContratos(false);
     setAutoReativarContratos(true);
     setObraModalOpen(true);
   };
@@ -172,8 +172,8 @@ export function CadastrosTab({
     setObraCC(o.cc || '');
     setObraEndereco(o.endereco || '');
     setObraStatus(o.status || 'Ativa');
-    setAutoDistratarContratos(true);
-    setAutoReativarContratos(true);
+    setAutoDistratarContratos(false);
+    setAutoReativarContratos(o.status !== 'Cancelada');
     setObraModalOpen(true);
   };
 
@@ -182,13 +182,19 @@ export function CadastrosTab({
     if (!obraCodigo.trim() || !obraNome.trim()) return;
 
     if (obraEditando) {
-      const mudouParaParalisadaOuCancelada =
-        (obraEditando.status !== 'Paralisada' && obraEditando.status !== 'Cancelada') &&
-        (obraStatus === 'Paralisada' || obraStatus === 'Cancelada');
+      const codNorm = obraEditando.codigo.trim().toUpperCase();
+      const nomeNorm = obraEditando.nome.trim().toUpperCase();
+      const temDistratadosNaObra = contratos.some((c) => {
+        const v = (c.obra || '').trim().toUpperCase();
+        return (v === codNorm || v === nomeNorm) && c.status === 'Distratado';
+      });
 
-      const mudouParaAtiva =
-        (obraEditando.status === 'Paralisada' || obraEditando.status === 'Cancelada') &&
-        obraStatus === 'Ativa';
+      const deveDistratar = obraStatus === 'Cancelada' && autoDistratarContratos;
+      const deveReativar =
+        !deveDistratar &&
+        autoReativarContratos &&
+        temDistratadosNaObra &&
+        (obraStatus === 'Ativa' || obraStatus === 'Paralisada' || obraStatus === 'Cancelada');
 
       onEditarObra(
         {
@@ -200,8 +206,8 @@ export function CadastrosTab({
           status: obraStatus,
         },
         {
-          distratarContratos: mudouParaParalisadaOuCancelada && autoDistratarContratos,
-          reativarContratos: mudouParaAtiva && autoReativarContratos,
+          distratarContratos: deveDistratar,
+          reativarContratos: deveReativar,
         }
       );
     } else {
@@ -753,49 +759,126 @@ export function CadastrosTab({
                 </select>
               </div>
 
-              {/* Automação de Distrato para Obras Paralisadas ou Canceladas */}
-              {obraEditando && (obraStatus === 'Paralisada' || obraStatus === 'Cancelada') && (
-                <div className="p-3 rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      id="autoDistratarContratosCheck"
-                      checked={autoDistratarContratos}
-                      onChange={(e) => setAutoDistratarContratos(e.target.checked)}
-                      className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4 mt-0.5 cursor-pointer"
-                    />
-                    <label htmlFor="autoDistratarContratosCheck" className="text-xs font-bold text-amber-900 dark:text-amber-200 cursor-pointer">
-                      Ajustar e Distratar contratos desta obra automaticamente
-                    </label>
+              {/* Comportamento Financeiro para Obra Paralisada */}
+              {obraEditando && obraStatus === 'Paralisada' && (() => {
+                const codNorm = obraEditando.codigo.trim().toUpperCase();
+                const nomeNorm = obraEditando.nome.trim().toUpperCase();
+                const qtdDistratados = contratos.filter((c) => {
+                  const v = (c.obra || '').trim().toUpperCase();
+                  return (v === codNorm || v === nomeNorm) && c.status === 'Distratado';
+                }).length;
+
+                return (
+                  <div className="p-3 rounded-xl border border-amber-300/80 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 space-y-2">
+                    <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200 leading-tight">
+                      Tratamento de Saldos — Obra Paralisada (Pausada):
+                    </p>
+                    <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-tight">
+                      • <b>Contratos ativos</b>: não entram em <i>Valor a Medir</i> imediato; seus saldos ficam segregados como <b>Saldo Pausado</b> (podendo ser medidos na retomada).<br />
+                      • <b>Orçamentos não contratados</b>: segregados como <b>Contratação Suspensa</b>.<br />
+                      • <b>Janela 30/60/90d e Curva S</b>: medições futuras (&apos;A Medir&apos;) ficam suspensas da previsão de desembolso.
+                    </p>
+                    {qtdDistratados > 0 && (
+                      <div className="pt-1.5 border-t border-amber-200 dark:border-amber-800/60 flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          id="restaurarPausadaCheck"
+                          checked={autoReativarContratos}
+                          onChange={(e) => setAutoReativarContratos(e.target.checked)}
+                          className="rounded text-amber-600 focus:ring-amber-500 h-4 w-4 mt-0.5 cursor-pointer"
+                        />
+                        <label htmlFor="restaurarPausadaCheck" className="text-[11px] font-bold text-amber-900 dark:text-amber-100 cursor-pointer leading-tight">
+                          Restaurar {qtdDistratados} contrato(s) distratado(s) desta obra para exibir seus saldos como <u>Saldo Pausado</u>
+                        </label>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-[11px] text-amber-800 dark:text-amber-300 ml-6 leading-tight">
-                    • <b>Contratos medidos</b>: encerra saldo a medir e fixa o valor no medido.<br />
-                    • <b>Contratos sem medição</b>: distrata com valor R$ 0,00.<br />
-                    • <b>Medições futuras ('A Medir')</b>: canceladas para despoluir a Curva S.
-                  </p>
-                </div>
-              )}
+                );
+              })()}
+
+              {/* Comportamento Financeiro para Obra Cancelada */}
+              {obraEditando && obraStatus === 'Cancelada' && (() => {
+                const codNorm = obraEditando.codigo.trim().toUpperCase();
+                const nomeNorm = obraEditando.nome.trim().toUpperCase();
+                const qtdDistratados = contratos.filter((c) => {
+                  const v = (c.obra || '').trim().toUpperCase();
+                  return (v === codNorm || v === nomeNorm) && c.status === 'Distratado';
+                }).length;
+
+                return (
+                  <div className="p-3 rounded-xl border border-rose-300/80 dark:border-rose-700/60 bg-rose-50 dark:bg-rose-950/30 space-y-2">
+                    <p className="text-[11px] font-bold text-rose-900 dark:text-rose-200 leading-tight">
+                      Tratamento de Saldos — Obra Cancelada:
+                    </p>
+                    <p className="text-[11px] text-rose-800 dark:text-rose-300 leading-tight">
+                      • <b>Contratos cadastrados ativos</b>: o saldo restante passa a ser exibido como <b>Saldo a Distratar</b> (fora de <i>Valor a Medir</i>).<br />
+                      • <b>Orçamentos sem contrato</b>: têm o saldo <i>Falta Contratar</i> zerado sem gerar falsa economia.
+                    </p>
+                    <div className="pt-1.5 border-t border-rose-200 dark:border-rose-800/60 space-y-1.5">
+                      <div className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          id="autoDistratarContratosCheck"
+                          checked={autoDistratarContratos}
+                          onChange={(e) => {
+                            setAutoDistratarContratos(e.target.checked);
+                            if (e.target.checked) setAutoReativarContratos(false);
+                          }}
+                          className="rounded text-rose-600 focus:ring-rose-500 h-4 w-4 mt-0.5 cursor-pointer"
+                        />
+                        <label htmlFor="autoDistratarContratosCheck" className="text-[11px] font-bold text-rose-900 dark:text-rose-200 cursor-pointer leading-tight">
+                          Já formalizar distrato em lote de todos os contratos desta obra agora (zera o Saldo a Distratar)
+                        </label>
+                      </div>
+                      {qtdDistratados > 0 && !autoDistratarContratos && (
+                        <div className="flex items-start gap-2">
+                          <input
+                            type="checkbox"
+                            id="restaurarCanceladaCheck"
+                            checked={autoReativarContratos}
+                            onChange={(e) => setAutoReativarContratos(e.target.checked)}
+                            className="rounded text-rose-600 focus:ring-rose-500 h-4 w-4 mt-0.5 cursor-pointer"
+                          />
+                          <label htmlFor="restaurarCanceladaCheck" className="text-[11px] font-bold text-rose-900 dark:text-rose-100 cursor-pointer leading-tight">
+                            Restaurar {qtdDistratados} contrato(s) já distratado(s) para que apareçam em <u>Saldo a Distratar</u>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Automação de Reativação para Obras que voltam a Ativa */}
-              {obraEditando && (obraEditando.status === 'Paralisada' || obraEditando.status === 'Cancelada') && obraStatus === 'Ativa' && (
-                <div className="p-3 rounded-xl border border-emerald-300/80 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 space-y-1.5">
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      id="autoReativarContratosCheck"
-                      checked={autoReativarContratos}
-                      onChange={(e) => setAutoReativarContratos(e.target.checked)}
-                      className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 mt-0.5 cursor-pointer"
-                    />
-                    <label htmlFor="autoReativarContratosCheck" className="text-xs font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
-                      Reativar contratos distratados desta obra
-                    </label>
+              {obraEditando && obraStatus === 'Ativa' && (() => {
+                const codNorm = obraEditando.codigo.trim().toUpperCase();
+                const nomeNorm = obraEditando.nome.trim().toUpperCase();
+                const qtdDistratados = contratos.filter((c) => {
+                  const v = (c.obra || '').trim().toUpperCase();
+                  return (v === codNorm || v === nomeNorm) && c.status === 'Distratado';
+                }).length;
+                if (qtdDistratados === 0) return null;
+
+                return (
+                  <div className="p-3 rounded-xl border border-emerald-300/80 dark:border-emerald-700/60 bg-emerald-50 dark:bg-emerald-950/30 space-y-1.5">
+                    <div className="flex items-start gap-2">
+                      <input
+                        type="checkbox"
+                        id="autoReativarContratosCheck"
+                        checked={autoReativarContratos}
+                        onChange={(e) => setAutoReativarContratos(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 mt-0.5 cursor-pointer"
+                      />
+                      <label htmlFor="autoReativarContratosCheck" className="text-xs font-bold text-emerald-900 dark:text-emerald-200 cursor-pointer">
+                        Reativar {qtdDistratados} contrato(s) distratado(s) desta obra
+                      </label>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 ml-6 leading-tight">
+                      Restaura os contratos da obra para o status Ativo e recupera os saldos originais a medir.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-emerald-800 dark:text-emerald-300 ml-6 leading-tight">
-                    Restaura os contratos da obra para o status Ativo e recupera os saldos originais.
-                  </p>
-                </div>
-              )}
+                );
+              })()}
 
               <div className="pt-3 border-t border-slate-100 dark:border-[#0B384D] flex justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setObraModalOpen(false)} className="text-xs h-9 rounded-xl">

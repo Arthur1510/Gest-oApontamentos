@@ -8,7 +8,7 @@ import {
   Fornecedor,
   STATUS_CONTRATO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent, getCanonicalObra } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, getCanonicalObra, getObraStatus } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -118,11 +118,23 @@ export function ContratosTable({
     let valorContrato = 0;
     let valorMedido = 0;
     let saldoAMedir = 0;
+    let saldoPausado = 0;
+    let saldoADistratar = 0;
 
     for (const c of contratosFiltrados) {
       valorContrato += c.valor_contrato || 0;
       valorMedido += c.valor_medido || 0;
-      saldoAMedir += c.saldo_a_medir || 0;
+      const stObra = getObraStatus(c.obra, obras);
+      const saldoCt = c.saldo_a_medir || 0;
+      if (c.status === 'Distratado') {
+        // Distratado não soma em a medir
+      } else if (stObra === 'Cancelada') {
+        saldoADistratar += saldoCt;
+      } else if (stObra === 'Paralisada') {
+        saldoPausado += saldoCt;
+      } else {
+        saldoAMedir += saldoCt;
+      }
     }
 
     const pctGlobal = valorContrato > 0 ? valorMedido / valorContrato : 0;
@@ -131,9 +143,11 @@ export function ContratosTable({
       valorContrato,
       valorMedido,
       saldoAMedir,
+      saldoPausado,
+      saldoADistratar,
       pctGlobal,
     };
-  }, [contratosFiltrados]);
+  }, [contratosFiltrados, obras]);
 
   return (
     <div className="space-y-4">
@@ -314,6 +328,7 @@ export function ContratosTable({
             const pct = c.percentual_medido || 0;
             const countMed = medicoesCountMap[c.id] || 0;
             const isDistratado = c.status === 'Distratado';
+            const stObra = getObraStatus(c.obra, obras);
             const statusConfig = STATUS_CONTRATO_COLORS[c.status || 'Ativo'] || STATUS_CONTRATO_COLORS['Ativo'];
             const aditivos = c.aditivos || [];
 
@@ -336,6 +351,16 @@ export function ContratosTable({
                       <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${statusConfig.bg} ${statusConfig.text}`}>
                         {c.status || 'Ativo'}
                       </span>
+                      {!isDistratado && stObra === 'Paralisada' && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                          Paralisada
+                        </span>
+                      )}
+                      {!isDistratado && stObra === 'Cancelada' && (
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                          A Distratar
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -383,8 +408,22 @@ export function ContratosTable({
                       </span>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Saldo</span>
-                      <span className="text-xs font-bold text-purple-600 dark:text-purple-400 font-mono block mt-0.5">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                        {!isDistratado && stObra === 'Cancelada'
+                          ? 'A Distratar'
+                          : !isDistratado && stObra === 'Paralisada'
+                          ? 'Saldo Pausado'
+                          : 'Saldo'}
+                      </span>
+                      <span
+                        className={`text-xs font-bold font-mono block mt-0.5 ${
+                          !isDistratado && stObra === 'Cancelada'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : !isDistratado && stObra === 'Paralisada'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-purple-600 dark:text-purple-400'
+                        }`}
+                      >
                         {formatCurrency(c.saldo_a_medir)}
                       </span>
                     </div>
@@ -505,7 +544,7 @@ export function ContratosTable({
                   <th className="py-3 px-3">Disciplina / Subdisciplina</th>
                   <th className="py-3 px-3 text-right">Valor Vigente</th>
                   <th className="py-3 px-3 text-right">Valor Medido</th>
-                  <th className="py-3 px-3 text-right">Saldo a Medir</th>
+                  <th className="py-3 px-3 text-right">Saldo Contrato</th>
                   <th className="py-3 px-3 text-center min-w-[120px]">% Medido</th>
                   <th className="py-3 px-3 text-center">Ações</th>
                 </tr>
@@ -515,6 +554,7 @@ export function ContratosTable({
                   const pct = c.percentual_medido || 0;
                   const countMed = medicoesCountMap[c.id] || 0;
                   const isDistratado = c.status === 'Distratado';
+                  const stObra = getObraStatus(c.obra, obras);
                   const statusConfig = STATUS_CONTRATO_COLORS[c.status || 'Ativo'] || STATUS_CONTRATO_COLORS['Ativo'];
                   const aditivos = c.aditivos || [];
 
@@ -565,9 +605,21 @@ export function ContratosTable({
                       </td>
 
                       <td className="py-2.5 px-3 font-bold whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
-                          {c.obra}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
+                            {c.obra}
+                          </span>
+                          {stObra === 'Paralisada' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                              Pausada
+                            </span>
+                          )}
+                          {stObra === 'Cancelada' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                              Cancelada
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300 max-w-[180px] break-words">
@@ -588,11 +640,21 @@ export function ContratosTable({
                         {formatCurrency(c.valor_medido)}
                       </td>
 
-                      <td className="py-2.5 px-3 text-right font-semibold text-purple-600 dark:text-purple-400 font-mono whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-right font-semibold font-mono whitespace-nowrap">
                         {isDistratado ? (
                           <span className="text-rose-500 line-through">{formatCurrency(c.saldo_a_medir)}</span>
+                        ) : stObra === 'Cancelada' && (c.saldo_a_medir || 0) > 0 ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-rose-600 dark:text-rose-400">{formatCurrency(c.saldo_a_medir)}</span>
+                            <span className="text-[9px] font-sans font-bold uppercase text-rose-500">A Distratar</span>
+                          </div>
+                        ) : stObra === 'Paralisada' && (c.saldo_a_medir || 0) > 0 ? (
+                          <div className="flex flex-col items-end">
+                            <span className="text-amber-600 dark:text-amber-400">{formatCurrency(c.saldo_a_medir)}</span>
+                            <span className="text-[9px] font-sans font-bold uppercase text-amber-500">Saldo Pausado</span>
+                          </div>
                         ) : (
-                          formatCurrency(c.saldo_a_medir)
+                          <span className="text-purple-600 dark:text-purple-400">{formatCurrency(c.saldo_a_medir)}</span>
                         )}
                       </td>
 
@@ -699,8 +761,22 @@ export function ContratosTable({
                   <td className="py-3 px-3 text-right text-xs text-emerald-600 dark:text-emerald-400 font-mono whitespace-nowrap">
                     {formatCurrency(totais.valorMedido)}
                   </td>
-                  <td className="py-3 px-3 text-right text-xs text-purple-600 dark:text-purple-400 font-mono whitespace-nowrap">
-                    {formatCurrency(totais.saldoAMedir)}
+                  <td className="py-3 px-3 text-right text-xs font-mono whitespace-nowrap">
+                    <div className="flex flex-col items-end gap-0.5">
+                      <span className="text-purple-600 dark:text-purple-400">
+                        A Medir: {formatCurrency(totais.saldoAMedir)}
+                      </span>
+                      {totais.saldoPausado > 0 && (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                          Pausado: {formatCurrency(totais.saldoPausado)}
+                        </span>
+                      )}
+                      {totais.saldoADistratar > 0 && (
+                        <span className="text-[10px] text-rose-600 dark:text-rose-400">
+                          A Distratar: {formatCurrency(totais.saldoADistratar)}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-3 text-center text-xs font-bold text-[#00A3C4]">
                     {formatPercent(totais.pctGlobal)}
