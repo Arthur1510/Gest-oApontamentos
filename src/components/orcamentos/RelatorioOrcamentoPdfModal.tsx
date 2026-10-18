@@ -1611,7 +1611,7 @@ export function RelatorioOrcamentoPdfModal({
                                         className="h-full bg-indigo-500 flex items-center justify-center"
                                         style={{ width: `${pctNF}%` }}
                                       >
-                                        {pctNF >= 20 && (
+                                        {pctNF >= 15 && (
                                           <span className="text-[6.5px] font-black text-white px-0.5 leading-none">
                                             {pctNF.toFixed(0)}%
                                           </span>
@@ -1621,7 +1621,7 @@ export function RelatorioOrcamentoPdfModal({
                                         className="h-full bg-amber-500 flex items-center justify-center"
                                         style={{ width: `${pctAMedir}%` }}
                                       >
-                                        {pctAMedir >= 20 && (
+                                        {pctAMedir >= 15 && (
                                           <span className="text-[6.5px] font-black text-white px-0.5 leading-none">
                                             {pctAMedir.toFixed(0)}%
                                           </span>
@@ -1631,10 +1631,10 @@ export function RelatorioOrcamentoPdfModal({
 
                                     <div className="pt-0.5 border-t border-slate-200 flex justify-between text-[7.5px] leading-none">
                                       <span className="text-indigo-700 font-bold">
-                                        NF: {formatCurrencyShort(item.medidoComNF)} ({pctNF.toFixed(0)}%)
+                                        NF: {formatCurrencyShort(item.medidoComNF)}
                                       </span>
                                       <span className="text-amber-700 font-bold">
-                                        A Medir: {formatCurrencyShort(item.aMedirPrevisto)} ({pctAMedir.toFixed(0)}%)
+                                        A Medir: {formatCurrencyShort(item.aMedirPrevisto)}
                                       </span>
                                     </div>
                                   </div>
