@@ -122,6 +122,77 @@ export async function fetchOrcamentoDataFromSupabase(): Promise<{
       data_pagamento: m.data_pagamento || null,
     }));
 
+    // Reconciliação automática: garante que qualquer Obra presente em orcamentos_base,
+    // contratos_obras ou medicoes_contratos exista na lista de obras (e seja persistida em obras_cad),
+    // permitindo visualizá-la nos filtros/cadastros e excluí-la pela plataforma.
+    const obrasMapByKey = new Map<string, Obra>();
+    obras.forEach((o) => {
+      if (o.codigo) obrasMapByKey.set(o.codigo.trim().toUpperCase(), o);
+      if (o.nome) obrasMapByKey.set(o.nome.trim().toUpperCase(), o);
+    });
+
+    const orphanObrasToSave: Obra[] = [];
+    const registerOrphanObra = (rawCode?: string | null, rawName?: string | null) => {
+      const code = (rawCode || '').trim();
+      if (!code) return;
+      const key = code.toUpperCase();
+      if (!obrasMapByKey.has(key)) {
+        const nomeObra = (rawName || '').trim() || code;
+        const novaObra: Obra = {
+          id: `OBR_DB_${key.replace(/[^A-Z0-9]/g, '_')}`,
+          codigo: code.toUpperCase(),
+          nome: nomeObra,
+          cc: '',
+          endereco: null,
+          status: 'Ativa',
+        };
+        obras.push(novaObra);
+        obrasMapByKey.set(key, novaObra);
+        obrasMapByKey.set(nomeObra.toUpperCase(), novaObra);
+        orphanObrasToSave.push(novaObra);
+      }
+    };
+
+    orcamentos.forEach((o) => registerOrphanObra(o.obra, o.nome_obra));
+    contratos.forEach((c) => registerOrphanObra(c.obra, c.obra));
+    medicoes.forEach((m) => registerOrphanObra(m.obra, m.obra));
+
+    if (orphanObrasToSave.length > 0) {
+      orphanObrasToSave.forEach((ob) => {
+        saveObraSupabase(ob).catch((e) =>
+          console.warn('Aviso ao registrar obra órfã em obras_cad:', e)
+        );
+      });
+    }
+
+    // Reconciliação automática de Fornecedores presentes em contratos ou medições
+    const fornSet = new Set<string>(
+      fornecedores.map((f) => (f.fornecedor || '').trim().toUpperCase())
+    );
+    let maxFornIdx = fornecedores.length;
+    const registerOrphanFornecedor = (rawEmpresa?: string | null) => {
+      const emp = (rawEmpresa || '').trim();
+      if (!emp) return;
+      const key = emp.toUpperCase();
+      if (!fornSet.has(key)) {
+        maxFornIdx++;
+        const novoForn: Fornecedor = {
+          id: `FOR_DB_${String(maxFornIdx).padStart(3, '0')}`,
+          id_sienge: '',
+          fornecedor: emp.toUpperCase(),
+          tipo: 'PROJETOS / GERAL',
+        };
+        fornecedores.push(novoForn);
+        fornSet.add(key);
+        saveFornecedorSupabase(novoForn).catch((e) =>
+          console.warn('Aviso ao registrar fornecedor órfão em fornecedores_cad:', e)
+        );
+      }
+    };
+
+    contratos.forEach((c) => registerOrphanFornecedor(c.empresa));
+    medicoes.forEach((m) => registerOrphanFornecedor(m.empresa));
+
     // Disciplinas: do banco ou derivadas dinamicamente dos dados reais
     let disciplinas: Disciplina[] = (discRes.data || []).map((d: any) => ({
       id: d.id,
@@ -264,12 +335,22 @@ export async function saveContratoSupabase(contrato: Contrato): Promise<boolean>
 }
 
 /**
- * Exclui um contrato do Supabase
+ * Exclui um contrato do Supabase e todas as medições vinculadas a ele
  */
 export async function deleteContratoSupabase(id: string): Promise<boolean> {
   if (!isSupabaseReady() || !supabase) return false;
   try {
-    const { error } = await supabase.from('contratos_obras').delete().eq('id', id);
+    const cleanId = String(id).trim();
+    // Exclui medições vinculadas ao contrato para não deixar registros órfãos
+    const { error: medErr } = await supabase
+      .from('medicoes_contratos')
+      .delete()
+      .eq('contrato_id', cleanId);
+    if (medErr) {
+      console.warn('Aviso ao excluir medições vinculadas ao contrato no Supabase:', medErr.message);
+    }
+
+    const { error } = await supabase.from('contratos_obras').delete().eq('id', cleanId);
     if (error) {
       console.error('Erro ao excluir contrato no Supabase:', error.message);
       return false;
@@ -507,7 +588,8 @@ export async function saveObraSupabase(obra: Obra): Promise<boolean> {
 export async function deleteObraSupabase(id: string): Promise<boolean> {
   if (!isSupabaseReady() || !supabase) return false;
   try {
-    const { error } = await supabase.from('obras_cad').delete().eq('id', id);
+    const cleanId = String(id).trim();
+    const { error } = await supabase.from('obras_cad').delete().eq('id', cleanId);
     if (error) {
       console.error('Erro ao excluir obra no Supabase:', error.message);
       return false;
@@ -516,6 +598,77 @@ export async function deleteObraSupabase(id: string): Promise<boolean> {
   } catch (err) {
     console.error('Exceção ao excluir obra no Supabase:', err);
     return false;
+  }
+}
+
+/**
+ * Exclui uma obra e TODOS os seus orçamentos, contratos e medições vinculados no Supabase
+ */
+export async function deleteObraCompletaSupabase(
+  obra: Obra,
+  idsVinculados?: {
+    orcamentoIds?: string[];
+    contratoIds?: string[];
+    medicaoIds?: string[];
+  }
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseReady() || !supabase) {
+    return { success: false, error: 'Supabase não configurado.' };
+  }
+
+  try {
+    const cleanId = String(obra.id).trim();
+    const cleanCodigo = String(obra.codigo || '').trim();
+    const cleanNome = String(obra.nome || '').trim();
+
+    // 1. Excluir medições vinculadas
+    if (idsVinculados?.medicaoIds && idsVinculados.medicaoIds.length > 0) {
+      await supabase.from('medicoes_contratos').delete().in('id', idsVinculados.medicaoIds);
+    }
+    if (idsVinculados?.contratoIds && idsVinculados.contratoIds.length > 0) {
+      await supabase.from('medicoes_contratos').delete().in('contrato_id', idsVinculados.contratoIds);
+    }
+    if (cleanCodigo) {
+      await supabase.from('medicoes_contratos').delete().ilike('obra', cleanCodigo);
+    }
+    if (cleanNome && cleanNome.toUpperCase() !== cleanCodigo.toUpperCase()) {
+      await supabase.from('medicoes_contratos').delete().ilike('obra', cleanNome);
+    }
+
+    // 2. Excluir contratos vinculados
+    if (idsVinculados?.contratoIds && idsVinculados.contratoIds.length > 0) {
+      await supabase.from('contratos_obras').delete().in('id', idsVinculados.contratoIds);
+    }
+    if (cleanCodigo) {
+      await supabase.from('contratos_obras').delete().ilike('obra', cleanCodigo);
+    }
+    if (cleanNome && cleanNome.toUpperCase() !== cleanCodigo.toUpperCase()) {
+      await supabase.from('contratos_obras').delete().ilike('obra', cleanNome);
+    }
+
+    // 3. Excluir orçamentos vinculados
+    if (idsVinculados?.orcamentoIds && idsVinculados.orcamentoIds.length > 0) {
+      await supabase.from('orcamentos_base').delete().in('id', idsVinculados.orcamentoIds);
+    }
+    if (cleanCodigo) {
+      await supabase.from('orcamentos_base').delete().ilike('obra', cleanCodigo);
+    }
+    if (cleanNome && cleanNome.toUpperCase() !== cleanCodigo.toUpperCase()) {
+      await supabase.from('orcamentos_base').delete().ilike('obra', cleanNome);
+    }
+
+    // 4. Excluir cadastro da obra em obras_cad (por id e por código)
+    if (cleanId) {
+      await supabase.from('obras_cad').delete().eq('id', cleanId);
+    }
+    if (cleanCodigo) {
+      await supabase.from('obras_cad').delete().ilike('codigo', cleanCodigo);
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Exceção ao excluir obra completa no Supabase:', err);
+    return { success: false, error: err?.message || 'Erro ao excluir obra completa do banco' };
   }
 }
 

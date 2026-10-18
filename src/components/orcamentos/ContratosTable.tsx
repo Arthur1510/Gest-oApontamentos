@@ -8,7 +8,7 @@ import {
   Fornecedor,
   STATUS_CONTRATO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, getCanonicalObra } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -75,8 +75,9 @@ export function ContratosTable({
 
   // Base de contratos filtrada por critérios exceto categoria
   const contratosBase = useMemo(() => {
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return contratos.filter((c) => {
-      if (filtroObra && c.obra !== filtroObra) return false;
+      if (canonFiltro && getCanonicalObra(c.obra, obras) !== canonFiltro) return false;
       if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
       if (filtroStatus && (c.status || 'Ativo') !== filtroStatus) return false;
 
@@ -92,18 +93,19 @@ export function ContratosTable({
 
       return true;
     });
-  }, [contratos, filtroObra, filtroFornecedor, filtroStatus, searchQuery]);
+  }, [contratos, obras, filtroObra, filtroFornecedor, filtroStatus, searchQuery]);
 
   const countTodos = contratosBase.length;
   const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
   const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
   const countDistratados = useMemo(() => {
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return contratos.filter((c) => {
-      if (filtroObra && c.obra !== filtroObra) return false;
+      if (canonFiltro && getCanonicalObra(c.obra, obras) !== canonFiltro) return false;
       if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
       return c.status === 'Distratado';
     }).length;
-  }, [contratos, filtroObra, filtroFornecedor]);
+  }, [contratos, obras, filtroObra, filtroFornecedor]);
 
   // Contratos filtrados (aplicando categoria)
   const contratosFiltrados = useMemo(() => {

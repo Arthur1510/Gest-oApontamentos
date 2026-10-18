@@ -235,6 +235,25 @@ export interface ItemConsolidadoContrato {
   percentualMedidoTotal: number;
 }
 
+export interface ItemConsolidadoObra {
+  codigo: string;
+  nome: string;
+  label: string;
+  status?: StatusObra;
+  orcamentoBase: number;
+  valorContratado: number;
+  faltaContratar: number;
+  totalPrevisto: number;
+  diferencaOrcamento: number;
+  valorMedido: number;
+  valorPago: number;
+  valorAMedir: number;
+  percentualContratadoSobreBase: number;
+  percentualMedidoSobreContratado: number;
+  contratosCount: number;
+  orcamentosCount: number;
+}
+
 export interface KpiOrcamento {
   totalOrcado: number;
   totalContratado: number;

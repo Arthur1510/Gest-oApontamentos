@@ -10,7 +10,7 @@ import {
   STATUS_MEDICAO_OPCOES,
   STATUS_MEDICAO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent, formatDateBR, isMedicaoEmAtraso, getDiasAtraso } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, formatDateBR, isMedicaoEmAtraso, getDiasAtraso, getCanonicalObra } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -93,12 +93,13 @@ export function MedicoesTable({
 
   // Contagem de medições em atraso no total recebido
   const countEmAtraso = useMemo(() => {
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return medicoes.filter((m) => {
-      if (filtroObra && m.obra !== filtroObra) return false;
+      if (canonFiltro && getCanonicalObra(m.obra, obras) !== canonFiltro) return false;
       if (filtroFornecedorAtivo && m.empresa !== filtroFornecedorAtivo) return false;
       return isMedicaoEmAtraso(m);
     }).length;
-  }, [medicoes, filtroObra, filtroFornecedorAtivo]);
+  }, [medicoes, obras, filtroObra, filtroFornecedorAtivo]);
 
   // Lista única de meses para o filtro
   const mesesUnicos = useMemo(() => {
@@ -120,8 +121,9 @@ export function MedicoesTable({
 
   // Medições filtradas
   const medicoesFiltradas = useMemo(() => {
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return medicoes.filter((m) => {
-      if (filtroObra && m.obra !== filtroObra) return false;
+      if (canonFiltro && getCanonicalObra(m.obra, obras) !== canonFiltro) return false;
       if (filtroFornecedorAtivo && m.empresa !== filtroFornecedorAtivo) return false;
       if (filtroStatus && m.status !== filtroStatus) return false;
       if (filtroMes && m.mes_competencia !== filtroMes) return false;
@@ -141,7 +143,7 @@ export function MedicoesTable({
 
       return true;
     });
-  }, [medicoes, filtroObra, filtroFornecedorAtivo, filtroStatus, filtroMes, filtroContrato, filtroAtrasoApenas, searchQuery]);
+  }, [medicoes, obras, filtroObra, filtroFornecedorAtivo, filtroStatus, filtroMes, filtroContrato, filtroAtrasoApenas, searchQuery]);
 
   // Totais
   const totais = useMemo(() => {

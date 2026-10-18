@@ -65,6 +65,7 @@ import {
   deleteOrcamentoItemSupabase,
   saveObraSupabase,
   deleteObraSupabase,
+  deleteObraCompletaSupabase,
   saveFornecedorSupabase,
   deleteFornecedorSupabase,
 } from '@/lib/supabase/orcamento-service';
@@ -201,15 +202,11 @@ export default function OrcamentosPage() {
           setIsSyncing(true);
           const cloud = await fetchOrcamentoDataFromSupabase();
           if (cloud) {
-            if (cloud.obras && cloud.obras.length > 0) {
-              setObras(cloud.obras);
-              localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras));
-            }
+            setObras(cloud.obras || []);
+            localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(cloud.obras || []));
 
-            if (cloud.fornecedores && cloud.fornecedores.length > 0) {
-              setFornecedores(cloud.fornecedores);
-              localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores));
-            }
+            setFornecedores(cloud.fornecedores || []);
+            localStorage.setItem(STORAGE_KEY_FORNECEDORES, JSON.stringify(cloud.fornecedores || []));
 
             if (cloud.disciplinas && cloud.disciplinas.length > 0) {
               setDisciplinas(cloud.disciplinas);
@@ -221,7 +218,7 @@ export default function OrcamentosPage() {
               localStorage.setItem(STORAGE_KEY_SUBDISCIPLINAS, JSON.stringify(cloud.subdisciplinas));
             }
 
-            // Mescla contratos da nuvem com dados locais (aditivos e distratos) para resiliência
+            // Mescla aditivos/distrato locais apenas para contratos que existem no banco
             const localCtMap = new Map<string, Contrato>();
             (localContratosSalvos || []).forEach((lc: Contrato) => {
               if (lc && lc.id) localCtMap.set(String(lc.id).trim().toUpperCase(), lc);
@@ -241,27 +238,9 @@ export default function OrcamentosPage() {
               };
             });
 
-            // Preserva contratos criados localmente que ainda não foram para a nuvem
-            (localContratosSalvos || []).forEach((lc: Contrato) => {
-              if (lc && lc.id && !mergedContratos.some((mc) => String(mc.id).trim().toUpperCase() === String(lc.id).trim().toUpperCase())) {
-                mergedContratos.push(lc);
-              }
-            });
-
-            // Preserva orçamentos criados localmente que ainda não foram para a nuvem
-            const cloudOrcMap = new Set((cloud.orcamentos || []).map((co) => String(co.id).trim().toUpperCase()));
             const mergedOrcamentos = [...(cloud.orcamentos || [])];
-            (localOrcamentosSalvos || []).forEach((lo: ItemOrcamento) => {
-              if (lo && lo.id && !cloudOrcMap.has(String(lo.id).trim().toUpperCase())) {
-                mergedOrcamentos.push(lo);
-                saveOrcamentoItemSupabase(lo).catch((err) =>
-                  console.warn('Propagando orçamento pendente para o banco:', err)
-                );
-              }
-            });
+            const obrasVigentes = cloud.obras || [];
 
-            const obrasVigentes = cloud.obras && cloud.obras.length > 0 ? cloud.obras : (localObrasSalvos.length > 0 ? localObrasSalvos : []);
-            
             // Normaliza medições: se tiver data_pagamento e não for 'Pago' nem 'Cancelado', define como 'A Pagar'
             const cloudMedicoes = (cloud.medicoes || []).map((m: Medicao) => {
               if (m.data_pagamento && m.status !== 'Pago' && m.status !== 'Cancelado' && (m.status as any) !== 'Cancelada') {
@@ -423,14 +402,38 @@ export default function OrcamentosPage() {
     }
   };
 
-  const handleExcluirContrato = (id: string) => {
-    if (confirm(`Deseja realmente excluir o contrato ${id}? Todas as medições vinculadas serão mantidas ou devem ser revisadas.`)) {
-      const contratoExcluido = contratos.find((c) => c.id === id);
-      const updated = contratos.filter((c) => c.id !== id);
-      const { recalcCt, recalcOrc } = salvarDados(medicoes, updated, orcamentos);
-      deleteContratoSupabase(id).catch((err) =>
-        console.warn('Erro ao excluir contrato no Supabase:', err)
+  const handleExcluirContrato = async (id: string) => {
+    const cleanId = String(id).trim();
+    const medicoesVinculadas = medicoes.filter(
+      (m) => String(m.contrato_id).trim().toUpperCase() === cleanId.toUpperCase()
+    );
+    const msgMedicoes =
+      medicoesVinculadas.length > 0
+        ? ` As ${medicoesVinculadas.length} medições vinculadas a este contrato também serão excluídas do banco de dados.`
+        : '';
+
+    if (confirm(`Deseja realmente excluir o contrato ${cleanId}?${msgMedicoes}`)) {
+      const contratoExcluido = contratos.find(
+        (c) => String(c.id).trim().toUpperCase() === cleanId.toUpperCase()
       );
+      const updatedContratos = contratos.filter(
+        (c) => String(c.id).trim().toUpperCase() !== cleanId.toUpperCase()
+      );
+      const updatedMedicoes = medicoes.filter(
+        (m) => String(m.contrato_id).trim().toUpperCase() !== cleanId.toUpperCase()
+      );
+      const { recalcOrc } = salvarDados(updatedMedicoes, updatedContratos, orcamentos);
+
+      if (isSupabaseReady()) {
+        const ok = await deleteContratoSupabase(cleanId);
+        if (!ok) {
+          alert(`Erro ao excluir contrato ${cleanId} no banco de dados.`);
+          salvarDados(medicoes, contratos, orcamentos);
+          return;
+        }
+        setLastSyncStatus(`Contrato ${cleanId} excluído do banco às ${new Date().toLocaleTimeString('pt-BR')}`);
+      }
+
       if (contratoExcluido) {
         let orcsModified = false;
         const updatedOrcs = recalcOrc.map((item) => {
@@ -980,13 +983,58 @@ export default function OrcamentosPage() {
     }
   };
 
-  const handleExcluirObra = (id: string) => {
-    const updated = obras.filter((o) => o.id !== id);
-    setObras(updated);
-    localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(updated));
-    deleteObraSupabase(id).catch((err) =>
-      console.warn('Erro ao excluir obra no Supabase:', err)
+  const handleExcluirObra = async (id: string) => {
+    const obraAlvo = obras.find((o) => o.id === id);
+    if (!obraAlvo) return;
+
+    const pertenceObra = (val?: string | null) => {
+      if (!val) return false;
+      const vNorm = normalizeText(val);
+      const codNorm = normalizeText(obraAlvo.codigo);
+      const nomeNorm = normalizeText(obraAlvo.nome);
+      const canonVal = getCanonicalObra(val, obras);
+      return (
+        vNorm === codNorm ||
+        (nomeNorm && vNorm === nomeNorm) ||
+        (codNorm && canonVal === codNorm)
+      );
+    };
+
+    const orcsDaObra = orcamentos.filter((o) => pertenceObra(o.obra) || pertenceObra(o.nome_obra));
+    const ctsDaObra = contratos.filter((c) => pertenceObra(c.obra));
+    const ctIdsSet = new Set(ctsDaObra.map((c) => String(c.id).trim().toUpperCase()));
+    const medsDaObra = medicoes.filter(
+      (m) => pertenceObra(m.obra) || ctIdsSet.has(String(m.contrato_id).trim().toUpperCase())
     );
+
+    const updatedObras = obras.filter((o) => o.id !== id);
+    const updatedOrcamentos = orcamentos.filter((o) => !pertenceObra(o.obra) && !pertenceObra(o.nome_obra));
+    const updatedContratos = contratos.filter((c) => !pertenceObra(c.obra));
+    const updatedMedicoes = medicoes.filter(
+      (m) => !pertenceObra(m.obra) && !ctIdsSet.has(String(m.contrato_id).trim().toUpperCase())
+    );
+
+    setObras(updatedObras);
+    localStorage.setItem(STORAGE_KEY_OBRAS, JSON.stringify(updatedObras));
+    if (filtroObra && pertenceObra(filtroObra)) {
+      setFiltroObra('');
+    }
+    salvarDados(updatedMedicoes, updatedContratos, updatedOrcamentos, updatedObras);
+
+    if (isSupabaseReady()) {
+      const res = await deleteObraCompletaSupabase(obraAlvo, {
+        orcamentoIds: orcsDaObra.map((o) => o.id),
+        contratoIds: ctsDaObra.map((c) => c.id),
+        medicaoIds: medsDaObra.map((m) => m.id),
+      });
+      if (!res.success) {
+        alert(`Erro ao excluir obra completa no banco de dados: ${res.error || 'Falha de comunicação'}`);
+        return;
+      }
+      setLastSyncStatus(
+        `Obra ${obraAlvo.codigo} e seus vínculos (${orcsDaObra.length} orç., ${ctsDaObra.length} contr., ${medsDaObra.length} med.) excluídos do banco às ${new Date().toLocaleTimeString('pt-BR')}`
+      );
+    }
   };
 
   // --- CRUD CADASTROS (FORNECEDORES) ---
@@ -1337,6 +1385,9 @@ export default function OrcamentosPage() {
               fornecedores={fornecedores}
               disciplinas={disciplinas}
               subdisciplinas={subdisciplinas}
+              orcamentos={orcamentosCalculados}
+              contratos={contratosRecalculados}
+              medicoes={medicoes}
               onAdicionarObra={handleAdicionarObra}
               onEditarObra={handleEditarObra}
               onExcluirObra={handleExcluirObra}

@@ -6,6 +6,9 @@ import {
   Fornecedor,
   Disciplina,
   Subdisciplina,
+  ItemOrcamento,
+  Contrato,
+  Medicao,
   StatusObra,
   STATUS_OBRA_OPCOES,
   STATUS_OBRA_COLORS,
@@ -31,6 +34,9 @@ interface CadastrosTabProps {
   fornecedores: Fornecedor[];
   disciplinas: Disciplina[];
   subdisciplinas: Subdisciplina[];
+  orcamentos?: ItemOrcamento[];
+  contratos?: Contrato[];
+  medicoes?: Medicao[];
   onAdicionarObra: (obra: Obra) => void;
   onEditarObra: (obra: Obra, opcoes?: { distratarContratos?: boolean; reativarContratos?: boolean }) => void;
   onExcluirObra: (id: string) => void;
@@ -50,6 +56,9 @@ export function CadastrosTab({
   fornecedores,
   disciplinas,
   subdisciplinas,
+  orcamentos = [],
+  contratos = [],
+  medicoes = [],
   onAdicionarObra,
   onEditarObra,
   onExcluirObra,
@@ -432,61 +441,92 @@ export function CadastrosTab({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {obrasFiltradas.map((o) => (
-              <div
-                key={o.id}
-                className="p-4 rounded-2xl border border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:border-[#00A3C4]/40 transition-colors shadow-xs flex flex-col justify-between space-y-3"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-xs font-black">
-                        {o.codigo}
-                      </span>
-                      {o.status && (
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${STATUS_OBRA_COLORS[o.status]?.bg || ''} ${STATUS_OBRA_COLORS[o.status]?.text || ''} ${STATUS_OBRA_COLORS[o.status]?.border || ''}`}>
-                          {o.status}
+            {obrasFiltradas.map((o) => {
+              const codNorm = o.codigo.trim().toUpperCase();
+              const nomeNorm = o.nome.trim().toUpperCase();
+              const matchesObra = (val?: string) => {
+                if (!val) return false;
+                const v = val.trim().toUpperCase();
+                return v === codNorm || v === nomeNorm;
+              };
+              const orcsVinculados = orcamentos.filter(item => matchesObra(item.obra));
+              const ctsVinculados = contratos.filter(ct => matchesObra(ct.obra));
+              const ctIdsSet = new Set(ctsVinculados.map(ct => ct.id));
+              const medsVinculadas = medicoes.filter(m => matchesObra(m.obra) || ctIdsSet.has(m.contrato_id));
+              const totalVinculos = orcsVinculados.length + ctsVinculados.length + medsVinculadas.length;
+
+              return (
+                <div
+                  key={o.id}
+                  className="p-4 rounded-2xl border border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] hover:border-[#00A3C4]/40 transition-colors shadow-xs flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded-lg bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-xs font-black">
+                          {o.codigo}
+                        </span>
+                        {o.status && (
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${STATUS_OBRA_COLORS[o.status]?.bg || ''} ${STATUS_OBRA_COLORS[o.status]?.text || ''} ${STATUS_OBRA_COLORS[o.status]?.border || ''}`}>
+                            {o.status}
+                          </span>
+                        )}
+                      </div>
+                      {o.cc && (
+                        <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
+                          CC: {o.cc}
                         </span>
                       )}
                     </div>
-                    {o.cc && (
-                      <span className="text-xs font-mono text-slate-500 dark:text-slate-400">
-                        CC: {o.cc}
-                      </span>
+                    <h4 className="font-extrabold text-slate-900 dark:text-white text-base break-words">
+                      {o.nome}
+                    </h4>
+                    {o.endereco && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">
+                        {o.endereco}
+                      </p>
                     )}
-                  </div>
-                  <h4 className="font-extrabold text-slate-900 dark:text-white text-base break-words">
-                    {o.nome}
-                  </h4>
-                  {o.endereco && (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">
-                      {o.endereco}
-                    </p>
-                  )}
-                </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-[#0B384D] flex items-center justify-end gap-1">
-                  <button
-                    onClick={() => handleAbrirEditarObra(o)}
-                    title="Editar Obra"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-[#00A3C4] hover:bg-slate-100 dark:hover:bg-[#0B384D] transition-colors"
-                  >
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm(`Deseja realmente excluir a obra "${o.nome}" (${o.codigo})? Verifique se há contratos ou orçamentos vinculados.`)) {
-                        onExcluirObra(o.id);
-                      }
-                    }}
-                    title="Excluir Obra"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                    {/* Indicadores de registros vinculados no banco */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0B384D] text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        {orcsVinculados.length} {orcsVinculados.length === 1 ? 'orçamento' : 'orçamentos'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0B384D] text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        {ctsVinculados.length} {ctsVinculados.length === 1 ? 'contrato' : 'contratos'}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-[#0B384D] text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                        {medsVinculadas.length} {medsVinculadas.length === 1 ? 'medição' : 'medições'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-[#0B384D] flex items-center justify-end gap-1">
+                    <button
+                      onClick={() => handleAbrirEditarObra(o)}
+                      title="Editar Obra"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-[#00A3C4] hover:bg-slate-100 dark:hover:bg-[#0B384D] transition-colors"
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        const msg = totalVinculos > 0
+                          ? `Deseja realmente excluir a obra "${o.nome}" (${o.codigo})?\n\nATENÇÃO: Isso também excluirá permanentemente do banco de dados:\n• ${orcsVinculados.length} item(ns) de orçamento\n• ${ctsVinculados.length} contrato(s)\n• ${medsVinculadas.length} medição(ões)`
+                          : `Deseja realmente excluir a obra "${o.nome}" (${o.codigo}) do banco de dados?`;
+                        if (confirm(msg)) {
+                          onExcluirObra(o.id);
+                        }
+                      }}
+                      title="Excluir Obra e Vínculos"
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

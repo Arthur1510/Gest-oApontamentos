@@ -10,6 +10,7 @@ import {
   JanelaCaixa306090,
   ItemConsolidadoDisciplina,
   ItemConsolidadoContrato,
+  ItemConsolidadoObra,
 } from '@/types/orcamento';
 
 /**
@@ -1080,3 +1081,79 @@ export function getObraLabel(codigo: string, obras: Obra[]): string {
   }
   return codigo;
 }
+
+/**
+ * Consolida os indicadores financeiros por Obra para o Quadro Resumo Executivo do Portfólio
+ * Retorna apenas obras que possuam ao menos 1 item de orçamento ou 1 contrato (respeitando filtros)
+ */
+export function calculateConsolidadoObras(
+  orcamentos: ItemOrcamento[],
+  contratos: Contrato[],
+  medicoes: Medicao[],
+  obras: Obra[],
+  filtroFornecedor?: string | null,
+  filtroCategoria?: 'Projeto' | 'Legalização' | null
+): ItemConsolidadoObra[] {
+  const codigosSet = new Set<string>();
+
+  for (const o of obras) {
+    if (o.codigo) codigosSet.add(o.codigo.trim());
+  }
+  for (const item of orcamentos) {
+    if (item.obra) codigosSet.add(item.obra.trim());
+  }
+  for (const c of contratos) {
+    if (c.obra) codigosSet.add(c.obra.trim());
+  }
+
+  const result: ItemConsolidadoObra[] = [];
+
+  for (const codigo of Array.from(codigosSet)) {
+    const obraObj = obras.find((o) => o.codigo.trim().toUpperCase() === codigo.toUpperCase());
+    const orcObra = orcamentos.filter((o) => {
+      if (o.obra.trim().toUpperCase() !== codigo.toUpperCase()) return false;
+      if (filtroCategoria && o.categoria !== filtroCategoria) return false;
+      return true;
+    });
+    const ctObra = contratos.filter((c) => {
+      if (c.obra.trim().toUpperCase() !== codigo.toUpperCase()) return false;
+      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+      if (filtroCategoria && c.categoria !== filtroCategoria) return false;
+      return true;
+    });
+
+    // Exibir apenas obras que possuam orçamento ou contrato cadastrado nos filtros ativos
+    if (orcObra.length === 0 && ctObra.length === 0) continue;
+
+    // Se houver filtro de fornecedor ativo, filtramos contratos e medições daquele fornecedor
+    const medObra = medicoes.filter((m) => {
+      if (m.obra.trim().toUpperCase() !== codigo.toUpperCase()) return false;
+      if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
+      return true;
+    });
+
+    const kpiObra = calculateKpis(orcObra, ctObra, medObra, null, filtroCategoria || null);
+
+    result.push({
+      codigo: obraObj ? obraObj.codigo : codigo,
+      nome: obraObj ? obraObj.nome : codigo,
+      label: getObraLabel(obraObj ? obraObj.codigo : codigo, obras),
+      status: obraObj?.status,
+      orcamentoBase: kpiObra.totalOrcado,
+      valorContratado: kpiObra.totalContratado,
+      faltaContratar: kpiObra.faltaContratar,
+      totalPrevisto: kpiObra.custoTotalPrevisto,
+      diferencaOrcamento: kpiObra.diferencaOrcamento,
+      valorMedido: kpiObra.totalMedido,
+      valorPago: kpiObra.totalPago,
+      valorAMedir: kpiObra.saldoAMedir,
+      percentualContratadoSobreBase: kpiObra.percentualContratado,
+      percentualMedidoSobreContratado: kpiObra.percentualMedido,
+      contratosCount: ctObra.length,
+      orcamentosCount: orcObra.length,
+    });
+  }
+
+  return result.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
+}
+

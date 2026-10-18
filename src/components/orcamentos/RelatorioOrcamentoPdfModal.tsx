@@ -8,6 +8,12 @@ import {
   Medicao,
   CurvaDesembolsoPonto,
   Obra,
+  KpiOrcamento,
+  JanelaCaixa306090,
+  ItemConsolidadoDisciplina,
+  ItemConsolidadoContrato,
+  ItemConsolidadoObra,
+  AditivoContrato,
 } from '@/types/orcamento';
 import {
   formatCurrency,
@@ -20,6 +26,7 @@ import {
   calculateJanela306090,
   calculateConsolidadoDisciplinas,
   calculateConsolidadoContratos,
+  calculateConsolidadoObras,
 } from '@/lib/orcamento-utils';
 import { exportMultiSheetExcel } from '@/lib/excel-export';
 import { Button } from '@/components/ui/button';
@@ -51,6 +58,8 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+
+export const MODO_RESUMO_E_OBRAS = '__TODAS_DETALHADAS__';
 
 interface RelatorioOrcamentoPdfModalProps {
   isOpen: boolean;
@@ -120,119 +129,43 @@ export function RelatorioOrcamentoPdfModal({
   };
 
   const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
+  const isModoResumoEObras = localFiltroObra === MODO_RESUMO_E_OBRAS;
+  const effectiveSingleObra = isModoResumoEObras ? null : localFiltroObra || null;
 
-  // Curva S de Desembolso Financeiro
+  // Lista consolidada de todas as obras que possuem orçamento ou contrato ativo nos filtros
+  const consolidadoObras = useMemo(() => {
+    const base = calculateConsolidadoObras(
+      orcamentos,
+      contratos,
+      medicoes,
+      obras,
+      filtroFornecedor || null,
+      catParam
+    );
+    const list = [...base];
+    if (ordemListas === 'alfabetica') {
+      return list.sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }));
+    }
+    if (ordemListas === 'saldo') {
+      return list.sort((a, b) => b.faltaContratar - a.faltaContratar || b.valorAMedir - a.valorAMedir || b.totalPrevisto - a.totalPrevisto);
+    }
+    return list.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
+  }, [orcamentos, contratos, medicoes, obras, filtroFornecedor, catParam, ordemListas]);
+
+  // Curva S de Desembolso Financeiro (para exportação Excel ou visão simples)
   const curvaPontosRelatorio = useMemo(() => {
     return calculateCurvaDesembolso(
       medicoes,
-      localFiltroObra || null,
+      effectiveSingleObra,
       filtroFornecedor || null,
       contratos,
       catParam,
       'desembolso'
     );
-  }, [medicoes, localFiltroObra, filtroFornecedor, contratos, catParam]);
-
-  // KPIs
-  const kpis = useMemo(() => {
-    return calculateKpis(
-      orcamentos,
-      contratos,
-      medicoes,
-      localFiltroObra || null,
-      catParam
-    );
-  }, [orcamentos, contratos, medicoes, localFiltroObra, catParam]);
-
-  // Janela 30 / 60 / 90 dias
-  const janela306090 = useMemo(() => {
-    return calculateJanela306090(
-      medicoes,
-      contratos,
-      localFiltroObra || null,
-      filtroFornecedor || null,
-      catParam
-    );
-  }, [medicoes, contratos, localFiltroObra, filtroFornecedor, catParam]);
-
-  // Consolidação por Disciplina (Barras de Progresso) + Ordenação Selecionada
-  const consolidadoDisciplinas = useMemo(() => {
-    const base = calculateConsolidadoDisciplinas(
-      orcamentos,
-      localFiltroObra || null,
-      catParam
-    );
-    const list = [...base];
-    if (ordemListas === 'alfabetica') {
-      return list.sort((a, b) => a.disciplina.localeCompare(b.disciplina, 'pt-BR', { sensitivity: 'base' }));
-    }
-    if (ordemListas === 'saldo') {
-      return list.sort((a, b) => b.faltaContratar - a.faltaContratar || b.totalPrevisto - a.totalPrevisto);
-    }
-    return list.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
-  }, [orcamentos, localFiltroObra, catParam, ordemListas]);
-
-  // Consolidação dos Contratos (Barras de Progresso) + Ordenação Selecionada
-  const consolidadoContratos = useMemo(() => {
-    const base = calculateConsolidadoContratos(
-      contratos,
-      medicoes,
-      localFiltroObra || null,
-      filtroFornecedor || null,
-      catParam
-    );
-    const list = [...base];
-    if (ordemListas === 'alfabetica') {
-      return list.sort(
-        (a, b) =>
-          a.empresa.localeCompare(b.empresa, 'pt-BR', { sensitivity: 'base' }) ||
-          a.disciplina.localeCompare(b.disciplina, 'pt-BR', { sensitivity: 'base' })
-      );
-    }
-    if (ordemListas === 'saldo') {
-      return list.sort((a, b) => b.valorAMedir - a.valorAMedir || b.valorContrato - a.valorContrato);
-    }
-    return list.sort((a, b) => b.valorContrato - a.valorContrato);
-  }, [contratos, medicoes, localFiltroObra, filtroFornecedor, catParam, ordemListas]);
+  }, [medicoes, effectiveSingleObra, filtroFornecedor, contratos, catParam]);
 
   const dataAtual = new Date().toLocaleDateString('pt-BR');
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-
-  const obraSelecionadaNome = localFiltroObra
-    ? getObraLabel(localFiltroObra, obras)
-    : 'TODAS AS OBRAS E EMPREENDIMENTOS';
-
-  const contratosFiltrados = useMemo(() => {
-    return contratos.filter((c) => {
-      if (localFiltroObra && c.obra !== localFiltroObra) return false;
-      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-      if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
-      return true;
-    });
-  }, [contratos, localFiltroObra, filtroFornecedor, filtroCategoria]);
-
-  const todosAditivos = useMemo(() => {
-    return contratosFiltrados.flatMap((c) =>
-      (c.aditivos || []).map((a) => ({ ...a, empresa: c.empresa, obra: c.obra }))
-    );
-  }, [contratosFiltrados]);
-
-  const contratosDistratados = useMemo(() => {
-    return contratosFiltrados.filter((c) => c.status === 'Distratado');
-  }, [contratosFiltrados]);
-
-  const totalPagoCurva = useMemo(
-    () => curvaPontosRelatorio.reduce((acc, p) => acc + (p.pago || 0), 0),
-    [curvaPontosRelatorio]
-  );
-  const totalAPagarCurva = useMemo(
-    () => curvaPontosRelatorio.reduce((acc, p) => acc + (p.aPagar || 0), 0),
-    [curvaPontosRelatorio]
-  );
-  const totalAMedirCurva = useMemo(
-    () => curvaPontosRelatorio.reduce((acc, p) => acc + (p.aMedir || 0), 0),
-    [curvaPontosRelatorio]
-  );
 
   // Dimensões exatas em pixels da Folha A4 (210mm x 297mm = 794px x 1122px a 96 DPI)
   // Garante que o Cabeçalho e o Rodapé fiquem sempre em espaços fixos dedicados
@@ -249,7 +182,7 @@ export function RelatorioOrcamentoPdfModal({
     kpis2Rows: 212, // 28px título + 184px (2 linhas quando expandido)
     janelaNormal: 106, // 28px título + 78px cards 30/60/90
     janelaExpanded: 132, // 28px título + 104px cards 30/60/90 expandidos
-    cardNormal: 54, // Altura fixa de cada card de Disciplina ou Contrato
+    cardNormal: 54, // Altura fixa de cada card de Obra, Disciplina ou Contrato
     cardExpanded: 66, // Altura fixa de cada card expandido
     cardGap: 8, // Espaço vertical entre cards da lista
     curvaGrafico: 224, // 28px título + 196px gráfico
@@ -258,8 +191,8 @@ export function RelatorioOrcamentoPdfModal({
   };
 
   // Espaço útil exato disponível para os tópicos na relação (Cabeçalho <-> Rodapé):
-  // Página 1: 1122 - 96 - 68 - 36 = 922px
-  // Página 2+: 1122 - 96 - 44 - 36 = 946px
+  // Página 1 da seção: 1122 - 96 - 68 - 36 = 922px
+  // Página 2+ da seção: 1122 - 96 - 44 - 36 = 946px
   const CONTENT_HEIGHT_PAGE_1 =
     PDF_LAYOUT.pageHeight - PDF_LAYOUT.paddingY - PDF_LAYOUT.headerPage1 - PDF_LAYOUT.footer;
   const CONTENT_HEIGHT_PAGE_N =
@@ -270,204 +203,259 @@ export function RelatorioOrcamentoPdfModal({
     | { type: 'kpis' }
     | { type: 'janela306090' }
     | {
+        type: 'quadroObras';
+        items: ItemConsolidadoObra[];
+        isContinuation: boolean;
+        totalCount: number;
+      }
+    | {
         type: 'disciplinas';
-        items: typeof consolidadoDisciplinas;
+        items: ItemConsolidadoDisciplina[];
         isContinuation: boolean;
         totalCount: number;
       }
     | {
         type: 'contratos';
-        items: typeof consolidadoContratos;
+        items: ItemConsolidadoContrato[];
         isContinuation: boolean;
         totalCount: number;
       }
     | { type: 'curvaGrafico' }
     | {
         type: 'curvaDesembolso';
-        items: typeof curvaPontosRelatorio;
+        items: CurvaDesembolsoPonto[];
         isContinuation: boolean;
       }
     | {
         type: 'ocorrencias';
-        items: typeof todosAditivos;
+        items: Array<AditivoContrato & { empresa: string; obra: string }>;
         isContinuation: boolean;
       };
 
-  const pages = useMemo<PdfPageBlock[][]>(() => {
-    const result: PdfPageBlock[][] = [];
-    let currentPage: PdfPageBlock[] = [];
-    let availPx = CONTENT_HEIGHT_PAGE_1;
+  interface PdfPageDescriptor {
+    headerTitle: string;
+    headerObraBadge: string;
+    headerSubBadge?: string;
+    isSectionFirstPage: boolean;
+    kpis: KpiOrcamento;
+    janela306090: JanelaCaixa306090;
+    curvaPontos: CurvaDesembolsoPonto[];
+    totaisCurva: { pago: number; aPagar: number; aMedir: number };
+    blocks: PdfPageBlock[];
+  }
 
-    const startNewPage = () => {
-      if (currentPage.length > 0) {
-        result.push(currentPage);
+  const pages = useMemo<PdfPageDescriptor[]>(() => {
+    const sortDisciplinasList = (base: ItemConsolidadoDisciplina[]) => {
+      const list = [...base];
+      if (ordemListas === 'alfabetica') {
+        return list.sort((a, b) => a.disciplina.localeCompare(b.disciplina, 'pt-BR', { sensitivity: 'base' }));
       }
-      currentPage = [];
-      availPx = CONTENT_HEIGHT_PAGE_N;
+      if (ordemListas === 'saldo') {
+        return list.sort((a, b) => b.faltaContratar - a.faltaContratar || b.totalPrevisto - a.totalPrevisto);
+      }
+      return list.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
     };
 
-    const pushFixedBlock = (block: PdfPageBlock, blockHeightPx: number) => {
-      const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-      if (availPx < blockHeightPx + gap && currentPage.length > 0) {
-        startNewPage();
+    const sortContratosList = (base: ItemConsolidadoContratosList) => {
+      const list = [...base];
+      if (ordemListas === 'alfabetica') {
+        return list.sort(
+          (a, b) =>
+            a.empresa.localeCompare(b.empresa, 'pt-BR', { sensitivity: 'base' }) ||
+            a.disciplina.localeCompare(b.disciplina, 'pt-BR', { sensitivity: 'base' })
+        );
       }
-      const actualGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-      currentPage.push(block);
-      availPx -= blockHeightPx + actualGap;
+      if (ordemListas === 'saldo') {
+        return list.sort((a, b) => b.valorAMedir - a.valorAMedir || b.valorContrato - a.valorContrato);
+      }
+      return list.sort((a, b) => b.valorContrato - a.valorContrato);
     };
+    type ItemConsolidadoContratosList = ItemConsolidadoContrato[];
 
-    // 1. Cards Principais (KPIs)
-    if (secoes.kpis) {
-      const anyKpiExpanded =
-        expandedPdfBlocks.kpiContratado ||
-        expandedPdfBlocks.kpiFalta ||
-        expandedPdfBlocks.kpiMedido ||
-        expandedPdfBlocks.kpiAMedir;
-      pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
-    }
-
-    // 2. Janela 30 / 60 / 90 Dias
-    if (secoes.janela306090) {
-      pushFixedBlock(
-        { type: 'janela306090' },
-        expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
+    // Constrói as páginas A4 de um escopo específico (Consolidado Geral ou 1 Obra Individual)
+    const buildScopePages = (
+      obraCodigo: string | null,
+      headerTitle: string,
+      headerObraBadge: string,
+      headerSubBadge?: string
+    ): PdfPageDescriptor[] => {
+      const scopeKpis = calculateKpis(orcamentos, contratos, medicoes, obraCodigo, catParam);
+      const scopeJanela = calculateJanela306090(
+        medicoes,
+        contratos,
+        obraCodigo,
+        filtroFornecedor || null,
+        catParam
       );
-    }
+      const scopeDisciplinas = sortDisciplinasList(
+        calculateConsolidadoDisciplinas(orcamentos, obraCodigo, catParam)
+      );
+      const scopeContratos = sortContratosList(
+        calculateConsolidadoContratos(contratos, medicoes, obraCodigo, filtroFornecedor || null, catParam)
+      );
+      const scopeCurva = calculateCurvaDesembolso(
+        medicoes,
+        obraCodigo,
+        filtroFornecedor || null,
+        contratos,
+        catParam,
+        'desembolso'
+      );
+      const scopeTotaisCurva = {
+        pago: scopeCurva.reduce((acc, p) => acc + (p.pago || 0), 0),
+        aPagar: scopeCurva.reduce((acc, p) => acc + (p.aPagar || 0), 0),
+        aMedir: scopeCurva.reduce((acc, p) => acc + (p.aMedir || 0), 0),
+      };
 
-    // 3. Consolidação por Disciplina (calcula quantos cards inteiros cabem; o restante vai para a próxima página)
-    if (secoes.disciplinas && consolidadoDisciplinas.length > 0) {
-      const cardH = expandedPdfBlocks.pdfDisciplinas ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
-      let remaining = [...consolidadoDisciplinas];
-      let isContinuation = false;
+      const scopeContratosFiltrados = contratos.filter((c) => {
+        if (obraCodigo && c.obra !== obraCodigo) return false;
+        if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
+        if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
+        return true;
+      });
 
-      while (remaining.length > 0) {
+      const scopeAditivos = scopeContratosFiltrados.flatMap((c) =>
+        (c.aditivos || []).map((a) => ({ ...a, empresa: c.empresa, obra: c.obra }))
+      );
+      const scopeDistratados = scopeContratosFiltrados.filter((c) => c.status === 'Distratado');
+
+      const blockPages: PdfPageBlock[][] = [];
+      let currentPage: PdfPageBlock[] = [];
+      let availPx = CONTENT_HEIGHT_PAGE_1;
+
+      const startNewPage = () => {
+        if (currentPage.length > 0) {
+          blockPages.push(currentPage);
+        }
+        currentPage = [];
+        availPx = CONTENT_HEIGHT_PAGE_N;
+      };
+
+      const pushFixedBlock = (block: PdfPageBlock, blockHeightPx: number) => {
         const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const minCards = Math.min(remaining.length, 2);
-        const minNeeded =
-          gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
-
-        if (availPx < minNeeded && currentPage.length > 0) {
+        if (availPx < blockHeightPx + gap && currentPage.length > 0) {
           startNewPage();
         }
+        const actualGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+        currentPage.push(block);
+        availPx -= blockHeightPx + actualGap;
+      };
 
-        const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const availForCards = availPx - effectiveGap - PDF_LAYOUT.sectionHeader;
-        // Quantidade exata de cards inteiros que cabem no espaço restante:
-        // N * cardH + (N - 1) * cardGap <= availForCards
-        const maxFit = Math.max(
-          1,
-          Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
+      // 1. Cards Principais (KPIs)
+      if (secoes.kpis) {
+        const anyKpiExpanded =
+          expandedPdfBlocks.kpiContratado ||
+          expandedPdfBlocks.kpiFalta ||
+          expandedPdfBlocks.kpiMedido ||
+          expandedPdfBlocks.kpiAMedir;
+        pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+      }
+
+      // 2. Janela 30 / 60 / 90 Dias
+      if (secoes.janela306090) {
+        pushFixedBlock(
+          { type: 'janela306090' },
+          expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
         );
-        const chunk = remaining.slice(0, maxFit);
-
-        currentPage.push({
-          type: 'disciplinas',
-          items: chunk,
-          isContinuation,
-          totalCount: consolidadoDisciplinas.length,
-        });
-
-        const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
-        availPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
-        remaining = remaining.slice(chunk.length);
-        isContinuation = true;
-
-        if (remaining.length > 0) {
-          startNewPage();
-        }
       }
-    }
 
-    // 4. Consolidação dos Contratos (calcula quantos cards inteiros cabem; o restante vai para a próxima página)
-    if (secoes.contratos && consolidadoContratos.length > 0) {
-      const cardH = expandedPdfBlocks.pdfContratos ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
-      let remaining = [...consolidadoContratos];
-      let isContinuation = false;
+      // 3. Consolidação por Disciplina
+      if (secoes.disciplinas && scopeDisciplinas.length > 0) {
+        const cardH = expandedPdfBlocks.pdfDisciplinas ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
+        let remaining = [...scopeDisciplinas];
+        let isContinuation = false;
 
-      while (remaining.length > 0) {
-        const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const minCards = Math.min(remaining.length, 2);
-        const minNeeded =
-          gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
-
-        if (availPx < minNeeded && currentPage.length > 0) {
-          startNewPage();
-        }
-
-        const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const availForCards = availPx - effectiveGap - PDF_LAYOUT.sectionHeader;
-        const maxFit = Math.max(
-          1,
-          Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
-        );
-        const chunk = remaining.slice(0, maxFit);
-
-        currentPage.push({
-          type: 'contratos',
-          items: chunk,
-          isContinuation,
-          totalCount: consolidadoContratos.length,
-        });
-
-        const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
-        availPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
-        remaining = remaining.slice(chunk.length);
-        isContinuation = true;
-
-        if (remaining.length > 0) {
-          startNewPage();
-        }
-      }
-    }
-
-    // 5. Curva S (Gráfico)
-    if (secoes.curvaGrafico) {
-      pushFixedBlock({ type: 'curvaGrafico' }, PDF_LAYOUT.curvaGrafico);
-    }
-
-    // 6. Tabela Mensal Curva S (calcula quantas linhas inteiras cabem; o restante vai para a próxima página)
-    if (secoes.curvaDesembolso && curvaPontosRelatorio.length > 0) {
-      let remaining = [...curvaPontosRelatorio];
-      let isContinuation = false;
-
-      while (remaining.length > 0) {
-        const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const minRows = Math.min(remaining.length, 3);
-        if (availPx < gap + PDF_LAYOUT.tableHeader + minRows * PDF_LAYOUT.tableRow && currentPage.length > 0) {
-          startNewPage();
-        }
-        const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        const availForRows = availPx - effectiveGap - PDF_LAYOUT.tableHeader;
-        const maxFit = Math.max(1, Math.floor(availForRows / PDF_LAYOUT.tableRow));
-        const chunk = remaining.slice(0, maxFit);
-
-        currentPage.push({
-          type: 'curvaDesembolso',
-          items: chunk,
-          isContinuation,
-        });
-
-        availPx -= effectiveGap + PDF_LAYOUT.tableHeader + chunk.length * PDF_LAYOUT.tableRow;
-        remaining = remaining.slice(chunk.length);
-        isContinuation = true;
-
-        if (remaining.length > 0) {
-          startNewPage();
-        }
-      }
-    }
-
-    // 7. Ocorrências Contratuais (Aditivos & Distratos)
-    if (secoes.ocorrencias && (todosAditivos.length > 0 || contratosDistratados.length > 0)) {
-      let remaining = [...todosAditivos];
-      let isContinuation = false;
-
-      if (remaining.length === 0) {
-        pushFixedBlock({ type: 'ocorrencias', items: [], isContinuation: false }, 60);
-      } else {
         while (remaining.length > 0) {
           const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-          const minRows = Math.min(remaining.length, 2);
+          const minCards = Math.min(remaining.length, 2);
+          const minNeeded =
+            gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
+
+          if (availPx < minNeeded && currentPage.length > 0) {
+            startNewPage();
+          }
+
+          const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const availForCards = availPx - effectiveGap - PDF_LAYOUT.sectionHeader;
+          const maxFit = Math.max(
+            1,
+            Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
+          );
+          const chunk = remaining.slice(0, maxFit);
+
+          currentPage.push({
+            type: 'disciplinas',
+            items: chunk,
+            isContinuation,
+            totalCount: scopeDisciplinas.length,
+          });
+
+          const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
+          availPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
+          remaining = remaining.slice(chunk.length);
+          isContinuation = true;
+
+          if (remaining.length > 0) {
+            startNewPage();
+          }
+        }
+      }
+
+      // 4. Consolidação dos Contratos
+      if (secoes.contratos && scopeContratos.length > 0) {
+        const cardH = expandedPdfBlocks.pdfContratos ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
+        let remaining = [...scopeContratos];
+        let isContinuation = false;
+
+        while (remaining.length > 0) {
+          const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const minCards = Math.min(remaining.length, 2);
+          const minNeeded =
+            gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
+
+          if (availPx < minNeeded && currentPage.length > 0) {
+            startNewPage();
+          }
+
+          const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const availForCards = availPx - effectiveGap - PDF_LAYOUT.sectionHeader;
+          const maxFit = Math.max(
+            1,
+            Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
+          );
+          const chunk = remaining.slice(0, maxFit);
+
+          currentPage.push({
+            type: 'contratos',
+            items: chunk,
+            isContinuation,
+            totalCount: scopeContratos.length,
+          });
+
+          const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
+          availPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
+          remaining = remaining.slice(chunk.length);
+          isContinuation = true;
+
+          if (remaining.length > 0) {
+            startNewPage();
+          }
+        }
+      }
+
+      // 5. Curva S (Gráfico)
+      if (secoes.curvaGrafico && scopeCurva.length > 0) {
+        pushFixedBlock({ type: 'curvaGrafico' }, PDF_LAYOUT.curvaGrafico);
+      }
+
+      // 6. Tabela Mensal Curva S
+      if (secoes.curvaDesembolso && scopeCurva.length > 0) {
+        let remaining = [...scopeCurva];
+        let isContinuation = false;
+
+        while (remaining.length > 0) {
+          const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const minRows = Math.min(remaining.length, 3);
           if (availPx < gap + PDF_LAYOUT.tableHeader + minRows * PDF_LAYOUT.tableRow && currentPage.length > 0) {
             startNewPage();
           }
@@ -477,7 +465,7 @@ export function RelatorioOrcamentoPdfModal({
           const chunk = remaining.slice(0, maxFit);
 
           currentPage.push({
-            type: 'ocorrencias',
+            type: 'curvaDesembolso',
             items: chunk,
             isContinuation,
           });
@@ -491,30 +479,237 @@ export function RelatorioOrcamentoPdfModal({
           }
         }
       }
+
+      // 7. Ocorrências Contratuais (Aditivos & Distratos)
+      if (secoes.ocorrencias && (scopeAditivos.length > 0 || scopeDistratados.length > 0)) {
+        let remaining = [...scopeAditivos];
+        let isContinuation = false;
+
+        if (remaining.length === 0) {
+          pushFixedBlock({ type: 'ocorrencias', items: [], isContinuation: false }, 60);
+        } else {
+          while (remaining.length > 0) {
+            const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+            const minRows = Math.min(remaining.length, 2);
+            if (availPx < gap + PDF_LAYOUT.tableHeader + minRows * PDF_LAYOUT.tableRow && currentPage.length > 0) {
+              startNewPage();
+            }
+            const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+            const availForRows = availPx - effectiveGap - PDF_LAYOUT.tableHeader;
+            const maxFit = Math.max(1, Math.floor(availForRows / PDF_LAYOUT.tableRow));
+            const chunk = remaining.slice(0, maxFit);
+
+            currentPage.push({
+              type: 'ocorrencias',
+              items: chunk,
+              isContinuation,
+            });
+
+            availPx -= effectiveGap + PDF_LAYOUT.tableHeader + chunk.length * PDF_LAYOUT.tableRow;
+            remaining = remaining.slice(chunk.length);
+            isContinuation = true;
+
+            if (remaining.length > 0) {
+              startNewPage();
+            }
+          }
+        }
+      }
+
+      if (currentPage.length > 0) {
+        blockPages.push(currentPage);
+      }
+
+      const finalBlockPages = blockPages.length > 0 ? blockPages : [[]];
+
+      return finalBlockPages.map((blocks, idx) => ({
+        headerTitle,
+        headerObraBadge,
+        headerSubBadge,
+        isSectionFirstPage: idx === 0,
+        kpis: scopeKpis,
+        janela306090: scopeJanela,
+        curvaPontos: scopeCurva,
+        totaisCurva: scopeTotaisCurva,
+        blocks,
+      }));
+    };
+
+    // MODO 3 (NOVO): Resumo Executivo Geral na(s) 1ª(s) página(s) + Todas as Obras Detalhadas abaixo (1 obra por nova folha A4)
+    if (isModoResumoEObras) {
+      const allPages: PdfPageDescriptor[] = [];
+
+      // Parte A: Página(s) de Resumo Executivo do Portfólio (Totais de Todas as Obras + Quadro Comparativo por Obra)
+      const portfolioKpis = calculateKpis(orcamentos, contratos, medicoes, null, catParam);
+      const portfolioJanela = calculateJanela306090(
+        medicoes,
+        contratos,
+        null,
+        filtroFornecedor || null,
+        catParam
+      );
+      const portfolioCurva = calculateCurvaDesembolso(
+        medicoes,
+        null,
+        filtroFornecedor || null,
+        contratos,
+        catParam,
+        'desembolso'
+      );
+      const portfolioTotaisCurva = {
+        pago: portfolioCurva.reduce((acc, p) => acc + (p.pago || 0), 0),
+        aPagar: portfolioCurva.reduce((acc, p) => acc + (p.aPagar || 0), 0),
+        aMedir: portfolioCurva.reduce((acc, p) => acc + (p.aMedir || 0), 0),
+      };
+
+      const summaryBlockPages: PdfPageBlock[][] = [];
+      let sumCurrentPage: PdfPageBlock[] = [];
+      let sumAvailPx = CONTENT_HEIGHT_PAGE_1;
+
+      const startNewSummaryPage = () => {
+        if (sumCurrentPage.length > 0) {
+          summaryBlockPages.push(sumCurrentPage);
+        }
+        sumCurrentPage = [];
+        sumAvailPx = CONTENT_HEIGHT_PAGE_N;
+      };
+
+      const pushSummaryFixed = (block: PdfPageBlock, blockHeightPx: number) => {
+        const gap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+        if (sumAvailPx < blockHeightPx + gap && sumCurrentPage.length > 0) {
+          startNewSummaryPage();
+        }
+        const actualGap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+        sumCurrentPage.push(block);
+        sumAvailPx -= blockHeightPx + actualGap;
+      };
+
+      // 1. Posição Geral Consolidada do Portfólio (KPIs de todas as obras)
+      const anyKpiExpanded =
+        expandedPdfBlocks.kpiContratado ||
+        expandedPdfBlocks.kpiFalta ||
+        expandedPdfBlocks.kpiMedido ||
+        expandedPdfBlocks.kpiAMedir;
+      pushSummaryFixed({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+
+      // 2. Janela 30/60/90 Dias Consolidada do Portfólio
+      pushSummaryFixed(
+        { type: 'janela306090' },
+        expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
+      );
+
+      // 3. Quadro Resumo Comparativo de Todas as Obras Ativas
+      if (consolidadoObras.length > 0) {
+        const cardH = expandedPdfBlocks.pdfQuadroObras ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
+        let remaining = [...consolidadoObras];
+        let isContinuation = false;
+
+        while (remaining.length > 0) {
+          const gap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const minCards = Math.min(remaining.length, 2);
+          const minNeeded =
+            gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
+
+          if (sumAvailPx < minNeeded && sumCurrentPage.length > 0) {
+            startNewSummaryPage();
+          }
+
+          const effectiveGap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const availForCards = sumAvailPx - effectiveGap - PDF_LAYOUT.sectionHeader;
+          const maxFit = Math.max(
+            1,
+            Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
+          );
+          const chunk = remaining.slice(0, maxFit);
+
+          sumCurrentPage.push({
+            type: 'quadroObras',
+            items: chunk,
+            isContinuation,
+            totalCount: consolidadoObras.length,
+          });
+
+          const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
+          sumAvailPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
+          remaining = remaining.slice(chunk.length);
+          isContinuation = true;
+
+          if (remaining.length > 0) {
+            startNewSummaryPage();
+          }
+        }
+      }
+
+      if (sumCurrentPage.length > 0) {
+        summaryBlockPages.push(sumCurrentPage);
+      }
+
+      const finalSummaryPages = summaryBlockPages.length > 0 ? summaryBlockPages : [[]];
+      for (let i = 0; i < finalSummaryPages.length; i++) {
+        allPages.push({
+          headerTitle: 'RESUMO EXECUTIVO DO PORTFÓLIO — VISÃO CONSOLIDADA DE OBRAS',
+          headerObraBadge: 'RESUMO EXECUTIVO (TODAS AS OBRAS)',
+          headerSubBadge: `${consolidadoObras.length} ${consolidadoObras.length === 1 ? 'Obra' : 'Obras'}`,
+          isSectionFirstPage: i === 0,
+          kpis: portfolioKpis,
+          janela306090: portfolioJanela,
+          curvaPontos: portfolioCurva,
+          totaisCurva: portfolioTotaisCurva,
+          blocks: finalSummaryPages[i],
+        });
+      }
+
+      // Parte B: Relatório Completo de Cada Obra Individualmente (iniciando cada obra em nova folha A4)
+      consolidadoObras.forEach((obraItem, idx) => {
+        const obraPages = buildScopePages(
+          obraItem.codigo,
+          'CONSOLIDAÇÃO DE ORÇAMENTOS, CONTRATOS & MEDIÇÕES',
+          obraItem.label,
+          `Obra ${idx + 1} de ${consolidadoObras.length}`
+        );
+        allPages.push(...obraPages);
+      });
+
+      return allPages;
     }
 
-    if (currentPage.length > 0) {
-      result.push(currentPage);
-    }
+    // MODO 1 (1 Obra Individual) ou MODO 2 (Todas as Obras Somadas)
+    const badgeLabel = effectiveSingleObra
+      ? getObraLabel(effectiveSingleObra, obras)
+      : 'TODAS AS OBRAS E EMPREENDIMENTOS (CONSOLIDADO)';
 
-    return result.length > 0 ? result : [[]];
+    return buildScopePages(
+      effectiveSingleObra,
+      'CONSOLIDAÇÃO DE ORÇAMENTOS, CONTRATOS & MEDIÇÕES',
+      badgeLabel
+    );
   }, [
+    isModoResumoEObras,
+    effectiveSingleObra,
+    orcamentos,
+    contratos,
+    medicoes,
+    obras,
+    filtroFornecedor,
+    filtroCategoria,
+    catParam,
+    ordemListas,
     secoes,
     expandedPdfBlocks,
-    consolidadoDisciplinas,
-    consolidadoContratos,
-    curvaPontosRelatorio,
-    todosAditivos,
-    contratosDistratados,
+    consolidadoObras,
     CONTENT_HEIGHT_PAGE_1,
     CONTENT_HEIGHT_PAGE_N,
   ]);
 
   const totalPages = pages.length;
 
+  const docTitleSuffix = isModoResumoEObras
+    ? 'Resumo_Executivo_e_Todas_as_Obras'
+    : localFiltroObra || 'Consolidado';
+
   const handlePrint = useReactToPrint({
     contentRef,
-    documentTitle: `Relatorio_Executivo_WCC_${localFiltroObra || 'Consolidado'}_${new Date().toISOString().slice(0, 10)}`,
+    documentTitle: `Relatorio_Executivo_WCC_${docTitleSuffix}_${new Date().toISOString().slice(0, 10)}`,
     pageStyle: `
       @page {
         size: A4 portrait;
@@ -577,18 +772,13 @@ export function RelatorioOrcamentoPdfModal({
       medicoes,
       curvaPontos: curvaPontosRelatorio,
       obras,
-      filtroObra: localFiltroObra,
+      filtroObra: effectiveSingleObra || '',
       filtroCategoria: filtroCategoria,
-      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${localFiltroObra || 'Geral'}.xlsx`,
+      nomeArquivo: `Relatorio_Consolidado_Orcamentos_WCC_${effectiveSingleObra || 'Geral'}.xlsx`,
     });
   };
 
   if (!isOpen) return null;
-
-  const pctContratadoBarra = kpis.totalOrcado > 0 ? Math.min(100, (kpis.totalContratado / kpis.totalOrcado) * 100) : 0;
-  const pctFaltaContratarBarra = kpis.custoTotalPrevisto > 0 ? Math.min(100, (kpis.faltaContratar / kpis.custoTotalPrevisto) * 100) : 0;
-  const pctMedidoBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.totalMedido / kpis.totalContratado) * 100) : 0;
-  const pctAMedirBarra = kpis.totalContratado > 0 ? Math.min(100, (kpis.saldoAMedir / kpis.totalContratado) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-xs animate-in fade-in-0">
@@ -652,23 +842,58 @@ export function RelatorioOrcamentoPdfModal({
         {showConfig && (
           <div className="p-3 sm:p-4 bg-slate-100/80 dark:bg-[#083042] border-b border-slate-200 dark:border-[#0B384D] text-xs space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Filtro de Obra */}
-              <div className="flex items-center gap-2">
+              {/* Filtro de Obra / Modo de Relatório */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-bold text-slate-700 dark:text-slate-300 text-xs flex items-center gap-1">
-                  <Building className="h-3.5 w-3.5 text-[#00A3C4]" /> Obra:
+                  <Building className="h-3.5 w-3.5 text-[#00A3C4]" /> Obra / Formato:
                 </span>
                 <select
                   value={localFiltroObra}
                   onChange={(e) => setLocalFiltroObra(e.target.value)}
-                  className="text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[170px] max-w-[260px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate shadow-2xs"
+                  className="text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#072B3B] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9 min-w-[220px] max-w-[340px] focus:outline-none focus:ring-2 focus:ring-[#00A3C4] truncate shadow-2xs"
                 >
-                  <option value="">🏢 Todas as Obras ({obras.length})</option>
-                  {obras.map((o) => (
-                    <option key={o.id} value={o.codigo}>
-                      {o.codigo} - {o.nome}
+                  <optgroup label="Visão de Portfólio (Todas as Obras)">
+                    <option value="">🏢 Todas as Obras — Consolidado (Somado)</option>
+                    <option value={MODO_RESUMO_E_OBRAS}>
+                      📑 Resumo Executivo + Todas as Obras ({consolidadoObras.length} obras detalhadas)
                     </option>
-                  ))}
+                  </optgroup>
+                  <optgroup label={`Obra Individual (${obras.length})`}>
+                    {obras.map((o) => (
+                      <option key={o.id} value={o.codigo}>
+                        {o.codigo} - {o.nome}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
+
+                {/* Atalho rápido entre os modos de Todas as Obras */}
+                <div className="flex items-center rounded-xl bg-white dark:bg-[#072B3B] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
+                  <button
+                    type="button"
+                    onClick={() => setLocalFiltroObra('')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                      localFiltroObra === ''
+                        ? 'bg-[#00A3C4] text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    }`}
+                    title="Compila a soma de todas as obras juntas"
+                  >
+                    Consolidado (Somado)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLocalFiltroObra(MODO_RESUMO_E_OBRAS)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                      isModoResumoEObras
+                        ? 'bg-[#00A3C4] text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                    }`}
+                    title="Apresenta 1ª página de Resumo Executivo Geral e logo abaixo detalha cada obra individualmente"
+                  >
+                    Resumo + Todas as Obras
+                  </button>
+                </div>
               </div>
 
               {/* Filtro de Categoria */}
@@ -783,10 +1008,32 @@ export function RelatorioOrcamentoPdfModal({
             ref={contentRef}
             className="print-report-root flex flex-col items-center gap-8 w-full max-w-[210mm]"
           >
-            {pages.map((pageBlocks, pageIdx) => {
+            {pages.map((page, pageIdx) => {
               const pageNumber = pageIdx + 1;
-              const isFirstPage = pageNumber === 1;
-              const contentAreaHeight = isFirstPage ? CONTENT_HEIGHT_PAGE_1 : CONTENT_HEIGHT_PAGE_N;
+              const isSectionFirstPage = page.isSectionFirstPage;
+              const contentAreaHeight = isSectionFirstPage ? CONTENT_HEIGHT_PAGE_1 : CONTENT_HEIGHT_PAGE_N;
+              const pageKpis = page.kpis;
+              const pageJanela = page.janela306090;
+              const pageCurva = page.curvaPontos;
+              const pageTotaisCurva = page.totaisCurva;
+
+              const pctContratadoBarra =
+                pageKpis.totalOrcado > 0
+                  ? Math.min(100, (pageKpis.totalContratado / pageKpis.totalOrcado) * 100)
+                  : 0;
+              const pctFaltaContratarBarra =
+                pageKpis.custoTotalPrevisto > 0
+                  ? Math.min(100, (pageKpis.faltaContratar / pageKpis.custoTotalPrevisto) * 100)
+                  : 0;
+              const pctMedidoBarra =
+                pageKpis.totalContratado > 0
+                  ? Math.min(100, (pageKpis.totalMedido / pageKpis.totalContratado) * 100)
+                  : 0;
+              const pctAMedirBarra =
+                pageKpis.totalContratado > 0
+                  ? Math.min(100, (pageKpis.saldoAMedir / pageKpis.totalContratado) * 100)
+                  : 0;
+
               const anyKpiExpanded =
                 expandedPdfBlocks.kpiContratado ||
                 expandedPdfBlocks.kpiFalta ||
@@ -805,24 +1052,31 @@ export function RelatorioOrcamentoPdfModal({
                   className="folha-a4 bg-white text-slate-900 shadow-2xl border border-slate-200 rounded-lg text-xs font-sans w-full max-w-[210mm] flex flex-col justify-between box-border overflow-hidden"
                 >
                   {/* 1. CABEÇALHO FIXO NO TOPO DA PÁGINA */}
-                  {isFirstPage ? (
+                  {isSectionFirstPage ? (
                     <div
                       style={{ height: '52px', marginBottom: '16px' }}
                       className="border-b-2 border-[#00A3C4] pb-2 page-break-avoid flex items-center justify-between gap-4 shrink-0 box-border"
                     >
-                      <div className="space-y-0.5">
-                        <span className="font-mono text-[9.5px] font-black tracking-wider px-2.5 py-0.5 rounded bg-[#072B3B] text-white inline-block">
-                          WCC - Engenharia
-                        </span>
-                        <h1 className="text-[13px] sm:text-sm font-black text-[#072B3B] tracking-tight leading-tight">
-                          CONSOLIDAÇÃO DE ORÇAMENTOS, CONTRATOS &amp; MEDIÇÕES
+                      <div className="space-y-0.5 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[9.5px] font-black tracking-wider px-2.5 py-0.5 rounded bg-[#072B3B] text-white inline-block">
+                            WCC - Engenharia
+                          </span>
+                          {page.headerSubBadge && (
+                            <span className="font-mono text-[9px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {page.headerSubBadge}
+                            </span>
+                          )}
+                        </div>
+                        <h1 className="text-[12.5px] sm:text-[13.5px] font-black text-[#072B3B] tracking-tight leading-tight truncate">
+                          {page.headerTitle}
                         </h1>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 text-[11px]">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00A3C4]/10 text-[#008EA9] font-bold border border-[#00A3C4]/30">
-                          <Building className="h-3.5 w-3.5" />
-                          {obraSelecionadaNome}
+                      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0 text-[10.5px]">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#00A3C4]/10 text-[#008EA9] font-bold border border-[#00A3C4]/30 max-w-[270px] truncate">
+                          <Building className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{page.headerObraBadge}</span>
                         </span>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200">
                           {filtroCategoria === 'Todos'
@@ -838,18 +1092,23 @@ export function RelatorioOrcamentoPdfModal({
                       style={{ height: '28px', marginBottom: '16px' }}
                       className="border-b border-[#00A3C4]/40 pb-1.5 flex items-center justify-between gap-3 page-break-avoid shrink-0 box-border"
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-[9px] font-black tracking-wider px-2 py-0.5 rounded bg-[#072B3B] text-white">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[9px] font-black tracking-wider px-2 py-0.5 rounded bg-[#072B3B] text-white shrink-0">
                           WCC - Engenharia
                         </span>
-                        <span className="text-[10px] text-slate-700 font-bold">
-                          Consolidação de Orçamentos, Contratos &amp; Medições
+                        <span className="text-[10px] text-slate-700 font-bold truncate">
+                          {page.headerTitle}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0 text-[9.5px]">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#00A3C4]/10 text-[#008EA9] font-bold border border-[#00A3C4]/30">
-                          <Building className="h-2.5 w-2.5" />
-                          {obraSelecionadaNome}
+                        {page.headerSubBadge && (
+                          <span className="font-mono text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                            {page.headerSubBadge}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#00A3C4]/10 text-[#008EA9] font-bold border border-[#00A3C4]/30 max-w-[230px] truncate">
+                          <Building className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{page.headerObraBadge}</span>
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold border border-purple-200">
                           {filtroCategoria === 'Todos'
@@ -871,7 +1130,7 @@ export function RelatorioOrcamentoPdfModal({
                     }}
                     className="flex flex-col justify-start overflow-hidden shrink-0"
                   >
-                    {pageBlocks.map((block, bIdx) => {
+                    {page.blocks.map((block, bIdx) => {
                       if (block.type === 'kpis') {
                         return (
                           <div
@@ -921,7 +1180,7 @@ export function RelatorioOrcamentoPdfModal({
                                       expandedPdfBlocks.kpiContratado ? 'text-lg' : 'text-[14px]'
                                     }`}
                                   >
-                                    {formatCurrency(kpis.totalContratado)}
+                                    {formatCurrency(pageKpis.totalContratado)}
                                   </span>
                                 </div>
                                 <div className="space-y-1">
@@ -933,7 +1192,7 @@ export function RelatorioOrcamentoPdfModal({
                                   </div>
                                   <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
                                     <span>Orçado Base:</span>
-                                    <strong>{formatCurrency(kpis.totalOrcado)}</strong>
+                                    <strong>{formatCurrency(pageKpis.totalOrcado)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -967,7 +1226,7 @@ export function RelatorioOrcamentoPdfModal({
                                       expandedPdfBlocks.kpiFalta ? 'text-lg' : 'text-[14px]'
                                     }`}
                                   >
-                                    {formatCurrency(kpis.faltaContratar)}
+                                    {formatCurrency(pageKpis.faltaContratar)}
                                   </span>
                                 </div>
                                 <div className="space-y-1">
@@ -983,14 +1242,14 @@ export function RelatorioOrcamentoPdfModal({
                                   </div>
                                   <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
                                     <span>
-                                      {kpis.diferencaOrcamento > 0 ? 'Acima do Orçado:' : 'Projeção Total:'}
+                                      {pageKpis.diferencaOrcamento > 0 ? 'Acima do Orçado:' : 'Projeção Total:'}
                                     </span>
                                     <strong
-                                      className={kpis.diferencaOrcamento > 0 ? 'text-rose-700' : 'text-slate-800'}
+                                      className={pageKpis.diferencaOrcamento > 0 ? 'text-rose-700' : 'text-slate-800'}
                                     >
-                                      {kpis.diferencaOrcamento > 0
-                                        ? `+${formatCurrency(kpis.diferencaOrcamento)}`
-                                        : formatCurrency(kpis.custoTotalPrevisto)}
+                                      {pageKpis.diferencaOrcamento > 0
+                                        ? `+${formatCurrency(pageKpis.diferencaOrcamento)}`
+                                        : formatCurrency(pageKpis.custoTotalPrevisto)}
                                     </strong>
                                   </div>
                                 </div>
@@ -1025,7 +1284,7 @@ export function RelatorioOrcamentoPdfModal({
                                       expandedPdfBlocks.kpiMedido ? 'text-lg' : 'text-[14px]'
                                     }`}
                                   >
-                                    {formatCurrency(kpis.totalMedido)}
+                                    {formatCurrency(pageKpis.totalMedido)}
                                   </span>
                                 </div>
                                 <div className="space-y-1">
@@ -1037,7 +1296,7 @@ export function RelatorioOrcamentoPdfModal({
                                   </div>
                                   <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
                                     <span>Avanço Físico:</span>
-                                    <strong className="text-emerald-700">{formatPercent(kpis.percentualMedido)}</strong>
+                                    <strong className="text-emerald-700">{formatPercent(pageKpis.percentualMedido)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -1071,7 +1330,7 @@ export function RelatorioOrcamentoPdfModal({
                                       expandedPdfBlocks.kpiAMedir ? 'text-lg' : 'text-[14px]'
                                     }`}
                                   >
-                                    {formatCurrency(kpis.saldoAMedir)}
+                                    {formatCurrency(pageKpis.saldoAMedir)}
                                   </span>
                                 </div>
                                 <div className="space-y-1">
@@ -1083,7 +1342,7 @@ export function RelatorioOrcamentoPdfModal({
                                   </div>
                                   <div className="flex justify-between text-[8.5px] text-slate-600 leading-none">
                                     <span>Já Pago (Caixa):</span>
-                                    <strong className="text-slate-800">{formatCurrency(kpis.totalPago)}</strong>
+                                    <strong className="text-slate-800">{formatCurrency(pageKpis.totalPago)}</strong>
                                   </div>
                                 </div>
                               </div>
@@ -1135,17 +1394,17 @@ export function RelatorioOrcamentoPdfModal({
 
                             <div style={{ height: `${janelaCardH}px` }} className="grid grid-cols-4 gap-2.5 shrink-0">
                               {[
-                                { prazo: '30 Dias', item: janela306090.mes30, destaque: false },
-                                { prazo: '60 Dias', item: janela306090.mes60, destaque: false },
-                                { prazo: '90 Dias', item: janela306090.mes90, destaque: false },
+                                { prazo: '30 Dias', item: pageJanela.mes30, destaque: false },
+                                { prazo: '60 Dias', item: pageJanela.mes60, destaque: false },
+                                { prazo: '90 Dias', item: pageJanela.mes90, destaque: false },
                                 {
                                   prazo: 'Total 90 Dias',
                                   item: {
                                     mesSortKey: 'total',
                                     mesFormatado: 'Acumulado',
-                                    medidoComNF: janela306090.total90Dias.medidoComNF,
-                                    aMedirPrevisto: janela306090.total90Dias.aMedirPrevisto,
-                                    total: janela306090.total90Dias.total,
+                                    medidoComNF: pageJanela.total90Dias.medidoComNF,
+                                    aMedirPrevisto: pageJanela.total90Dias.aMedirPrevisto,
+                                    total: pageJanela.total90Dias.total,
                                   },
                                   destaque: true,
                                 },
@@ -1193,6 +1452,125 @@ export function RelatorioOrcamentoPdfModal({
                                         </span>
                                       </div>
                                     )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (block.type === 'quadroObras') {
+                        const cardH = expandedPdfBlocks.pdfQuadroObras
+                          ? PDF_LAYOUT.cardExpanded
+                          : PDF_LAYOUT.cardNormal;
+
+                        return (
+                          <div key={`block-obras-${bIdx}`} className="flex flex-col shrink-0">
+                            <div
+                              style={{ height: '20px', marginBottom: '8px' }}
+                              className="flex items-center justify-between border-l-4 border-[#00A3C4] pl-2.5 shrink-0"
+                            >
+                              <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
+                                <Building className="h-3.5 w-3.5 text-[#00A3C4]" />
+                                {block.isContinuation
+                                  ? `3. Quadro Resumo Comparativo por Obra — Continuação (${block.totalCount} obras)`
+                                  : `3. Quadro Resumo Comparativo por Obra (${block.totalCount} empreendimentos ativos)`}
+                              </h2>
+                              <button
+                                type="button"
+                                onClick={() => toggleBlockExpand('pdfQuadroObras')}
+                                className="no-print-btn text-slate-400 hover:text-slate-700 flex items-center gap-1 text-[10px]"
+                                title="Aumentar/Reduzir altura dos cards de obras"
+                              >
+                                {expandedPdfBlocks.pdfQuadroObras ? (
+                                  <Minimize2 className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Maximize2 className="h-3.5 w-3.5" />
+                                )}
+                              </button>
+                            </div>
+
+                            <div
+                              style={{ gap: `${PDF_LAYOUT.cardGap}px` }}
+                              className="flex flex-col shrink-0"
+                            >
+                              {block.items.map((ob) => {
+                                const refMax = Math.max(ob.orcamentoBase, ob.totalPrevisto, 1);
+                                const pctContratado = Math.min(100, (ob.valorContratado / refMax) * 100);
+                                const pctFalta = Math.min(100 - pctContratado, (ob.faltaContratar / refMax) * 100);
+                                const estourou = ob.diferencaOrcamento > 1;
+
+                                return (
+                                  <div
+                                    key={ob.codigo}
+                                    style={{ height: `${cardH}px` }}
+                                    className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between box-border overflow-hidden page-break-avoid"
+                                  >
+                                    <div className="flex items-center justify-between text-[10px] leading-none">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="font-bold text-[#072B3B] truncate">{ob.label}</span>
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-slate-200/80 text-slate-700 leading-none shrink-0">
+                                          {ob.contratosCount} {ob.contratosCount === 1 ? 'contrato' : 'contratos'}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 shrink-0">
+                                        {estourou && (
+                                          <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-rose-100 text-rose-700 leading-none">
+                                            +{formatCurrencyShort(ob.diferencaOrcamento)} acima do orçado
+                                          </span>
+                                        )}
+                                        <span className="font-black text-slate-900">
+                                          {formatCurrency(ob.totalPrevisto)}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
+                                      <div
+                                        className={`h-full ${estourou ? 'bg-rose-500' : 'bg-[#00A3C4]'}`}
+                                        style={{ width: `${pctContratado}%` }}
+                                      />
+                                      {ob.faltaContratar > 0 && (
+                                        <div className="h-full bg-amber-400" style={{ width: `${pctFalta}%` }} />
+                                      )}
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[8.5px] text-slate-500 leading-none">
+                                      <div className="flex items-center gap-2.5">
+                                        <span>
+                                          Orçado:{' '}
+                                          <strong className="text-slate-700">{formatCurrency(ob.orcamentoBase)}</strong>
+                                        </span>
+                                        <span>
+                                          Contratado:{' '}
+                                          <strong className="text-[#008EA9]">
+                                            {formatCurrency(ob.valorContratado)}
+                                          </strong>
+                                        </span>
+                                        {ob.faltaContratar > 0 && (
+                                          <span>
+                                            Falta Contratar:{' '}
+                                            <strong className="text-amber-700">
+                                              {formatCurrency(ob.faltaContratar)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2.5 shrink-0">
+                                        <span>
+                                          Medido:{' '}
+                                          <strong className="text-emerald-700">
+                                            {formatCurrency(ob.valorMedido)}
+                                          </strong>{' '}
+                                          ({formatPercent(ob.percentualMedidoSobreContratado, 0)})
+                                        </span>
+                                        <span>
+                                          A Medir:{' '}
+                                          <strong className="text-purple-700">{formatCurrency(ob.valorAMedir)}</strong>
+                                        </span>
+                                      </div>
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -1404,15 +1782,15 @@ export function RelatorioOrcamentoPdfModal({
                               </h2>
                               <div className="flex items-center gap-3 text-[9px]">
                                 <span className="text-slate-500">
-                                  Pago: <strong className="text-emerald-700">{formatCurrency(totalPagoCurva)}</strong>
+                                  Pago: <strong className="text-emerald-700">{formatCurrency(pageTotaisCurva.pago)}</strong>
                                 </span>
                                 <span className="text-slate-500">
                                   A Pagar:{' '}
-                                  <strong className="text-indigo-600">{formatCurrency(totalAPagarCurva)}</strong>
+                                  <strong className="text-indigo-600">{formatCurrency(pageTotaisCurva.aPagar)}</strong>
                                 </span>
                                 <span className="text-slate-500">
                                   A Medir:{' '}
-                                  <strong className="text-amber-600">{formatCurrency(totalAMedirCurva)}</strong>
+                                  <strong className="text-amber-600">{formatCurrency(pageTotaisCurva.aMedir)}</strong>
                                 </span>
                               </div>
                             </div>
@@ -1424,7 +1802,7 @@ export function RelatorioOrcamentoPdfModal({
                               <div className="h-full w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                   <ComposedChart
-                                    data={curvaPontosRelatorio}
+                                    data={pageCurva}
                                     margin={{ top: 8, right: 15, bottom: 18, left: 10 }}
                                   >
                                     <CartesianGrid strokeDasharray="3 3" opacity={0.15} />

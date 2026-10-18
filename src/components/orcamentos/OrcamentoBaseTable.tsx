@@ -9,7 +9,7 @@ import {
   STATUS_ORCAMENTO_OPCOES,
   STATUS_ORCAMENTO_COLORS,
 } from '@/types/orcamento';
-import { formatCurrency, formatPercent } from '@/lib/orcamento-utils';
+import { formatCurrency, formatPercent, getCanonicalObra } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -103,8 +103,9 @@ export function OrcamentoBaseTable({
 
   // Base de orçamentos filtrada por critérios exceto categoria
   const orcamentosBase = useMemo(() => {
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return orcamentos.filter((item) => {
-      if (filtroObra && item.obra !== filtroObra) return false;
+      if (canonFiltro && getCanonicalObra(item.obra, obras) !== canonFiltro) return false;
       if (filtroStatus && item.status !== filtroStatus) return false;
       if (filtroDisciplina && item.disciplina !== filtroDisciplina) return false;
 
@@ -118,7 +119,7 @@ export function OrcamentoBaseTable({
 
       return true;
     });
-  }, [orcamentos, filtroObra, filtroStatus, filtroDisciplina, searchQuery]);
+  }, [orcamentos, obras, filtroObra, filtroStatus, filtroDisciplina, searchQuery]);
 
   const countTodos = orcamentosBase.length;
   const countProjetos = useMemo(() => orcamentosBase.filter((o) => o.categoria === 'Projeto').length, [orcamentosBase]);
@@ -127,12 +128,13 @@ export function OrcamentoBaseTable({
   // Lista única de disciplinas (considera filtro de obra caso selecionado)
   const disciplinasUnicas = useMemo(() => {
     const set = new Set<string>();
-    const list = filtroObra ? orcamentos.filter((o) => o.obra === filtroObra) : orcamentos;
+    const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
+    const list = canonFiltro ? orcamentos.filter((o) => getCanonicalObra(o.obra, obras) === canonFiltro) : orcamentos;
     list.forEach((o) => {
       if (o.disciplina) set.add(o.disciplina);
     });
     return Array.from(set).sort();
-  }, [orcamentos, filtroObra]);
+  }, [orcamentos, obras, filtroObra]);
 
   // Filtros aplicados incluindo categoria
   const orcamentosFiltrados = useMemo(() => {
