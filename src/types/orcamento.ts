@@ -234,8 +234,11 @@ export interface ItemConsolidadoContrato {
   status: StatusContrato;
   statusObra?: StatusObra;
   valorContrato: number;
+  valorOriginal?: number;
+  valorAditivos?: number;
   orcamentoBase?: number;
-  valorDesvio?: number;      // Parcela do contrato acima do orçamento base (ou aditivo positivo)
+  valorDesvio?: number;      // Parcela decorrente de aditivos ou distratos
+  tipoDesvio?: 'aditivo' | 'distrato' | 'supressao' | null;
   valorPago: number;
   valorMedidoAPagar: number; // Medido ou A Pagar (ainda não Pago)
   valorMedidoTotal: number;  // Pago + Medido a Pagar

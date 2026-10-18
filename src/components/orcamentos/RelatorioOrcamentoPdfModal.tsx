@@ -2137,7 +2137,7 @@ export function RelatorioOrcamentoPdfModal({
                                   <span className="w-2 h-2 rounded-full bg-indigo-500" /> Medido a Pagar
                                 </span>
                                 <span className="flex items-center gap-1">
-                                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio
+                                  <span className="w-2 h-2 rounded-full bg-rose-500" /> Aditivos / Distratos
                                 </span>
                                 <button
                                   type="button"
@@ -2160,9 +2160,11 @@ export function RelatorioOrcamentoPdfModal({
                             >
                               {block.items.map((c) => {
                                 const valorDesvioContrato = c.valorDesvio || 0;
-                                const temDesvioContrato = valorDesvioContrato > 1;
+                                const temAditivo = c.tipoDesvio === 'aditivo' && valorDesvioContrato > 1;
+                                const temSupressao = c.tipoDesvio === 'supressao' && valorDesvioContrato > 1;
+                                const isDistratado = c.status === 'Distratado' || c.tipoDesvio === 'distrato';
                                 const pctDesvioContrato =
-                                  temDesvioContrato && c.valorContrato > 0
+                                  temAditivo && c.valorContrato > 0
                                     ? Math.min(100, (valorDesvioContrato / c.valorContrato) * 100)
                                     : 0;
                                 const limiteBase = Math.max(0, 100 - pctDesvioContrato);
@@ -2185,6 +2187,11 @@ export function RelatorioOrcamentoPdfModal({
                                         <span className="px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-slate-200 text-slate-700 leading-none shrink-0">
                                           {discLabel}
                                         </span>
+                                        {isDistratado && (
+                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 text-rose-800 leading-none shrink-0">
+                                            Distratado
+                                          </span>
+                                        )}
                                         {c.statusObra === 'Paralisada' && (
                                           <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-100 text-amber-800 leading-none shrink-0">
                                             Paralisada
@@ -2197,9 +2204,19 @@ export function RelatorioOrcamentoPdfModal({
                                         )}
                                       </div>
                                       <div className="flex items-center gap-2 shrink-0">
-                                        {temDesvioContrato && (
+                                        {temAditivo && (
                                           <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 text-rose-700 leading-none">
-                                            +{formatCurrencyShort(valorDesvioContrato)} desvio
+                                            +{formatCurrencyShort(valorDesvioContrato)} aditivo
+                                          </span>
+                                        )}
+                                        {temSupressao && (
+                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-100 text-emerald-700 leading-none">
+                                            -{formatCurrencyShort(valorDesvioContrato)} supressão
+                                          </span>
+                                        )}
+                                        {c.tipoDesvio === 'distrato' && valorDesvioContrato > 1 && (
+                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-rose-100 text-rose-700 leading-none">
+                                            -{formatCurrencyShort(valorDesvioContrato)} distrato
                                           </span>
                                         )}
                                         <span className="font-black text-slate-900">
@@ -2211,13 +2228,13 @@ export function RelatorioOrcamentoPdfModal({
                                     <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
                                       <div className="h-full bg-emerald-500" style={{ width: `${pctPago}%` }} />
                                       <div className="h-full bg-indigo-500" style={{ width: `${pctAPagar}%` }} />
-                                      {temDesvioContrato && pctRestanteBase > 0 && (
+                                      {temAditivo && pctRestanteBase > 0 && (
                                         <div
                                           className="h-full bg-transparent"
                                           style={{ width: `${pctRestanteBase}%` }}
                                         />
                                       )}
-                                      {temDesvioContrato && pctDesvioContrato > 0 && (
+                                      {temAditivo && pctDesvioContrato > 0 && (
                                         <div
                                           className="h-full bg-rose-500"
                                           style={{ width: `${pctDesvioContrato}%` }}
@@ -2234,11 +2251,27 @@ export function RelatorioOrcamentoPdfModal({
                                           </strong>{' '}
                                           ({formatPercent(c.percentualMedidoTotal, 0)})
                                         </span>
-                                        {temDesvioContrato && (
+                                        {temAditivo && (
                                           <span>
-                                            Desvio:{' '}
+                                            Aditivo:{' '}
                                             <strong className="text-rose-700">
                                               +{formatCurrency(valorDesvioContrato)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                        {temSupressao && (
+                                          <span>
+                                            Supressão:{' '}
+                                            <strong className="text-emerald-700">
+                                              -{formatCurrency(valorDesvioContrato)}
+                                            </strong>
+                                          </span>
+                                        )}
+                                        {c.tipoDesvio === 'distrato' && valorDesvioContrato > 1 && (
+                                          <span>
+                                            Distrato:{' '}
+                                            <strong className="text-rose-700">
+                                              -{formatCurrency(valorDesvioContrato)}
                                             </strong>
                                           </span>
                                         )}

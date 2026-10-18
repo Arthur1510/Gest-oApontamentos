@@ -1163,7 +1163,7 @@ export function OrcamentoDashboard({
                       <span className="w-2 h-2 rounded-full bg-indigo-500" /> Medido a Pagar
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" /> Desvio vs. Orçado
+                      <span className="w-2 h-2 rounded-full bg-rose-500" /> Aditivos / Distratos
                     </span>
                   </div>
                 </div>
@@ -1220,8 +1220,10 @@ export function OrcamentoDashboard({
             >
               {consolidadoContratos.map((c) => {
                 const valorDesvioContrato = c.valorDesvio || 0;
-                const temDesvioContrato = valorDesvioContrato > 1;
-                const pctDesvioContrato = temDesvioContrato && c.valorContrato > 0
+                const temAditivo = c.tipoDesvio === 'aditivo' && valorDesvioContrato > 1;
+                const temSupressao = c.tipoDesvio === 'supressao' && valorDesvioContrato > 1;
+                const isDistratado = c.status === 'Distratado' || c.tipoDesvio === 'distrato';
+                const pctDesvioContrato = temAditivo && c.valorContrato > 0
                   ? Math.min(100, (valorDesvioContrato / c.valorContrato) * 100)
                   : 0;
                 const limiteBase = Math.max(0, 100 - pctDesvioContrato);
@@ -1244,6 +1246,11 @@ export function OrcamentoDashboard({
                         <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-200/70 dark:bg-[#0B384D] text-slate-600 dark:text-slate-300 shrink-0">
                           {c.disciplina}
                         </span>
+                        {c.status === 'Distratado' && (
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0">
+                            Distratado
+                          </span>
+                        )}
                         {c.statusObra === 'Paralisada' && (
                           <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
                             Paralisada
@@ -1256,9 +1263,19 @@ export function OrcamentoDashboard({
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        {temDesvioContrato && (
+                        {temAditivo && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                            +{formatCurrencyShort(valorDesvioContrato)} desvio
+                            +{formatCurrencyShort(valorDesvioContrato)} aditivo
+                          </span>
+                        )}
+                        {temSupressao && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            -{formatCurrencyShort(valorDesvioContrato)} supressão
+                          </span>
+                        )}
+                        {c.tipoDesvio === 'distrato' && valorDesvioContrato > 1 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
+                            -{formatCurrencyShort(valorDesvioContrato)} distrato
                           </span>
                         )}
                         <span className="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
@@ -1267,7 +1284,7 @@ export function OrcamentoDashboard({
                       </div>
                     </div>
 
-                    {/* Barra de Progresso de Medição do Contrato + Fatia de Desvio em Vermelho */}
+                    {/* Barra de Progresso de Medição do Contrato + Fatia de Aditivo em Vermelho/Rose */}
                     <div className="w-full h-2.5 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex">
                       <div
                         className="h-full bg-emerald-500 transition-all"
@@ -1279,17 +1296,17 @@ export function OrcamentoDashboard({
                         style={{ width: `${pctAPagar}%` }}
                         title={`Medido a Pagar: ${formatCurrency(c.valorMedidoAPagar)}`}
                       />
-                      {temDesvioContrato && pctRestanteBase > 0 && (
+                      {temAditivo && pctRestanteBase > 0 && (
                         <div
                           className="h-full bg-transparent"
                           style={{ width: `${pctRestanteBase}%` }}
                         />
                       )}
-                      {temDesvioContrato && pctDesvioContrato > 0 && (
+                      {temAditivo && pctDesvioContrato > 0 && (
                         <div
                           className="h-full bg-rose-500 transition-all"
                           style={{ width: `${pctDesvioContrato}%` }}
-                          title={`Desvio vs. Orçado / Aditivo: +${formatCurrency(valorDesvioContrato)}`}
+                          title={`Aditivo de Valor: +${formatCurrency(valorDesvioContrato)}`}
                         />
                       )}
                     </div>
@@ -1299,9 +1316,19 @@ export function OrcamentoDashboard({
                         <span>
                           Medido: <strong className="text-emerald-600 dark:text-emerald-400">{formatCurrency(c.valorMedidoTotal)}</strong> ({formatPercent(c.percentualMedidoTotal, 0)})
                         </span>
-                        {temDesvioContrato && (
+                        {temAditivo && (
                           <span>
-                            Desvio: <strong className="text-rose-600 dark:text-rose-400">+{formatCurrency(valorDesvioContrato)}</strong>
+                            Aditivo: <strong className="text-rose-600 dark:text-rose-400">+{formatCurrency(valorDesvioContrato)}</strong>
+                          </span>
+                        )}
+                        {temSupressao && (
+                          <span>
+                            Supressão: <strong className="text-emerald-600 dark:text-emerald-400">-{formatCurrency(valorDesvioContrato)}</strong>
+                          </span>
+                        )}
+                        {c.tipoDesvio === 'distrato' && valorDesvioContrato > 1 && (
+                          <span>
+                            Distrato: <strong className="text-rose-600 dark:text-rose-400">-{formatCurrency(valorDesvioContrato)}</strong>
                           </span>
                         )}
                       </div>

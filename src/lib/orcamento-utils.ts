@@ -1231,35 +1231,30 @@ export function calculateConsolidadoContratos(
         valorAMedir = saldoRestante;
       }
 
-      let orcamentoBase = 0;
-      let valorDesvio = 0;
+      // Na Consolidação de Contratos, o desvio refere-se estritamente a alterações contratuais (aditivos ou distratos).
+      // A comparação com o Orçamento Base da disciplina pertence exclusivamente à Consolidação por Disciplina.
+      const valorAditivos = Number(c.valor_aditivos) || 0;
+      const valorOriginal = Number(c.valor_original) || Math.max(0, valorContrato - valorAditivos);
+      const isDistratado = c.status === 'Distratado' || !!c.distrato;
 
-      if (orcamentos && orcamentos.length > 0) {
-        const cObraCanon = getCanonicalObra(c.obra, obras);
-        const orcamentosDaObra = orcamentos.filter(
-          (o) =>
-            (o.status !== 'Cancelado' || (c as any).orcamento_id === o.id || (Number(o.valor_contratado) || 0) > 0) &&
-            getCanonicalObra(o.obra || o.nome_obra, obras) === cObraCanon
-        );
-        const matchedOrc = orcamentosDaObra.find((o) =>
-          isContratoMatchOrcamento(c, o, obras, orcamentosDaObra)
-        );
-        if (matchedOrc) {
-          const baseItem = Number(matchedOrc.orcamento_base) || 0;
-          const totalCtItem = Number(matchedOrc.valor_contratado) || valorContrato;
-          if (baseItem > 0 && totalCtItem > 0) {
-            orcamentoBase = baseItem * (valorContrato / totalCtItem);
-            if (valorContrato > orcamentoBase + 1) {
-              valorDesvio = valorContrato - orcamentoBase;
-            }
-          }
+      let valorDesvio = 0;
+      let tipoDesvio: 'aditivo' | 'distrato' | 'supressao' | null = null;
+
+      if (valorAditivos > 1) {
+        valorDesvio = valorAditivos;
+        tipoDesvio = 'aditivo';
+      } else if (valorAditivos < -1) {
+        valorDesvio = Math.abs(valorAditivos);
+        tipoDesvio = 'supressao';
+      } else if (isDistratado) {
+        tipoDesvio = 'distrato';
+        const reducao = valorOriginal > valorContrato ? valorOriginal - valorContrato : 0;
+        if (reducao > 1) {
+          valorDesvio = reducao;
         }
       }
 
-      if (valorDesvio <= 1 && Number(c.valor_aditivos) > 1) {
-        valorDesvio = Number(c.valor_aditivos);
-        orcamentoBase = Math.max(0, valorContrato - valorDesvio);
-      }
+      const orcamentoBase = valorOriginal;
 
       return {
         id: c.id,
@@ -1272,8 +1267,11 @@ export function calculateConsolidadoContratos(
         status: c.status || 'Ativo',
         statusObra,
         valorContrato,
+        valorOriginal,
+        valorAditivos,
         orcamentoBase,
         valorDesvio,
+        tipoDesvio,
         valorPago,
         valorMedidoAPagar,
         valorMedidoTotal,
