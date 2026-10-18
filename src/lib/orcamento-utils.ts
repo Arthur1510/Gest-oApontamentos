@@ -387,15 +387,18 @@ export function recalculateOrcamentos(
       }
     }
 
-    const saldoAContratar = o.orcamento_base - valorContratado;
-    const saldoMedicao = Math.max(0, valorContratado - valorMedido);
-
     // Preserva o status definido no item (inclusive escolhas manuais do usuário como 'Em cotação', 'Cancelado', etc.)
     // Quando já possui valor contratado (> 0) e estava como 'A contratar' ou sem status, passa para 'Contratado'
     const statusAtual: StatusOrcamento =
-      valorContratado > 0 && (!o.status || o.status === 'A contratar')
+      o.status === 'Cancelado'
+        ? 'Cancelado'
+        : valorContratado > 0 && (!o.status || o.status === 'A contratar')
         ? 'Contratado'
         : o.status || (valorContratado > 0 ? 'Contratado' : 'A contratar');
+
+    // Se o item estiver Cancelado, zeramos o saldo a contratar restante
+    const saldoAContratar = statusAtual === 'Cancelado' ? 0 : o.orcamento_base - valorContratado;
+    const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
     return {
       ...o,
@@ -698,7 +701,6 @@ export function calculateKpis(
 
   const totalOrcado = filteredOrc.reduce((acc, o) => acc + (o.orcamento_base || 0), 0);
   const totalContratado = filteredCt.reduce((acc, c) => acc + (c.valor_contrato || 0), 0);
-  const saldoAContratar = totalOrcado - totalContratado;
   const percentualContratado = totalOrcado > 0 ? totalContratado / totalOrcado : 0;
 
   // Valor real que ainda falta contratar e apuração de economia / desvio
@@ -713,10 +715,28 @@ export function calculateKpis(
   let orcadoComparavel = 0;
 
   for (const o of filteredOrc) {
-    if (o.status === 'Cancelado') continue;
     const base = Number(o.orcamento_base) || 0;
     const contratadoItem = Number(o.valor_contratado) || 0;
     const stObra = getObraStatus(o.obra || o.nome_obra, obras);
+
+    if (o.status === 'Cancelado') {
+      if (stObra === 'Cancelada') {
+        // Em obras totalmente canceladas, linhas abertas não geram economia artificial
+        continue;
+      }
+      // Em obras ativas/pausadas, o cancelamento da linha do orçamento elimina a necessidade
+      // de contratação futura daquele saldo, gerando economia real em relação ao orçamento base.
+      orcadoContratados += base;
+      orcadoComparavel += base;
+      contratadoNosOrcamentos += contratadoItem;
+      if (base > contratadoItem) {
+        totalEconomiaItens += (base - contratadoItem);
+      } else if (contratadoItem > base) {
+        totalEstouroItens += (contratadoItem - base);
+      }
+      continue;
+    }
+
     // Um item é considerado contratado/fechado se possuir status 'Contratado' ou já tiver contrato vinculado (contratadoItem > 0)
     const isFechado = o.status === 'Contratado' || contratadoItem > 0;
 
@@ -747,6 +767,9 @@ export function calculateKpis(
       }
     }
   }
+
+  // O saldo real a contratar considera apenas as linhas não canceladas (ativas + pausadas)
+  const saldoAContratar = faltaContratar + faltaContratarPausado;
 
   // Compara o valor contratado dos itens fechados apenas contra o Orçado Base desses itens já contratados
   const diferencaContratados = contratadoNosOrcamentos - orcadoContratados; // < 0 = economia nos contratados; > 0 = desvio nos contratados
@@ -1084,28 +1107,41 @@ export function calculateConsolidadoDisciplinas(
       }
     }
 
-    if (o.status !== 'Cancelado') {
-      const isFechado = o.status === 'Contratado' || contratado > 0;
-      if (!isFechado) {
-        if (stObra === 'Cancelada') {
-          // Obra cancelada não gera falta contratar nem economia artificial
-          continue;
-        }
-        const aberto = Math.max(0, base - contratado);
-        if (stObra === 'Paralisada') {
-          map[disc].faltaContratarPausado += aberto;
-        } else {
-          map[disc].faltaContratar += aberto;
-        }
-        map[disc].orcadoComparavel += base;
+    if (o.status === 'Cancelado') {
+      if (stObra === 'Cancelada') {
+        // Obra cancelada não gera economia artificial
+        continue;
+      }
+      map[disc].orcadoContratados += base;
+      map[disc].orcadoComparavel += base;
+      if (base > contratado) {
+        map[disc].economiaContratados += base - contratado;
+      } else if (contratado > base) {
+        map[disc].estouroContratados += contratado - base;
+      }
+      continue;
+    }
+
+    const isFechado = o.status === 'Contratado' || contratado > 0;
+    if (!isFechado) {
+      if (stObra === 'Cancelada') {
+        // Obra cancelada não gera falta contratar nem economia artificial
+        continue;
+      }
+      const aberto = Math.max(0, base - contratado);
+      if (stObra === 'Paralisada') {
+        map[disc].faltaContratarPausado += aberto;
       } else {
-        map[disc].orcadoContratados += base;
-        map[disc].orcadoComparavel += base;
-        if (contratado < base) {
-          map[disc].economiaContratados += base - contratado;
-        } else if (contratado > base) {
-          map[disc].estouroContratados += contratado - base;
-        }
+        map[disc].faltaContratar += aberto;
+      }
+      map[disc].orcadoComparavel += base;
+    } else {
+      map[disc].orcadoContratados += base;
+      map[disc].orcadoComparavel += base;
+      if (contratado < base) {
+        map[disc].economiaContratados += base - contratado;
+      } else if (contratado > base) {
+        map[disc].estouroContratados += contratado - base;
       }
     }
   }
@@ -1201,7 +1237,9 @@ export function calculateConsolidadoContratos(
       if (orcamentos && orcamentos.length > 0) {
         const cObraCanon = getCanonicalObra(c.obra, obras);
         const orcamentosDaObra = orcamentos.filter(
-          (o) => o.status !== 'Cancelado' && getCanonicalObra(o.obra || o.nome_obra, obras) === cObraCanon
+          (o) =>
+            (o.status !== 'Cancelado' || (c as any).orcamento_id === o.id || (Number(o.valor_contratado) || 0) > 0) &&
+            getCanonicalObra(o.obra || o.nome_obra, obras) === cObraCanon
         );
         const matchedOrc = orcamentosDaObra.find((o) =>
           isContratoMatchOrcamento(c, o, obras, orcamentosDaObra)

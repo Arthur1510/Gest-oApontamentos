@@ -865,30 +865,52 @@ export function OrcamentoDashboard({
                     {formatCurrency(item.total)}
                   </div>
 
-                  {/* Barra Bipartida Limpa */}
-                  <div className="w-full h-2.5 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex">
+                  {/* Barra Bipartida com indicação percentual interna e visual claro */}
+                  <div className="w-full h-3 rounded-full bg-slate-200/80 dark:bg-[#0B384D] overflow-hidden flex shadow-inner">
                     <div
-                      className="h-full bg-indigo-500 transition-all"
+                      className="h-full bg-indigo-500 flex items-center justify-center transition-all overflow-hidden"
                       style={{ width: `${pctNF}%` }}
-                      title={`Medido / Com NF: ${formatCurrency(item.medidoComNF)}`}
-                    />
+                      title={`Medido / Com NF: ${formatCurrency(item.medidoComNF)} (${pctNF.toFixed(1)}%)`}
+                    >
+                      {pctNF >= 16 && (
+                        <span className="text-[9px] font-black text-white px-1 leading-none select-none drop-shadow-sm">
+                          {pctNF.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                     <div
-                      className="h-full bg-amber-500 transition-all"
+                      className="h-full bg-amber-500 flex items-center justify-center transition-all overflow-hidden"
                       style={{ width: `${pctAMedir}%` }}
-                      title={`Previsto a Medir: ${formatCurrency(item.aMedirPrevisto)}`}
-                    />
+                      title={`Previsto a Medir: ${formatCurrency(item.aMedirPrevisto)} (${pctAMedir.toFixed(1)}%)`}
+                    >
+                      {pctAMedir >= 16 && (
+                        <span className="text-[9px] font-black text-white px-1 leading-none select-none drop-shadow-sm">
+                          {pctAMedir.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {expandedCards.janela306090 && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-200/70 dark:border-[#0B384D] flex items-center justify-between text-xs animate-in fade-in-0">
-                      <span className="text-indigo-600 dark:text-indigo-400 font-semibold">
-                        NF: {formatCurrencyShort(item.medidoComNF)}
-                      </span>
-                      <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                        A Medir: {formatCurrencyShort(item.aMedirPrevisto)}
-                      </span>
-                    </div>
-                  )}
+                  {/* Detalhamento dos valores e percentuais de Medido NF e A Medir */}
+                  <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-[#0B384D]/70 flex items-center justify-between text-[11px] leading-tight">
+                    <span
+                      className="inline-flex items-center gap-1 font-semibold text-indigo-600 dark:text-indigo-400"
+                      title={`Medido / Com NF: ${formatCurrency(item.medidoComNF)} (${pctNF.toFixed(1)}% do total)`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />
+                      <span>NF: <strong>{expandedCards.janela306090 ? formatCurrency(item.medidoComNF) : formatCurrencyShort(item.medidoComNF)}</strong></span>
+                      <span className="text-[10px] opacity-80 font-normal">({pctNF.toFixed(0)}%)</span>
+                    </span>
+
+                    <span
+                      className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400"
+                      title={`Previsto a Medir: ${formatCurrency(item.aMedirPrevisto)} (${pctAMedir.toFixed(1)}% do total)`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      <span>A Medir: <strong>{expandedCards.janela306090 ? formatCurrency(item.aMedirPrevisto) : formatCurrencyShort(item.aMedirPrevisto)}</strong></span>
+                      <span className="text-[10px] opacity-80 font-normal">({pctAMedir.toFixed(0)}%)</span>
+                    </span>
+                  </div>
                 </div>
               );
             })}

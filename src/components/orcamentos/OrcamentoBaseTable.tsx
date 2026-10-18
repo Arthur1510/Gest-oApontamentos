@@ -191,9 +191,12 @@ export function OrcamentoBaseTable({
         case 'valor_contratado':
           cmp = (a.valor_contratado || 0) - (b.valor_contratado || 0);
           break;
-        case 'saldo_a_contratar':
-          cmp = (a.saldo_a_contratar || 0) - (b.saldo_a_contratar || 0);
+        case 'saldo_a_contratar': {
+          const valA = a.status === 'Cancelado' ? 0 : (a.saldo_a_contratar || 0);
+          const valB = b.status === 'Cancelado' ? 0 : (b.saldo_a_contratar || 0);
+          cmp = valA - valB;
           break;
+        }
         case 'valor_medido':
           cmp = (a.valor_medido || 0) - (b.valor_medido || 0);
           break;
@@ -222,7 +225,7 @@ export function OrcamentoBaseTable({
     for (const o of orcamentosFiltrados) {
       base += o.orcamento_base || 0;
       contratado += o.valor_contratado || 0;
-      saldoContratar += o.saldo_a_contratar || 0;
+      saldoContratar += o.status === 'Cancelado' ? 0 : (o.saldo_a_contratar || 0);
       medido += o.valor_medido || 0;
       saldoMedicao += o.saldo_medicao || 0;
     }
@@ -525,9 +528,11 @@ export function OrcamentoBaseTable({
                     text: 'text-slate-700 dark:text-slate-300',
                     border: 'border-slate-300',
                   };
-                  const isContratado = item.status === 'Contratado' || item.valor_contratado > 0;
-                  const isEstouro = item.saldo_a_contratar < -0.01;
-                  const isEconomia = isContratado && item.saldo_a_contratar > 0.01;
+                  const isCancelado = item.status === 'Cancelado';
+                  const saldoAContratar = isCancelado ? 0 : (item.saldo_a_contratar || 0);
+                  const isContratado = !isCancelado && (item.status === 'Contratado' || item.valor_contratado > 0);
+                  const isEstouro = !isCancelado && saldoAContratar < -0.01;
+                  const isEconomia = !isCancelado && isContratado && saldoAContratar > 0.01;
 
                   return (
                     <tr
@@ -564,7 +569,9 @@ export function OrcamentoBaseTable({
                       </td>
                       <td
                         className={`py-2.5 px-3.5 text-right font-semibold font-mono whitespace-nowrap ${
-                          isEstouro
+                          isCancelado
+                            ? 'text-slate-400 dark:text-slate-500'
+                            : isEstouro
                             ? 'text-rose-600 dark:text-rose-400'
                             : isEconomia
                             ? 'text-emerald-600 dark:text-emerald-400'
@@ -572,7 +579,12 @@ export function OrcamentoBaseTable({
                         }`}
                       >
                         <div className="flex flex-col items-end">
-                          <span>{formatCurrency(item.saldo_a_contratar)}</span>
+                          <span>{formatCurrency(saldoAContratar)}</span>
+                          {isCancelado && (
+                            <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                              Cancelado
+                            </span>
+                          )}
                           {isEstouro && (
                             <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-rose-500 dark:text-rose-400">
                               Acima do orçado

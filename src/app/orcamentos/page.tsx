@@ -828,6 +828,9 @@ export default function OrcamentosPage() {
     // Assegura preservação explícita do status escolhido
     if (orcSalvo?.status && orcFinal) {
       orcFinal.status = orcSalvo.status;
+      if (orcSalvo.status === 'Cancelado') {
+        orcFinal.saldo_a_contratar = 0;
+      }
     }
 
     if (orcFinal && isSupabaseReady()) {

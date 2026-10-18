@@ -1606,21 +1606,37 @@ export function RelatorioOrcamentoPdfModal({
                                     >
                                       {formatCurrency(item.total)}
                                     </div>
-                                    <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden flex">
-                                      <div className="h-full bg-indigo-500" style={{ width: `${pctNF}%` }} />
-                                      <div className="h-full bg-amber-500" style={{ width: `${pctAMedir}%` }} />
+                                    <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden flex">
+                                      <div
+                                        className="h-full bg-indigo-500 flex items-center justify-center"
+                                        style={{ width: `${pctNF}%` }}
+                                      >
+                                        {pctNF >= 20 && (
+                                          <span className="text-[6.5px] font-black text-white px-0.5 leading-none">
+                                            {pctNF.toFixed(0)}%
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div
+                                        className="h-full bg-amber-500 flex items-center justify-center"
+                                        style={{ width: `${pctAMedir}%` }}
+                                      >
+                                        {pctAMedir >= 20 && (
+                                          <span className="text-[6.5px] font-black text-white px-0.5 leading-none">
+                                            {pctAMedir.toFixed(0)}%
+                                          </span>
+                                        )}
+                                      </div>
                                     </div>
 
-                                    {expandedPdfBlocks.pdf306090 && (
-                                      <div className="pt-1 border-t border-slate-200 flex justify-between text-[8px] leading-none">
-                                        <span className="text-indigo-700 font-bold">
-                                          NF: {formatCurrencyShort(item.medidoComNF)}
-                                        </span>
-                                        <span className="text-amber-700 font-bold">
-                                          A Medir: {formatCurrencyShort(item.aMedirPrevisto)}
-                                        </span>
-                                      </div>
-                                    )}
+                                    <div className="pt-0.5 border-t border-slate-200 flex justify-between text-[7.5px] leading-none">
+                                      <span className="text-indigo-700 font-bold">
+                                        NF: {formatCurrencyShort(item.medidoComNF)} ({pctNF.toFixed(0)}%)
+                                      </span>
+                                      <span className="text-amber-700 font-bold">
+                                        A Medir: {formatCurrencyShort(item.aMedirPrevisto)} ({pctAMedir.toFixed(0)}%)
+                                      </span>
+                                    </div>
                                   </div>
                                 );
                               })}
