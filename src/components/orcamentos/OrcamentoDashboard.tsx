@@ -10,6 +10,7 @@ import {
   CategoriaContrato,
   CATEGORIA_CONTRATO_OPCOES,
   CATEGORIA_CONTRATO_CONFIG,
+  getCategoriaBadgeClass,
 } from '@/types/orcamento';
 import {
   formatCurrency,
@@ -52,6 +53,8 @@ import {
   Maximize2,
   Minimize2,
   FilePlus2,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 interface OrcamentoDashboardProps {
@@ -87,9 +90,51 @@ export function OrcamentoDashboard({
 
   // Estados individuais de expansão de cada card e seção (permite aumentar qualquer card sob demanda)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({});
+  const [tabelaCopiada, setTabelaCopiada] = useState(false);
 
   const toggleExpand = (key: string) => {
     setExpandedCards((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleCopiarTabelaViabilidade = () => {
+    if (!kpis.resumoViabilidade) return;
+    const header = [
+      'Categoria',
+      'Orçamento Base',
+      'Valor Contratado',
+      'Saldo a Contratar',
+      'Tendência Final (EAC)',
+      'Desvio (R$)',
+      'Desvio (%)',
+      'Contratado (%)',
+    ].join('\t');
+
+    const rows = kpis.resumoViabilidade.map((r) => [
+      r.categoria,
+      r.orcamentoBase.toFixed(2),
+      r.valorContratado.toFixed(2),
+      r.saldoAContratar.toFixed(2),
+      r.valorTendencia.toFixed(2),
+      r.desvioValor.toFixed(2),
+      `${r.desvioPercentual.toFixed(1)}%`,
+      `${r.percentualContratado.toFixed(1)}%`,
+    ].join('\t'));
+
+    const totalRow = [
+      'TOTAL VIABILIDADE',
+      totaisViabilidade.base.toFixed(2),
+      totaisViabilidade.contratado.toFixed(2),
+      totaisViabilidade.saldo.toFixed(2),
+      totaisViabilidade.tendencia.toFixed(2),
+      totaisViabilidade.desvio.toFixed(2),
+      `${totaisViabilidade.base > 0 ? `${totaisViabilidade.desvio > 0 ? '+' : ''}${totaisViabilidade.desvioPct.toFixed(1)}%` : '0.0%'}`,
+      `${totaisViabilidade.contratadoPct.toFixed(1)}%`,
+    ].join('\t');
+
+    const text = [header, ...rows, totalRow].join('\n');
+    navigator.clipboard.writeText(text);
+    setTabelaCopiada(true);
+    setTimeout(() => setTabelaCopiada(false), 2500);
   };
 
   const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
@@ -106,6 +151,19 @@ export function OrcamentoDashboard({
       obras
     );
   }, [orcamentos, contratos, medicoes, filtroObra, catParam, obras]);
+
+  // Totais consolidados para o Resumo Executivo de Viabilidade (todas as categorias da obra)
+  const totaisViabilidade = useMemo(() => {
+    const rows = kpis.resumoViabilidade || [];
+    const base = rows.reduce((acc, r) => acc + r.orcamentoBase, 0);
+    const contratado = rows.reduce((acc, r) => acc + r.valorContratado, 0);
+    const saldo = rows.reduce((acc, r) => acc + r.saldoAContratar, 0);
+    const tendencia = rows.reduce((acc, r) => acc + r.valorTendencia, 0);
+    const desvio = tendencia - base;
+    const desvioPct = base > 0 ? (desvio / base) * 100 : 0;
+    const contratadoPct = base > 0 ? (contratado / base) * 100 : 0;
+    return { base, contratado, saldo, tendencia, desvio, desvioPct, contratadoPct };
+  }, [kpis.resumoViabilidade]);
 
   // Relação 30 / 60 / 90 dias limpa
   const janela306090 = useMemo(() => {
@@ -409,8 +467,24 @@ export function OrcamentoDashboard({
               )}
             </div>
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
-              <span className="truncate">Orçamento Base:</span>
-              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.totalOrcado)}</strong>
+              <span className="truncate">Base Contratados:</span>
+              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.orcadoContratados)}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap">
+              <span className="text-slate-500 dark:text-slate-400 truncate">Desvio Realizado:</span>
+              {kpis.diferencaContratados < -1 ? (
+                <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
+                  -{formatCurrency(Math.abs(kpis.diferencaContratados))} (Economia)
+                </strong>
+              ) : kpis.diferencaContratados > 1 ? (
+                <strong className="text-rose-600 dark:text-rose-400 shrink-0">
+                  +{formatCurrency(kpis.diferencaContratados)} (Estouro)
+                </strong>
+              ) : (
+                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
+                  No orçado
+                </strong>
+              )}
             </div>
 
             {expandedCards.contratado && (
@@ -526,32 +600,26 @@ export function OrcamentoDashboard({
             </div>
 
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap">
-              <span className="text-slate-500 dark:text-slate-400 truncate">
-                {estourouProjecaoKpi
-                  ? 'Projeção vs. Orçado:'
-                  : economizouKpi
-                  ? 'Economia no Orçado:'
-                  : !filtroObra && kpis.faltaContratarPausado > 0
-                  ? 'Suspenso (Paralisadas):'
-                  : 'Projeção Total:'}
-              </span>
-              {estourouProjecaoKpi ? (
-                <strong className="text-rose-600 dark:text-rose-400 shrink-0">
-                  +{formatCurrency(valorEstouroKpi)}
+              <span className="text-slate-500 dark:text-slate-400 truncate">Desvio de Premissa:</span>
+              {kpis.desvioTendencia && kpis.desvioTendencia > 1 ? (
+                <strong className="text-amber-600 dark:text-amber-400 shrink-0">
+                  +{formatCurrency(kpis.desvioTendencia)} vs. Base
                 </strong>
-              ) : economizouKpi ? (
+              ) : kpis.desvioTendencia && kpis.desvioTendencia < -1 ? (
                 <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                  -{formatCurrency(economiaContratadosKpi)}
-                </strong>
-              ) : !filtroObra && kpis.faltaContratarPausado > 0 ? (
-                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
-                  {formatCurrency(kpis.faltaContratarPausado)}
+                  -{formatCurrency(Math.abs(kpis.desvioTendencia))} vs. Base
                 </strong>
               ) : (
-                <strong className="text-slate-800 dark:text-slate-200 shrink-0">
-                  {formatCurrency(kpis.custoTotalPrevisto)}
+                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
+                  Igual à Base
                 </strong>
               )}
+            </div>
+            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
+              <span className="truncate">Tendência Total:</span>
+              <strong className="text-indigo-600 dark:text-indigo-400 font-extrabold shrink-0">
+                {formatCurrency(kpis.totalTendencia || kpis.totalOrcado)}
+              </strong>
             </div>
 
             {expandedCards.faltaContratar && (
@@ -805,6 +873,126 @@ export function OrcamentoDashboard({
           </CardContent>
         </Card>
       </div>
+
+      {/* 2.5 RESUMO EXECUTIVO PARA ATUALIZAÇÃO DE VIABILIDADE (EAC POR CATEGORIA) */}
+      <Card className="border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] shadow-sm overflow-hidden">
+        <CardHeader className="pb-3 border-b border-slate-100 dark:border-[#0B384D] bg-slate-50/50 dark:bg-[#072432]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>Resumo Executivo para Atualização de Viabilidade</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                    EAC por Categoria
+                  </span>
+                </CardTitle>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Consolidação da meta orçada vs. tendência de contratação para atualização do modelo econômico
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopiarTabelaViabilidade}
+                className="text-xs h-8 gap-1.5 font-semibold text-slate-700 dark:text-slate-200"
+              >
+                {tabelaCopiada ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-slate-500" />}
+                {tabelaCopiada ? 'Copiado!' : 'Copiar p/ Excel'}
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0 overflow-x-auto">
+          <table className="w-full text-xs text-left">
+            <thead className="bg-slate-50/80 dark:bg-[#0B384D]/70 text-slate-600 dark:text-slate-300 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-[#0B384D]">
+              <tr>
+                <th className="py-2.5 px-4">Categoria</th>
+                <th className="py-2.5 px-4 text-right">Orçamento Base</th>
+                <th className="py-2.5 px-4 text-right">Contratado</th>
+                <th className="py-2.5 px-4 text-right">Falta Contratar</th>
+                <th className="py-2.5 px-4 text-right text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/30 dark:bg-indigo-950/20">
+                  Tendência Final (EAC)
+                </th>
+                <th className="py-2.5 px-4 text-right">Desvio vs. Base</th>
+                <th className="py-2.5 px-4 text-right">Desvio (%)</th>
+                <th className="py-2.5 px-4 text-center">Contratado (%)</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-[#0B384D]/60 text-slate-700 dark:text-slate-200">
+              {kpis.resumoViabilidade?.map((row) => {
+                const isDesvioPositivo = row.desvioValor > 1;
+                const isDesvioNegativo = row.desvioValor < -1;
+                return (
+                  <tr key={row.categoria} className="hover:bg-slate-50/60 dark:hover:bg-[#0B384D]/30 transition-colors">
+                    <td className="py-2.5 px-4 font-bold whitespace-nowrap">
+                      <span className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(row.categoria)}`}>
+                        {row.categoria}
+                      </span>
+                    </td>
+                    <td className="py-2.5 px-4 text-right font-mono font-medium">{formatCurrency(row.orcamentoBase)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono font-semibold text-[#008EA9] dark:text-[#00C4EB]">{formatCurrency(row.valorContratado)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono font-medium text-amber-600 dark:text-amber-400">{formatCurrency(row.saldoAContratar)}</td>
+                    <td className="py-2.5 px-4 text-right font-mono font-extrabold text-indigo-600 dark:text-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20">{formatCurrency(row.valorTendencia)}</td>
+                    <td className={`py-2.5 px-4 text-right font-mono font-bold ${isDesvioPositivo ? 'text-rose-600 dark:text-rose-400' : isDesvioNegativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                      {isDesvioPositivo ? `+${formatCurrency(row.desvioValor)}` : isDesvioNegativo ? `-${formatCurrency(Math.abs(row.desvioValor))}` : 'R$ 0,00'}
+                    </td>
+                    <td className={`py-2.5 px-4 text-right font-mono font-semibold ${isDesvioPositivo ? 'text-rose-600 dark:text-rose-400' : isDesvioNegativo ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'}`}>
+                      {row.orcamentoBase > 0 ? `${row.desvioPercentual > 0 ? '+' : ''}${row.desvioPercentual.toFixed(1)}%` : '-'}
+                    </td>
+                    <td className="py-2.5 px-4 text-center font-mono text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                      {formatPercent(row.percentualContratado / 100)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            {/* Linha Consolidada */}
+            <tfoot className="bg-slate-100/90 dark:bg-[#072432] text-slate-900 dark:text-white font-black border-t-2 border-slate-300 dark:border-[#00A3C4]/40">
+              <tr>
+                <td className="py-3 px-4 uppercase tracking-wider text-xs font-black">TOTAL VIABILIDADE</td>
+                <td className="py-3 px-4 text-right font-mono text-xs">{formatCurrency(totaisViabilidade.base)}</td>
+                <td className="py-3 px-4 text-right font-mono text-xs text-[#008EA9] dark:text-[#00C4EB]">{formatCurrency(totaisViabilidade.contratado)}</td>
+                <td className="py-3 px-4 text-right font-mono text-xs text-amber-600 dark:text-amber-400">{formatCurrency(totaisViabilidade.saldo)}</td>
+                <td className="py-3 px-4 text-right font-mono text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/30">
+                  {formatCurrency(totaisViabilidade.tendencia)}
+                </td>
+                <td className={`py-3 px-4 text-right font-mono text-xs ${
+                  totaisViabilidade.desvio > 1
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : totaisViabilidade.desvio < -1
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-900 dark:text-white'
+                }`}>
+                  {totaisViabilidade.desvio > 1
+                    ? `+${formatCurrency(totaisViabilidade.desvio)}`
+                    : totaisViabilidade.desvio < -1
+                    ? `-${formatCurrency(Math.abs(totaisViabilidade.desvio))}`
+                    : 'R$ 0,00'}
+                </td>
+                <td className={`py-3 px-4 text-right font-mono text-xs ${
+                  totaisViabilidade.desvio > 1
+                    ? 'text-rose-600 dark:text-rose-400'
+                    : totaisViabilidade.desvio < -1
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-slate-900 dark:text-white'
+                }`}>
+                  {totaisViabilidade.base > 0 ? `${totaisViabilidade.desvioPct > 0 ? '+' : ''}${totaisViabilidade.desvioPct.toFixed(1)}%` : '0.0%'}
+                </td>
+                <td className="py-3 px-4 text-center font-mono text-xs">
+                  {formatPercent(totaisViabilidade.contratadoPct / 100)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </CardContent>
+      </Card>
 
       {/* 3. RELAÇÃO 30 / 60 / 90 DIAS (VISUAL LIMPO + BOTÃO DE EXPANDIR) */}
       <Card className="border-slate-200 dark:border-[#0B384D] bg-white dark:bg-[#072B3B] shadow-sm">

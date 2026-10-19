@@ -91,8 +91,45 @@ export const CATEGORIA_CONTRATO_CONFIG: Record<
   },
 };
 
+/**
+ * Normaliza e infere a categoria correta a partir de texto (com ou sem acento) ou pela disciplina
+ */
+export function normalizeCategoria(cat?: string | null, disciplina?: string | null): CategoriaContrato {
+  const clean = (str?: string | null) =>
+    (str || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const c = clean(cat);
+  const d = clean(disciplina);
+
+  // 1. Categoria explícita com as novas tags
+  if (c.includes('LEGALIZA') || c.includes('TAXA')) return 'Legalização';
+  if (c.includes('QUALIDADE') || c === 'CQ') return 'Qualidade';
+  if (c.includes('ORCAMENTO')) return 'Orçamento';
+  if (c.includes('NEGOCIO')) return 'Negócios';
+  if (c === 'OBRA' || c.startsWith('OBRA ') || c.includes('EXECUCAO') || c.includes('CIVIL')) return 'Obra';
+
+  // 2. Se a disciplina aponta diretamente para outra categoria específica (evita que o padrão legado 'Projeto' retenha o item)
+  if (d) {
+    if (d.includes('LEGALIZA') || d.includes('TAXA') || d.includes('PREFEITURA') || d.includes('ORGAO') || d.includes('PGRCC')) return 'Legalização';
+    if (d.includes('QUALIDADE') || d === 'CQ' || d.includes('DESEMPENHO')) return 'Qualidade';
+    if (d.includes('ORCAMENTO') || d.includes('PLANEJAMENTO')) return 'Orçamento';
+    if (d.includes('NEGOCIO') || d.includes('NOVOS NEGOCIOS')) return 'Negócios';
+    if (d.includes('OBRA') || d.includes('EXECUCAO') || d.includes('CIVIL') || d.includes('ESQUADRIA') || d.includes('SEGURANCA') || d.includes('IMPERMEABILIZA')) return 'Obra';
+  }
+
+  // 3. Categoria explícita 'Projeto'
+  if (c.includes('PROJETO') || c.includes('ENG')) return 'Projeto';
+
+  return 'Projeto';
+}
+
 export function getCategoriaBadgeClass(cat?: CategoriaContrato | string | null): string {
-  switch (cat) {
+  const norm = normalizeCategoria(cat);
+  switch (norm) {
     case 'Legalização':
       return 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30';
     case 'Qualidade':
@@ -417,6 +454,20 @@ export interface KpiOrcamento {
   totalEstouroItens: number;  // soma dos valores contratados acima do orçado nos itens
   totalTendencia?: number;    // Soma total das tendências projetadas de todos os itens
   desvioTendencia?: number;   // totalTendencia - totalOrcado
+  resumoViabilidade?: ResumoViabilidadeCategoria[]; // Resumo sintético por categoria para atualização de viabilidade
+}
+
+export interface ResumoViabilidadeCategoria {
+  categoria: CategoriaContrato;
+  orcamentoBase: number;
+  valorContratado: number;
+  saldoAContratar: number;
+  valorTendencia: number;
+  desvioValor: number;        // valorTendencia - orcamentoBase
+  desvioPercentual: number;   // % de variação vs base
+  percentualContratado: number;
+  qtdItens: number;
+  qtdContratos: number;
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {

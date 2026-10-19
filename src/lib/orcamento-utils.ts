@@ -8,6 +8,9 @@ import {
   StatusObra,
   StatusOrcamento,
   CategoriaContrato,
+  CATEGORIA_CONTRATO_OPCOES,
+  ResumoViabilidadeCategoria,
+  normalizeCategoria,
   MesJanela306090,
   JanelaCaixa306090,
   ItemConsolidadoDisciplina,
@@ -170,7 +173,9 @@ export function getObraStatus(obraStr?: string | null, obrasList?: Obra[]): Stat
  */
 export function recalculateContratos(
   contratos: Contrato[],
-  medicoes: Medicao[]
+  medicoes: Medicao[],
+  orcamentos?: ItemOrcamento[],
+  obras?: Obra[]
 ): Contrato[] {
   // Mapa de soma de medições realizadas por contrato
   const medidoPorContrato: Record<string, number> = {};
@@ -246,8 +251,19 @@ export function recalculateContratos(
       ? Math.min(1, valorMedido / valorFinalContrato)
       : (valorMedido > 0 ? 1 : 0);
 
+    let categoriaFinal = normalizeCategoria(c.categoria, c.disciplina);
+    if (orcamentos && orcamentos.length > 0) {
+      const canonObra = getCanonicalObra(c.obra, obras);
+      const orcsDaObra = orcamentos.filter((o) => getCanonicalObra(o.obra || o.nome_obra, obras) === canonObra);
+      const matchedOrc = orcsDaObra.find((o) => isContratoMatchOrcamento(c, o, obras, orcsDaObra));
+      if (matchedOrc) {
+        categoriaFinal = normalizeCategoria(matchedOrc.categoria, matchedOrc.disciplina);
+      }
+    }
+
     return {
       ...c,
+      categoria: categoriaFinal,
       valor_original: valorOriginal,
       valor_aditivos: totalAditivos,
       valor_contrato: valorFinalContrato,
@@ -419,6 +435,7 @@ export function recalculateOrcamentos(
       justificativa_tendencia: o.justificativa_tendencia || null,
       valor_medido: valorMedido,
       saldo_medicao: saldoMedicao,
+      categoria: normalizeCategoria(o.categoria, o.disciplina),
       status: statusAtual,
     };
   });
@@ -683,24 +700,31 @@ export function calculateKpis(
   filtroCategoria?: CategoriaContrato | null,
   obras?: Obra[]
 ): KpiOrcamento {
-  // Mapa de categoria por contrato
-  const catPorContrato: Record<string, string> = {};
-  contratos.forEach((c) => {
-    catPorContrato[c.id] = c.categoria || 'Projeto';
-  });
-
   const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
   const matchObra = (val?: string | null) => !canonFiltro || getCanonicalObra(val, obras) === canonFiltro;
 
-  const filteredOrc = orcamentos.filter((o) => {
-    if (!matchObra(o.obra || o.nome_obra)) return false;
-    if (filtroCategoria && o.categoria !== filtroCategoria) return false;
+  const orcsDaObra = orcamentos.filter((o) => matchObra(o.obra || o.nome_obra));
+  const ctsDaObra = contratos.filter((c) => matchObra(c.obra));
+
+  // Mapa de categoria por contrato: se o contrato estiver vinculado a um pacote orçamentário, herda sua categoria
+  const catPorContrato: Record<string, CategoriaContrato> = {};
+  ctsDaObra.forEach((c) => {
+    const matchedOrc = orcsDaObra.find((o) => isContratoMatchOrcamento(c, o, obras, orcsDaObra));
+    if (matchedOrc) {
+      catPorContrato[c.id] = normalizeCategoria(matchedOrc.categoria, matchedOrc.disciplina);
+    } else {
+      catPorContrato[c.id] = normalizeCategoria(c.categoria, c.disciplina);
+    }
+  });
+
+  const filteredOrc = orcsDaObra.filter((o) => {
+    if (filtroCategoria && normalizeCategoria(o.categoria, o.disciplina) !== filtroCategoria) return false;
     return true;
   });
 
-  const filteredCt = contratos.filter((c) => {
-    if (!matchObra(c.obra)) return false;
-    if (filtroCategoria && c.categoria !== filtroCategoria) return false;
+  const filteredCt = ctsDaObra.filter((c) => {
+    const cat = catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina);
+    if (filtroCategoria && cat !== filtroCategoria) return false;
     return true;
   });
 
@@ -878,29 +902,61 @@ export function calculateKpis(
   const percentualMedido = totalContratado > 0 ? totalMedido / totalContratado : 0;
   const saldoSemCronograma = Math.max(0, saldoAMedir - totalPrevistoAMedir);
 
-  const totalProjetosContratado = filteredCt
-    .filter((c) => c.categoria === 'Projeto')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalProjetosContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Projeto')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalLegalizacaoContratado = filteredCt
-    .filter((c) => c.categoria === 'Legalização')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalLegalizacaoContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Legalização')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalQualidadeContratado = filteredCt
-    .filter((c) => c.categoria === 'Qualidade')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalQualidadeContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Qualidade')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalOrcamentoContratado = filteredCt
-    .filter((c) => c.categoria === 'Orçamento')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalOrcamentoContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Orçamento')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalNegociosContratado = filteredCt
-    .filter((c) => c.categoria === 'Negócios')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalNegociosContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Negócios')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalObraContratado = filteredCt
-    .filter((c) => c.categoria === 'Obra')
-    .reduce((acc, c) => acc + c.valor_contrato, 0);
+  const totalObraContratado = ctsDaObra
+    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Obra')
+    .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
+
+  // Resumo Executivo sintético por Categoria para atualização de Viabilidade (base da obra)
+  const resumoViabilidade: ResumoViabilidadeCategoria[] = CATEGORIA_CONTRATO_OPCOES.map((cat) => {
+    const orcsCat = orcsDaObra.filter((o) => normalizeCategoria(o.categoria, o.disciplina) === cat);
+    const ctsCat = ctsDaObra.filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === cat);
+    const orcamentoBase = orcsCat.reduce((acc, o) => acc + (Number(o.orcamento_base) || 0), 0);
+    const valorContratado = ctsCat.reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
+    const saldoAContratar = orcsCat.reduce(
+      (acc, o) => acc + (o.status === 'Cancelado' ? 0 : (Number(o.saldo_a_contratar) || 0)),
+      0
+    );
+    const valorTendencia = orcsCat.reduce(
+      (acc, o) => acc + (o.valor_tendencia != null ? Number(o.valor_tendencia) : (Number(o.orcamento_base) || 0)),
+      0
+    );
+    const desvioValor = valorTendencia - orcamentoBase;
+    const desvioPercentual = orcamentoBase > 0 ? (desvioValor / orcamentoBase) * 100 : 0;
+    const percentualContratado = orcamentoBase > 0 ? (valorContratado / orcamentoBase) * 100 : 0;
+
+    return {
+      categoria: cat,
+      orcamentoBase,
+      valorContratado,
+      saldoAContratar,
+      valorTendencia,
+      desvioValor,
+      desvioPercentual,
+      percentualContratado,
+      qtdItens: orcsCat.length,
+      qtdContratos: ctsCat.length,
+    };
+  });
 
   return {
     totalOrcado,
@@ -943,6 +999,7 @@ export function calculateKpis(
     totalEstouroItens,
     totalTendencia,
     desvioTendencia: totalTendencia - totalOrcado,
+    resumoViabilidade,
   };
 }
 

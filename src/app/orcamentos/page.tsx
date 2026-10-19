@@ -16,6 +16,7 @@ import {
   StatusOrcamento,
   AditivoContrato,
   DistratoInfo,
+  normalizeCategoria,
 } from '@/types/orcamento';
 import {
   recalculateContratos,
@@ -130,8 +131,8 @@ export default function OrcamentosPage() {
 
   // Valores reativos recalculados com aditivos, distratos e vínculos dinâmicos
   const contratosRecalculados = useMemo(() => {
-    return recalculateContratos(contratos, medicoes);
-  }, [contratos, medicoes]);
+    return recalculateContratos(contratos, medicoes, orcamentos, obras);
+  }, [contratos, medicoes, orcamentos, obras]);
 
   const orcamentosCalculados = useMemo(() => {
     return recalculateOrcamentos(orcamentos, contratosRecalculados, obras);
@@ -174,7 +175,11 @@ export default function OrcamentosPage() {
           setSubdisciplinas(localSubdisciplinasSalvos);
         }
         if (savedCt) {
-          localContratosSalvos = JSON.parse(savedCt);
+          const parsedCt: Contrato[] = JSON.parse(savedCt);
+          localContratosSalvos = parsedCt.map((c) => ({
+            ...c,
+            categoria: normalizeCategoria(c.categoria, c.disciplina),
+          }));
           setContratos(localContratosSalvos);
         }
         if (savedMed) {
@@ -188,7 +193,11 @@ export default function OrcamentosPage() {
           setMedicoes(localMedicoesSalvos);
         }
         if (savedOrc) {
-          localOrcamentosSalvos = JSON.parse(savedOrc);
+          const parsedOrc: ItemOrcamento[] = JSON.parse(savedOrc);
+          localOrcamentosSalvos = parsedOrc.map((o) => ({
+            ...o,
+            categoria: normalizeCategoria(o.categoria, o.disciplina),
+          }));
           setOrcamentos(localOrcamentosSalvos);
         }
       } catch (err) {
@@ -249,7 +258,7 @@ export default function OrcamentosPage() {
               return m;
             });
 
-            const recalcCt = recalculateContratos(mergedContratos, cloudMedicoes);
+            const recalcCt = recalculateContratos(mergedContratos, cloudMedicoes, mergedOrcamentos, obrasVigentes);
             const recalcOrc = recalculateOrcamentos(mergedOrcamentos, recalcCt, obrasVigentes);
 
             setContratos(recalcCt);
@@ -286,7 +295,7 @@ export default function OrcamentosPage() {
     ) => {
       try {
         const obrasVigentes = currentObras || obras;
-        const recalcCt = recalculateContratos(newContratos, newMedicoes);
+        const recalcCt = recalculateContratos(newContratos, newMedicoes, newOrcamentos, obrasVigentes);
         const recalcOrc = recalculateOrcamentos(newOrcamentos, recalcCt, obrasVigentes);
 
         setMedicoes(newMedicoes);
@@ -326,6 +335,7 @@ export default function OrcamentosPage() {
           const mod = {
             ...c,
             ...contratoData,
+            categoria: normalizeCategoria(contratoData.categoria || c.categoria, contratoData.disciplina || c.disciplina),
             valor_original: novoValorOriginal,
           };
           contratoSalvo = mod;
@@ -361,7 +371,7 @@ export default function OrcamentosPage() {
         valor_medido: 0,
         saldo_a_medir: contratoData.valor_contrato,
         percentual_medido: 0,
-        categoria: contratoData.categoria || 'Projeto',
+        categoria: normalizeCategoria(contratoData.categoria, contratoData.disciplina),
         status: 'Ativo',
       };
       contratoSalvo = novo;
@@ -777,7 +787,7 @@ export default function OrcamentosPage() {
             valor_tendencia: itemData.valor_tendencia !== undefined ? itemData.valor_tendencia : (o.valor_tendencia ?? null),
             justificativa_tendencia: itemData.justificativa_tendencia !== undefined ? itemData.justificativa_tendencia : (o.justificativa_tendencia ?? null),
             status: itemData.status || o.status || 'A contratar',
-            categoria: itemData.categoria || o.categoria || 'Projeto',
+            categoria: normalizeCategoria(itemData.categoria || o.categoria, itemData.disciplina || o.disciplina),
           };
           return orcSalvo;
         }
@@ -817,7 +827,7 @@ export default function OrcamentosPage() {
         valor_medido: 0,
         saldo_medicao: 0,
         status: itemData.status || 'A contratar',
-        categoria: itemData.categoria || 'Projeto',
+        categoria: normalizeCategoria(itemData.categoria, itemData.disciplina),
       };
       orcSalvo = novo;
       updated = [novo, ...orcamentos];

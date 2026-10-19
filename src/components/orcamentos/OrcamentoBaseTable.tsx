@@ -12,6 +12,7 @@ import {
   CATEGORIA_CONTRATO_OPCOES,
   CATEGORIA_CONTRATO_CONFIG,
   getCategoriaBadgeClass,
+  normalizeCategoria,
 } from '@/types/orcamento';
 import { formatCurrency, formatPercent, getCanonicalObra } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
@@ -175,7 +176,7 @@ export function OrcamentoBaseTable({
       Todos: orcamentosBase.length,
     };
     CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
-      counts[cat] = orcamentosBase.filter((o) => o.categoria === cat).length;
+      counts[cat] = orcamentosBase.filter((o) => normalizeCategoria(o.categoria, o.disciplina) === cat).length;
     });
     return counts;
   }, [orcamentosBase]);
@@ -194,7 +195,7 @@ export function OrcamentoBaseTable({
   // Filtros aplicados incluindo categoria
   const orcamentosFiltrados = useMemo(() => {
     if (filtroCategoria === 'Todos') return orcamentosBase;
-    return orcamentosBase.filter((item) => item.categoria === filtroCategoria);
+    return orcamentosBase.filter((item) => normalizeCategoria(item.categoria, item.disciplina) === filtroCategoria);
   }, [orcamentosBase, filtroCategoria]);
 
   // Lista ordenada: padrão hierárquico (Obra ➔ Disciplina ➔ Subdisciplina) ou pela coluna ativa
@@ -225,12 +226,15 @@ export function OrcamentoBaseTable({
             cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
           }
           break;
-        case 'categoria':
-          cmp = (a.categoria || '').localeCompare(b.categoria || '', 'pt-BR');
+        case 'categoria': {
+          const catA = normalizeCategoria(a.categoria, a.disciplina);
+          const catB = normalizeCategoria(b.categoria, b.disciplina);
+          cmp = catA.localeCompare(catB, 'pt-BR');
           if (cmp === 0) {
             cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
           }
           break;
+        }
         case 'disciplina':
           cmp = (a.disciplina || '').localeCompare(b.disciplina || '', 'pt-BR');
           if (cmp === 0) {
@@ -622,9 +626,9 @@ export function OrcamentoBaseTable({
                       </td>
                       <td className="py-2.5 px-3.5 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(item.categoria)}`}
+                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(normalizeCategoria(item.categoria, item.disciplina))}`}
                         >
-                          {item.categoria || 'Projeto'}
+                          {normalizeCategoria(item.categoria, item.disciplina)}
                         </span>
                       </td>
                       <td className="py-2.5 px-3.5 font-semibold text-slate-900 dark:text-white max-w-[160px] break-words">
