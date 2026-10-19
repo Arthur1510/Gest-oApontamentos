@@ -118,7 +118,7 @@ export function ContratoFormModal({
     } else if (fTipo.includes('ORÇAMENTO') || fTipo.includes('ORCAMENTO')) {
       novaCategoria = 'Orçamento';
     } else if (fTipo.includes('NEGÓCIO') || fTipo.includes('NEGOCIO')) {
-      novaCategoria = 'Negócios';
+      novaCategoria = 'Novos Negócios';
     } else if (fTipo.includes('OBRA')) {
       novaCategoria = 'Obra';
     }
@@ -345,7 +345,7 @@ export function ContratoFormModal({
                 <option value="Legalização">Legalização (Taxas / Órgãos)</option>
                 <option value="Qualidade">Qualidade (Controle / Inspeção)</option>
                 <option value="Orçamento">Orçamento (Planejamento / Custos)</option>
-                <option value="Negócios">Negócios (Comercial / Novos Negócios)</option>
+                <option value="Novos Negócios">Novos Negócios (Comercial / Novos Negócios)</option>
                 <option value="Obra">Obra (Execução / Obras Civis)</option>
               </select>
             </div>

@@ -1797,6 +1797,7 @@ export function RelatorioOrcamentoPdfModal({
                               return 'bg-emerald-50 text-emerald-700 border-emerald-200';
                             case 'Orçamento':
                               return 'bg-amber-50 text-amber-700 border-amber-200';
+                            case 'Novos Negócios':
                             case 'Negócios':
                               return 'bg-indigo-50 text-indigo-700 border-indigo-200';
                             case 'Obra':

@@ -18,6 +18,8 @@ import {
   ItemConsolidadoObra,
 } from '@/types/orcamento';
 
+export { normalizeCategoria };
+
 /**
  * Formatação de valores monetários em Real (BRL)
  */
@@ -950,9 +952,13 @@ export function calculateKpis(
     .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Orçamento')
     .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
 
-  const totalNegociosContratado = ctsDaObra
-    .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Negócios')
+  const totalNovosNegociosContratado = ctsDaObra
+    .filter((c) => {
+      const cat = catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina);
+      return cat === 'Novos Negócios' || cat === ('Negócios' as any);
+    })
     .reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
+  const totalNegociosContratado = totalNovosNegociosContratado;
 
   const totalObraContratado = ctsDaObra
     .filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === 'Obra')
@@ -1012,6 +1018,7 @@ export function calculateKpis(
     totalQualidadeContratado,
     totalOrcamentoContratado,
     totalNegociosContratado,
+    totalNovosNegociosContratado,
     totalObraContratado,
     totalEmAtraso,
     qtdEmAtraso,

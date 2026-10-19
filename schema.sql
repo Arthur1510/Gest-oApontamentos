@@ -283,7 +283,7 @@ CREATE TABLE IF NOT EXISTS public.orcamentos_base (
     orcamento_base NUMERIC(15, 2) NOT NULL DEFAULT 0,
     valor_tendencia NUMERIC(15, 2),
     justificativa_tendencia TEXT,
-    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Negócios', 'Obra')),
+    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Novos Negócios', 'Negócios', 'Obra')),
     status TEXT NOT NULL DEFAULT 'A contratar'
 );
 
@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS public.contratos_obras (
     disciplina TEXT NOT NULL,
     subdisciplina TEXT NOT NULL,
     valor_contrato NUMERIC(15, 2) NOT NULL DEFAULT 0,
-    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Negócios', 'Obra'))
+    categoria TEXT NOT NULL DEFAULT 'Projeto' CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Novos Negócios', 'Negócios', 'Obra'))
 );
 
 -- Tabela Medições
@@ -339,10 +339,10 @@ BEGIN
 
     -- Garantir constraint de categoria atualizada com todos os tipos
     ALTER TABLE public.orcamentos_base DROP CONSTRAINT IF EXISTS orcamentos_base_categoria_check;
-    ALTER TABLE public.orcamentos_base ADD CONSTRAINT orcamentos_base_categoria_check CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Negócios', 'Obra'));
+    ALTER TABLE public.orcamentos_base ADD CONSTRAINT orcamentos_base_categoria_check CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Novos Negócios', 'Negócios', 'Obra'));
 
     ALTER TABLE public.contratos_obras DROP CONSTRAINT IF EXISTS contratos_obras_categoria_check;
-    ALTER TABLE public.contratos_obras ADD CONSTRAINT contratos_obras_categoria_check CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Negócios', 'Obra'));
+    ALTER TABLE public.contratos_obras ADD CONSTRAINT contratos_obras_categoria_check CHECK (categoria IN ('Projeto', 'Legalização', 'Qualidade', 'Orçamento', 'Novos Negócios', 'Negócios', 'Obra'));
 
     -- Status em Obras
     IF NOT EXISTS (

@@ -223,7 +223,7 @@ export function OrcamentoFormModal({
                 } else if (discUpper.includes('ORÇAMENTO') || discUpper.includes('ORCAMENTO')) {
                   novaCat = 'Orçamento';
                 } else if (discUpper.includes('NEGÓCIO') || discUpper.includes('NEGOCIO')) {
-                  novaCat = 'Negócios';
+                  novaCat = 'Novos Negócios';
                 } else if (discUpper.includes('OBRA')) {
                   novaCat = 'Obra';
                 }
@@ -368,7 +368,7 @@ export function OrcamentoFormModal({
                 <option value="Legalização">Legalização (Taxas / Órgãos)</option>
                 <option value="Qualidade">Qualidade (Controle / Inspeção)</option>
                 <option value="Orçamento">Orçamento (Planejamento / Custos)</option>
-                <option value="Negócios">Negócios (Comercial / Novos Negócios)</option>
+                <option value="Novos Negócios">Novos Negócios (Comercial / Novos Negócios)</option>
                 <option value="Obra">Obra (Execução / Obras Civis)</option>
               </select>
             </div>

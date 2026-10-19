@@ -490,8 +490,8 @@ export function OrcamentoDashboard({
                   <strong className="text-amber-600 dark:text-amber-400 text-xs sm:text-sm">{formatCurrency(kpis.totalOrcamentoContratado || 0)}</strong>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
-                  <span className="text-slate-400 block text-[11px]">Negócios</span>
-                  <strong className="text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm">{formatCurrency(kpis.totalNegociosContratado || 0)}</strong>
+                  <span className="text-slate-400 block text-[11px]">Novos Negócios</span>
+                  <strong className="text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm">{formatCurrency(kpis.totalNovosNegociosContratado || kpis.totalNegociosContratado || 0)}</strong>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
                   <span className="text-slate-400 block text-[11px]">Obra</span>

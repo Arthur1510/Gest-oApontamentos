@@ -18,7 +18,7 @@ export type CategoriaContrato =
   | 'Legalização'
   | 'Qualidade'
   | 'Orçamento'
-  | 'Negócios'
+  | 'Novos Negócios'
   | 'Obra';
 
 export const CATEGORIA_CONTRATO_OPCOES: CategoriaContrato[] = [
@@ -26,7 +26,7 @@ export const CATEGORIA_CONTRATO_OPCOES: CategoriaContrato[] = [
   'Legalização',
   'Qualidade',
   'Orçamento',
-  'Negócios',
+  'Novos Negócios',
   'Obra',
 ];
 
@@ -73,9 +73,9 @@ export const CATEGORIA_CONTRATO_CONFIG: Record<
     text: 'text-amber-600 dark:text-amber-400',
     description: 'Planejamento / Custos',
   },
-  Negócios: {
-    label: 'Negócios',
-    plural: 'Negócios',
+  'Novos Negócios': {
+    label: 'Novos Negócios',
+    plural: 'Novos Negócios',
     badge: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30',
     activeButton: 'bg-indigo-600 text-white shadow-2xs',
     text: 'text-indigo-600 dark:text-indigo-400',
@@ -109,7 +109,7 @@ export function normalizeCategoria(cat?: string | null, disciplina?: string | nu
   if (c.includes('LEGALIZA') || c.includes('TAXA')) return 'Legalização';
   if (c.includes('QUALIDADE') || c === 'CQ') return 'Qualidade';
   if (c.includes('ORCAMENTO')) return 'Orçamento';
-  if (c.includes('NEGOCIO')) return 'Negócios';
+  if (c.includes('NEGOCIO')) return 'Novos Negócios';
   if (c === 'OBRA' || c.startsWith('OBRA ') || c.includes('EXECUCAO') || c.includes('CIVIL')) return 'Obra';
 
   // 2. Se a disciplina aponta diretamente para outra categoria específica (evita que o padrão legado 'Projeto' retenha o item)
@@ -117,7 +117,7 @@ export function normalizeCategoria(cat?: string | null, disciplina?: string | nu
     if (d.includes('LEGALIZA') || d.includes('TAXA') || d.includes('PREFEITURA') || d.includes('ORGAO') || d.includes('PGRCC')) return 'Legalização';
     if (d.includes('QUALIDADE') || d === 'CQ' || d.includes('DESEMPENHO')) return 'Qualidade';
     if (d.includes('ORCAMENTO') || d.includes('PLANEJAMENTO')) return 'Orçamento';
-    if (d.includes('NEGOCIO') || d.includes('NOVOS NEGOCIOS')) return 'Negócios';
+    if (d.includes('NEGOCIO') || d.includes('NOVOS NEGOCIOS')) return 'Novos Negócios';
     if (d.includes('OBRA') || d.includes('EXECUCAO') || d.includes('CIVIL') || d.includes('ESQUADRIA') || d.includes('SEGURANCA') || d.includes('IMPERMEABILIZA')) return 'Obra';
   }
 
@@ -136,7 +136,7 @@ export function getCategoriaBadgeClass(cat?: CategoriaContrato | string | null):
       return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30';
     case 'Orçamento':
       return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30';
-    case 'Negócios':
+    case 'Novos Negócios':
       return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30';
     case 'Obra':
       return 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30';
@@ -431,6 +431,7 @@ export interface KpiOrcamento {
   totalQualidadeContratado?: number;
   totalOrcamentoContratado?: number;
   totalNegociosContratado?: number;
+  totalNovosNegociosContratado?: number;
   totalObraContratado?: number;
   // Métricas de Medições em Atraso (Vencidas no Cronograma)
   totalEmAtraso: number;
