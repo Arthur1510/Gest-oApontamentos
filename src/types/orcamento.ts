@@ -353,6 +353,7 @@ export interface ItemConsolidadoDisciplina {
   saldoADistratar?: number;
   percentualContratadoSobreBase: number;
   percentualMedidoSobreContratado: number;
+  valorTendencia?: number;
 }
 
 export interface ItemConsolidadoContrato {

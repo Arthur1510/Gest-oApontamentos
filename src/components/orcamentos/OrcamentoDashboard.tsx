@@ -795,26 +795,42 @@ export function OrcamentoDashboard({
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
               {kpis.saldoPausado > 0 && kpis.saldoADistratar > 0 ? (
                 <>
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold truncate">
+                  <span
+                    className="text-amber-600 dark:text-amber-400 font-semibold truncate"
+                    title={`Saldo Pausado (Obras Paralisadas): ${formatCurrency(kpis.saldoPausado)}`}
+                  >
                     Pausado: {formatCurrencyShort(kpis.saldoPausado)}
                   </span>
-                  <span className="text-rose-600 dark:text-rose-400 font-semibold shrink-0">
+                  <span
+                    className="text-rose-600 dark:text-rose-400 font-semibold shrink-0"
+                    title={`Saldo a Distratar (Obras Canceladas): ${formatCurrency(kpis.saldoADistratar)}`}
+                  >
                     Distratar: {formatCurrencyShort(kpis.saldoADistratar)}
                   </span>
                 </>
               ) : kpis.saldoPausado > 0 && statusObraSelecionada !== 'Paralisada' ? (
                 <>
-                  <span className="truncate">Saldo Pausado:</span>
-                  <strong className="text-amber-600 dark:text-amber-400 shrink-0">
-                    {formatCurrency(kpis.saldoPausado)}
-                  </strong>
+                  <span
+                    className="text-amber-600 dark:text-amber-400 font-semibold truncate"
+                    title={`Saldo Pausado (Obras Paralisadas): ${formatCurrency(kpis.saldoPausado)}`}
+                  >
+                    Pausado: {formatCurrencyShort(kpis.saldoPausado)}
+                  </span>
+                  <span className="truncate">
+                    Pago: <strong className="text-slate-800 dark:text-slate-200">{formatCurrencyShort(kpis.totalPago)}</strong>
+                  </span>
                 </>
               ) : kpis.saldoADistratar > 0 && statusObraSelecionada !== 'Cancelada' ? (
                 <>
-                  <span className="truncate">Saldo a Distratar:</span>
-                  <strong className="text-rose-600 dark:text-rose-400 shrink-0">
-                    {formatCurrency(kpis.saldoADistratar)}
-                  </strong>
+                  <span
+                    className="text-rose-600 dark:text-rose-400 font-semibold truncate"
+                    title={`Saldo a Distratar (Obras Canceladas): ${formatCurrency(kpis.saldoADistratar)}`}
+                  >
+                    Distratar: {formatCurrencyShort(kpis.saldoADistratar)}
+                  </span>
+                  <span className="truncate">
+                    Pago: <strong className="text-slate-800 dark:text-slate-200">{formatCurrencyShort(kpis.totalPago)}</strong>
+                  </span>
                 </>
               ) : (
                 <>

@@ -1257,6 +1257,7 @@ export function calculateConsolidadoDisciplinas(
       valorAMedir: number;
       saldoPausado: number;
       saldoADistratar: number;
+      valorTendencia: number;
     }
   > = {};
 
@@ -1276,6 +1277,7 @@ export function calculateConsolidadoDisciplinas(
         valorAMedir: 0,
         saldoPausado: 0,
         saldoADistratar: 0,
+        valorTendencia: 0,
       };
     }
 
@@ -1299,35 +1301,54 @@ export function calculateConsolidadoDisciplinas(
       }
     }
 
-    if (o.status === 'Cancelado') {
-      if (stObra === 'Cancelada') {
-        // Obra cancelada não gera economia artificial
-        continue;
-      }
-      map[disc].orcadoContratados += base;
-      map[disc].orcadoComparavel += base;
-      if (base > contratado) {
-        map[disc].economiaContratados += base - contratado;
-      } else if (contratado > base) {
-        map[disc].estouroContratados += contratado - base;
-      }
-      continue;
-    }
+    const hasCustomTendencia =
+      o.valor_tendencia !== undefined &&
+      o.valor_tendencia !== null &&
+      Number(o.valor_tendencia) >= 0;
+    const valorReferencia = hasCustomTendencia ? Number(o.valor_tendencia) : base;
 
-    const isFechado = o.status === 'Contratado' || contratado > 0;
-    if (!isFechado) {
+    const isCancelado = o.status === 'Cancelado';
+    const isFechado = o.status === 'Contratado';
+
+    let itemSaldo = 0;
+    let itemSaldoPausado = 0;
+    let itemTendencia = 0;
+
+    if (isCancelado) {
       if (stObra === 'Cancelada') {
-        // Obra cancelada não gera falta contratar nem economia artificial
-        continue;
-      }
-      const aberto = Math.max(0, base - contratado);
-      if (stObra === 'Paralisada') {
-        map[disc].faltaContratarPausado += aberto;
+        itemSaldo = 0;
+        itemTendencia = 0;
       } else {
-        map[disc].faltaContratar += aberto;
+        itemSaldo = 0;
+        itemTendencia = contratado;
+        if (contratado > 0) {
+          map[disc].orcadoContratados += base;
+        }
+        map[disc].orcadoComparavel += base;
+        if (base > contratado) {
+          map[disc].economiaContratados += base - contratado;
+        } else if (contratado > base) {
+          map[disc].estouroContratados += contratado - base;
+        }
       }
-      map[disc].orcadoComparavel += base;
+    } else if (!isFechado) {
+      if (stObra === 'Cancelada') {
+        itemSaldo = 0;
+        itemTendencia = 0;
+      } else {
+        const saldoAberto = Math.max(0, valorReferencia - contratado);
+        if (saldoAberto > 0) {
+          if (stObra === 'Paralisada') {
+            itemSaldoPausado = saldoAberto;
+          } else {
+            itemSaldo = saldoAberto;
+          }
+        }
+        itemTendencia = valorReferencia;
+        map[disc].orcadoComparavel += base;
+      }
     } else {
+      // isFechado (Contratado)
       map[disc].orcadoContratados += base;
       map[disc].orcadoComparavel += base;
       if (contratado < base) {
@@ -1335,7 +1356,24 @@ export function calculateConsolidadoDisciplinas(
       } else if (contratado > base) {
         map[disc].estouroContratados += contratado - base;
       }
+
+      if (hasCustomTendencia && Number(o.valor_tendencia) > contratado) {
+        const saldoResidual = Number(o.valor_tendencia) - contratado;
+        if (stObra === 'Paralisada') {
+          itemSaldoPausado = saldoResidual;
+        } else {
+          itemSaldo = saldoResidual;
+        }
+        itemTendencia = Number(o.valor_tendencia);
+      } else {
+        itemSaldo = 0;
+        itemTendencia = contratado;
+      }
     }
+
+    map[disc].faltaContratar += itemSaldo;
+    map[disc].faltaContratarPausado += itemSaldoPausado;
+    map[disc].valorTendencia += itemTendencia;
   }
 
   return Object.entries(map)
@@ -1352,6 +1390,7 @@ export function calculateConsolidadoDisciplinas(
         faltaContratar: d.faltaContratar,
         faltaContratarPausado: d.faltaContratarPausado,
         totalPrevisto,
+        valorTendencia: d.valorTendencia,
         diferencaOrcamento,
         diferencaContratados,
         economiaContratados: d.economiaContratados,
@@ -1611,30 +1650,21 @@ export function calculateConsolidadoObras(
   const result: ItemConsolidadoObra[] = [];
 
   for (const [canon, info] of Array.from(canonMap.entries())) {
-    const orcObra = orcamentos.filter((o) => {
-      if (getCanonicalObra(o.obra || o.nome_obra, obras) !== canon) return false;
-      if (filtroCategoria && o.categoria !== filtroCategoria) return false;
-      return true;
-    });
+    // Se houver filtro de fornecedor ativo, filtramos contratos e medições daquele fornecedor
+    const cts = filtroFornecedor ? contratos.filter(c => c.empresa === filtroFornecedor) : contratos;
+    const meds = filtroFornecedor ? medicoes.filter(m => m.empresa === filtroFornecedor) : medicoes;
 
-    const ctObra = contratos.filter((c) => {
-      if (getCanonicalObra(c.obra, obras) !== canon) return false;
-      if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-      if (filtroCategoria && c.categoria !== filtroCategoria) return false;
-      return true;
-    });
+    const kpiObra = calculateKpis(
+      orcamentos,
+      cts,
+      meds,
+      info.codigo,
+      filtroCategoria || null,
+      obras
+    );
 
     // Exibir apenas obras que possuam orçamento ou contrato cadastrado nos filtros ativos
-    if (orcObra.length === 0 && ctObra.length === 0) continue;
-
-    // Se houver filtro de fornecedor ativo, filtramos contratos e medições daquele fornecedor
-    const medObra = medicoes.filter((m) => {
-      if (getCanonicalObra(m.obra, obras) !== canon) return false;
-      if (filtroFornecedor && m.empresa !== filtroFornecedor) return false;
-      return true;
-    });
-
-    const kpiObra = calculateKpis(orcObra, ctObra, medObra, null, filtroCategoria || null, obras);
+    if (kpiObra.totalOrcado === 0 && kpiObra.totalContratado === 0) continue;
 
     result.push({
       codigo: info.codigo,
@@ -1658,8 +1688,8 @@ export function calculateConsolidadoObras(
       saldoADistratar: kpiObra.saldoADistratar,
       percentualContratadoSobreBase: kpiObra.percentualContratado,
       percentualMedidoSobreContratado: kpiObra.percentualMedido,
-      contratosCount: ctObra.length,
-      orcamentosCount: orcObra.length,
+      contratosCount: kpiObra.totalContratosCount,
+      orcamentosCount: kpiObra.qtdFaltaContratar + kpiObra.qtdFaltaContratarPausado,
     });
   }
 

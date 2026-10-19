@@ -742,7 +742,12 @@ export function RelatorioOrcamentoPdfModal({
         );
       }
 
-      // 3. Quadro Resumo por Obra Filtrado para a Categoria Selecionada
+      // 3. Curva S de Desembolso Financeiro Geral (Macro - todas as obras na categoria selecionada)
+      if (secoes.curvaGrafico && macroCurva.length > 0) {
+        pushFixedBlock({ type: 'curvaGrafico' }, PDF_LAYOUT.curvaGrafico);
+      }
+
+      // 4. Quadro Resumo por Obra Filtrado para a Categoria Selecionada
       if (secoes.quadroObras && consolidadoObras.length > 0) {
         const cardH = expandedPdfBlocks.pdfQuadroObras ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
         let remaining = [...consolidadoObras];
@@ -1622,19 +1627,32 @@ export function RelatorioOrcamentoPdfModal({
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
-                                    {(pageKpis.saldoADistratar || 0) > 0 && pageKpis.saldoAMedir > 0 ? (
+                                    {(pageKpis.saldoPausado || 0) > 0 && (pageKpis.saldoADistratar || 0) > 0 ? (
                                       <>
-                                        <span className="truncate">A Distratar:</span>
-                                        <strong className="text-rose-700 shrink-0">
-                                          {formatCurrencyShort(pageKpis.saldoADistratar)}
-                                        </strong>
+                                        <span className="text-amber-700 font-semibold truncate">
+                                          Pausado: {formatCurrencyShort(pageKpis.saldoPausado)}
+                                        </span>
+                                        <span className="text-rose-700 font-semibold shrink-0">
+                                          Distratar: {formatCurrencyShort(pageKpis.saldoADistratar)}
+                                        </span>
                                       </>
                                     ) : (pageKpis.saldoPausado || 0) > 0 && pageKpis.saldoAMedir > 0 ? (
                                       <>
-                                        <span className="truncate">Saldo Pausado:</span>
-                                        <strong className="text-amber-700 shrink-0">
-                                          {formatCurrencyShort(pageKpis.saldoPausado)}
-                                        </strong>
+                                        <span className="text-amber-700 font-semibold truncate">
+                                          Pausado: {formatCurrencyShort(pageKpis.saldoPausado)}
+                                        </span>
+                                        <span className="truncate">
+                                          Pago: <strong className="text-slate-800">{formatCurrencyShort(pageKpis.totalPago)}</strong>
+                                        </span>
+                                      </>
+                                    ) : (pageKpis.saldoADistratar || 0) > 0 && pageKpis.saldoAMedir > 0 ? (
+                                      <>
+                                        <span className="text-rose-700 font-semibold truncate">
+                                          Distratar: {formatCurrencyShort(pageKpis.saldoADistratar)}
+                                        </span>
+                                        <span className="truncate">
+                                          Pago: <strong className="text-slate-800">{formatCurrencyShort(pageKpis.totalPago)}</strong>
+                                        </span>
                                       </>
                                     ) : (
                                       <>
@@ -2244,7 +2262,7 @@ export function RelatorioOrcamentoPdfModal({
                                             {formatCurrency(ob.valorMedido)}
                                           </strong>{' '}
                                           ({formatPercent(ob.percentualMedidoSobreContratado, 0)})
-                                        </span>
+                                         </span>
                                         {saldoDistratarOb > 0 ? (
                                           <span>
                                             A Distratar:{' '}
@@ -2252,6 +2270,17 @@ export function RelatorioOrcamentoPdfModal({
                                               {formatCurrency(saldoDistratarOb)}
                                             </strong>
                                           </span>
+                                        ) : saldoPausadoOb > 0 && ob.valorAMedir > 0 ? (
+                                          <>
+                                            <span>
+                                              A Medir:{' '}
+                                              <strong className="text-purple-700">{formatCurrency(ob.valorAMedir)}</strong>
+                                            </span>
+                                            <span>
+                                              Pausado:{' '}
+                                              <strong className="text-amber-700">{formatCurrency(saldoPausadoOb)}</strong>
+                                            </span>
+                                          </>
                                         ) : saldoPausadoOb > 0 ? (
                                           <span>
                                             Saldo Pausado:{' '}
@@ -2694,7 +2723,7 @@ export function RelatorioOrcamentoPdfModal({
                             >
                               <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
                                 <TrendingUp className="h-3.5 w-3.5 text-[#00A3C4]" />
-                                5. Curva S de Desembolso Financeiro
+                                Curva S de Desembolso Financeiro
                               </h2>
                               <div className="flex items-center gap-3 text-[9px]">
                                 <span className="text-slate-500">
@@ -2801,8 +2830,8 @@ export function RelatorioOrcamentoPdfModal({
                               <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
                                 <Calendar className="h-3.5 w-3.5 text-[#00A3C4]" />
                                 {block.isContinuation
-                                  ? '6. Cronograma Mensal de Desembolso — Continuação'
-                                  : '6. Cronograma Mensal de Desembolso'}
+                                  ? 'Cronograma Mensal de Desembolso — Continuação'
+                                  : 'Cronograma Mensal de Desembolso'}
                               </h2>
                             </div>
 
