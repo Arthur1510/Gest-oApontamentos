@@ -97,8 +97,43 @@ export function OrcamentoDashboard({
     setExpandedCards((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
+  const statusObraSelecionada = filtroObra ? getObraStatus(filtroObra, obras) : null;
+
+  // KPIs consolidados
+  const kpis = useMemo(() => {
+    return calculateKpis(
+      orcamentos,
+      contratos,
+      medicoes,
+      filtroObra || null,
+      catParam,
+      obras
+    );
+  }, [orcamentos, contratos, medicoes, filtroObra, catParam, obras]);
+
+  // Linhas da tabela de Viabilidade (filtrada pela categoria se selecionada, ou todas as categorias)
+  const rowsViabilidade = useMemo(() => {
+    const list = kpis.resumoViabilidade || [];
+    if (!catParam) return list;
+    return list.filter((r) => r.categoria === catParam);
+  }, [kpis.resumoViabilidade, catParam]);
+
+  // Totais consolidados para o Resumo Executivo de Viabilidade
+  const totaisViabilidade = useMemo(() => {
+    const rows = rowsViabilidade;
+    const base = rows.reduce((acc, r) => acc + r.orcamentoBase, 0);
+    const contratado = rows.reduce((acc, r) => acc + r.valorContratado, 0);
+    const saldo = rows.reduce((acc, r) => acc + r.saldoAContratar, 0);
+    const tendencia = rows.reduce((acc, r) => acc + r.valorTendencia, 0);
+    const desvio = tendencia - base;
+    const desvioPct = base > 0 ? (desvio / base) * 100 : 0;
+    const contratadoPct = base > 0 ? (contratado / base) * 100 : 0;
+    return { base, contratado, saldo, tendencia, desvio, desvioPct, contratadoPct };
+  }, [rowsViabilidade]);
+
   const handleCopiarTabelaViabilidade = () => {
-    if (!kpis.resumoViabilidade) return;
+    if (!rowsViabilidade.length) return;
     const header = [
       'Categoria',
       'Orçamento Base',
@@ -110,7 +145,7 @@ export function OrcamentoDashboard({
       'Contratado (%)',
     ].join('\t');
 
-    const rows = kpis.resumoViabilidade.map((r) => [
+    const rows = rowsViabilidade.map((r) => [
       r.categoria,
       r.orcamentoBase.toFixed(2),
       r.valorContratado.toFixed(2),
@@ -137,34 +172,6 @@ export function OrcamentoDashboard({
     setTabelaCopiada(true);
     setTimeout(() => setTabelaCopiada(false), 2500);
   };
-
-  const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
-  const statusObraSelecionada = filtroObra ? getObraStatus(filtroObra, obras) : null;
-
-  // KPIs consolidados
-  const kpis = useMemo(() => {
-    return calculateKpis(
-      orcamentos,
-      contratos,
-      medicoes,
-      filtroObra || null,
-      catParam,
-      obras
-    );
-  }, [orcamentos, contratos, medicoes, filtroObra, catParam, obras]);
-
-  // Totais consolidados para o Resumo Executivo de Viabilidade (todas as categorias da obra)
-  const totaisViabilidade = useMemo(() => {
-    const rows = kpis.resumoViabilidade || [];
-    const base = rows.reduce((acc, r) => acc + r.orcamentoBase, 0);
-    const contratado = rows.reduce((acc, r) => acc + r.valorContratado, 0);
-    const saldo = rows.reduce((acc, r) => acc + r.saldoAContratar, 0);
-    const tendencia = rows.reduce((acc, r) => acc + r.valorTendencia, 0);
-    const desvio = tendencia - base;
-    const desvioPct = base > 0 ? (desvio / base) * 100 : 0;
-    const contratadoPct = base > 0 ? (contratado / base) * 100 : 0;
-    return { base, contratado, saldo, tendencia, desvio, desvioPct, contratadoPct };
-  }, [kpis.resumoViabilidade]);
 
   // Relação 30 / 60 / 90 dias limpa
   const janela306090 = useMemo(() => {
@@ -544,6 +551,8 @@ export function OrcamentoDashboard({
               {formatCurrency(
                 statusObraSelecionada === 'Paralisada'
                   ? kpis.faltaContratarPausado
+                  : !filtroObra
+                  ? kpis.faltaContratar + kpis.faltaContratarPausado
                   : kpis.faltaContratar
               )}
             </CardTitle>
@@ -897,7 +906,7 @@ export function OrcamentoDashboard({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-[#0B384D]/60 text-slate-700 dark:text-slate-200">
-              {kpis.resumoViabilidade?.map((row) => {
+              {rowsViabilidade.map((row) => {
                 const isDesvioPositivo = row.desvioValor > 1;
                 const isDesvioNegativo = row.desvioValor < -1;
                 return (

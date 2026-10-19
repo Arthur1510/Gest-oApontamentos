@@ -114,7 +114,7 @@ export function normalizeCategoria(cat?: string | null, disciplina?: string | nu
 
   // 2. Se a disciplina aponta diretamente para outra categoria específica (evita que o padrão legado 'Projeto' retenha o item)
   if (d) {
-    if (d.includes('LEGALIZA') || d.includes('TAXA') || d.includes('PREFEITURA') || d.includes('ORGAO') || d.includes('PGRCC')) return 'Legalização';
+    if (d.includes('LEGALIZA') || d.includes('TAXA') || d.includes('PREFEITURA') || d.includes('ORGAO') || d.includes('PGRCC') || d.includes('PLANI') || d.includes('TOPOGRAF')) return 'Legalização';
     if (d.includes('QUALIDADE') || d === 'CQ' || d.includes('DESEMPENHO')) return 'Qualidade';
     if (d.includes('ORCAMENTO') || d.includes('PLANEJAMENTO')) return 'Orçamento';
     if (d.includes('NEGOCIO') || d.includes('NOVOS NEGOCIOS')) return 'Novos Negócios';

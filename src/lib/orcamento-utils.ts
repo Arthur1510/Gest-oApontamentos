@@ -303,7 +303,16 @@ export function isContratoMatchOrcamento(
 
   const cCat = normalizeCategoria(c.categoria, c.disciplina);
   const oCat = normalizeCategoria(o.categoria, o.disciplina);
-  if (cCat !== oCat) return false;
+  if (cCat !== oCat) {
+    const cDiscText = normalizeText(c.disciplina);
+    const oDiscText = normalizeText(o.disciplina);
+    const itensMesmaDisc = allOrcamentosDaObra
+      ? allOrcamentosDaObra.filter((item) => normalizeText(item.disciplina) === cDiscText)
+      : [];
+    if (!cDiscText || !oDiscText || cDiscText !== oDiscText || itensMesmaDisc.length !== 1) {
+      return false;
+    }
+  }
 
   const cDisc = normalizeText(c.disciplina);
   const oDisc = normalizeText(o.disciplina);
@@ -767,87 +776,135 @@ export function calculateKpis(
   let qtdFaltaContratar = 0;
   let faltaContratarPausado = 0;
   let qtdFaltaContratarPausado = 0;
+  let totalTendencia = 0;
   let orcadoContratados = 0;
   let contratadoNosOrcamentos = 0;
   let totalEconomiaItens = 0;
   let totalEstouroItens = 0;
   let orcadoComparavel = 0;
-  let totalTendencia = 0;
+  // Mapa acumulador para o Resumo de Viabilidade por Categoria (todas as categorias da obra)
+  const catViabMap: Record<CategoriaContrato, {
+    orcamentoBase: number;
+    saldoAContratar: number;
+    valorTendencia: number;
+    qtdItens: number;
+  }> = {} as any;
 
-  for (const o of filteredOrc) {
+  CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
+    catViabMap[cat] = {
+      orcamentoBase: 0,
+      saldoAContratar: 0,
+      valorTendencia: 0,
+      qtdItens: 0,
+    };
+  });
+
+  for (const o of orcsDaObra) {
+    const cat = normalizeCategoria(o.categoria, o.disciplina);
     const base = Number(o.orcamento_base) || 0;
     const contratadoItem = Number(o.valor_contratado) || 0;
     const stObra = getObraStatus(o.obra || o.nome_obra, obras);
     const hasCustomTendencia =
       o.valor_tendencia !== undefined &&
       o.valor_tendencia !== null &&
-      Number(o.valor_tendencia) > 0;
+      Number(o.valor_tendencia) >= 0;
     const valorReferencia = hasCustomTendencia ? Number(o.valor_tendencia) : base;
 
-    if (o.status === 'Cancelado') {
-      if (stObra === 'Cancelada') {
-        // Em obras totalmente canceladas, linhas abertas não geram economia artificial
-        continue;
-      }
-      // Apenas contratos já firmados antes do cancelamento contam como Base Contratados
-      if (contratadoItem > 0) {
-        orcadoContratados += base;
-        contratadoNosOrcamentos += contratadoItem;
-      }
-      orcadoComparavel += base;
-      if (base > contratadoItem) {
-        totalEconomiaItens += (base - contratadoItem);
-      } else if (contratadoItem > base) {
-        totalEstouroItens += (contratadoItem - base);
-      }
-      totalTendencia += contratadoItem;
-      continue;
-    }
-
-    // Um item é considerado contratado/fechado se possuir status 'Contratado'
+    const isCancelado = o.status === 'Cancelado';
     const isFechado = o.status === 'Contratado';
 
-    if (!isFechado) {
-      if (stObra === 'Cancelada') {
-        // Em obras canceladas, itens ainda não contratados têm faltaContratar zerado e não contam como economia
-        continue;
-      }
-      // O saldo aberto considera a tendência de custo estipulada pelo usuário para a linha
-      const saldoAberto = Math.max(0, valorReferencia - contratadoItem);
-      if (saldoAberto > 0) {
-        if (stObra === 'Paralisada') {
-          faltaContratarPausado += saldoAberto;
-          qtdFaltaContratarPausado++;
-        } else {
-          faltaContratar += saldoAberto;
-          qtdFaltaContratar++;
-        }
-      }
-      orcadoComparavel += base;
-      totalTendencia += valorReferencia;
-    } else {
-      orcadoContratados += base;
-      orcadoComparavel += base;
-      contratadoNosOrcamentos += contratadoItem;
-      if (contratadoItem < base) {
-        totalEconomiaItens += base - contratadoItem;
-      } else if (contratadoItem > base) {
-        totalEstouroItens += contratadoItem - base;
-      }
+    let itemSaldo = 0;
+    let itemSaldoPausado = 0;
+    let itemTendencia = 0;
 
-      // Se houver tendência configurada maior que o já contratado, computa o saldo residual aberto
+    if (isCancelado) {
+      if (stObra === 'Cancelada') {
+        itemSaldo = 0;
+        itemTendencia = 0;
+      } else {
+        itemSaldo = 0;
+        itemTendencia = contratadoItem;
+      }
+    } else if (!isFechado) {
+      if (stObra === 'Cancelada') {
+        itemSaldo = 0;
+        itemTendencia = 0;
+      } else {
+        const saldoAberto = Math.max(0, valorReferencia - contratadoItem);
+        if (saldoAberto > 0) {
+          if (stObra === 'Paralisada') {
+            itemSaldoPausado = saldoAberto;
+          } else {
+            itemSaldo = saldoAberto;
+          }
+        }
+        itemTendencia = valorReferencia;
+      }
+    } else {
+      // isFechado (Contratado)
       if (hasCustomTendencia && Number(o.valor_tendencia) > contratadoItem) {
         const saldoResidual = Number(o.valor_tendencia) - contratadoItem;
         if (stObra === 'Paralisada') {
-          faltaContratarPausado += saldoResidual;
-          qtdFaltaContratarPausado++;
+          itemSaldoPausado = saldoResidual;
         } else {
-          faltaContratar += saldoResidual;
-          qtdFaltaContratar++;
+          itemSaldo = saldoResidual;
         }
-        totalTendencia += Number(o.valor_tendencia);
+        itemTendencia = Number(o.valor_tendencia);
       } else {
-        totalTendencia += contratadoItem;
+        itemSaldo = 0;
+        itemTendencia = contratadoItem;
+      }
+    }
+
+    // Acumula na viabilidade por categoria
+    if (catViabMap[cat]) {
+      catViabMap[cat].orcamentoBase += base;
+      catViabMap[cat].qtdItens += 1;
+      catViabMap[cat].saldoAContratar += itemSaldo + itemSaldoPausado;
+      catViabMap[cat].valorTendencia += itemTendencia;
+    }
+
+    // Se o item estiver dentro do filtro de categoria ativo, acumula nos KPIs gerais
+    const matchesFilterCat = !filtroCategoria || cat === filtroCategoria;
+    if (matchesFilterCat) {
+      if (isCancelado) {
+        if (stObra !== 'Cancelada') {
+          if (contratadoItem > 0) {
+            orcadoContratados += base;
+            contratadoNosOrcamentos += contratadoItem;
+          }
+          orcadoComparavel += base;
+          if (base > contratadoItem) {
+            totalEconomiaItens += (base - contratadoItem);
+          } else if (contratadoItem > base) {
+            totalEstouroItens += (contratadoItem - base);
+          }
+          totalTendencia += itemTendencia;
+        }
+      } else if (!isFechado) {
+        if (stObra !== 'Cancelada') {
+          faltaContratar += itemSaldo;
+          if (itemSaldo > 0) qtdFaltaContratar++;
+          faltaContratarPausado += itemSaldoPausado;
+          if (itemSaldoPausado > 0) qtdFaltaContratarPausado++;
+          orcadoComparavel += base;
+          totalTendencia += itemTendencia;
+        }
+      } else {
+        orcadoContratados += base;
+        orcadoComparavel += base;
+        contratadoNosOrcamentos += contratadoItem;
+        if (contratadoItem < base) {
+          totalEconomiaItens += base - contratadoItem;
+        } else if (contratadoItem > base) {
+          totalEstouroItens += contratadoItem - base;
+        }
+
+        faltaContratar += itemSaldo;
+        if (itemSaldo > 0) qtdFaltaContratar++;
+        faltaContratarPausado += itemSaldoPausado;
+        if (itemSaldoPausado > 0) qtdFaltaContratarPausado++;
+        totalTendencia += itemTendencia;
       }
     }
   }
@@ -970,32 +1027,23 @@ export function calculateKpis(
 
   // Resumo Executivo sintético por Categoria para atualização de Viabilidade (base da obra)
   const resumoViabilidade: ResumoViabilidadeCategoria[] = CATEGORIA_CONTRATO_OPCOES.map((cat) => {
-    const orcsCat = orcsDaObra.filter((o) => normalizeCategoria(o.categoria, o.disciplina) === cat);
+    const item = catViabMap[cat];
     const ctsCat = ctsDaObra.filter((c) => (catPorContrato[c.id] || normalizeCategoria(c.categoria, c.disciplina)) === cat);
-    const orcamentoBase = orcsCat.reduce((acc, o) => acc + (Number(o.orcamento_base) || 0), 0);
     const valorContratado = ctsCat.reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
-    const saldoAContratar = orcsCat.reduce(
-      (acc, o) => acc + (Number(o.saldo_a_contratar) || 0),
-      0
-    );
-    const valorTendencia = orcsCat.reduce(
-      (acc, o) => acc + (Number(o.valor_tendencia != null ? o.valor_tendencia : o.orcamento_base) || 0),
-      0
-    );
-    const desvioValor = valorTendencia - orcamentoBase;
-    const desvioPercentual = orcamentoBase > 0 ? (desvioValor / orcamentoBase) * 100 : 0;
-    const percentualContratado = orcamentoBase > 0 ? (valorContratado / orcamentoBase) * 100 : 0;
+    const desvioValor = item.valorTendencia - item.orcamentoBase;
+    const desvioPercentual = item.orcamentoBase > 0 ? (desvioValor / item.orcamentoBase) * 100 : 0;
+    const percentualContratado = item.orcamentoBase > 0 ? (valorContratado / item.orcamentoBase) * 100 : 0;
 
     return {
       categoria: cat,
-      orcamentoBase,
+      orcamentoBase: item.orcamentoBase,
       valorContratado,
-      saldoAContratar,
-      valorTendencia,
+      saldoAContratar: item.saldoAContratar,
+      valorTendencia: item.valorTendencia,
       desvioValor,
       desvioPercentual,
       percentualContratado,
-      qtdItens: orcsCat.length,
+      qtdItens: item.qtdItens,
       qtdContratos: ctsCat.length,
     };
   });
