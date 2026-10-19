@@ -413,25 +413,41 @@ export function recalculateOrcamentos(
         ? 'Contratado'
         : o.status || (valorContratado > 0 ? 'Contratado' : 'A contratar');
 
+    const isCancelado = statusAtual === 'Cancelado';
+    const isContratado = statusAtual === 'Contratado';
+
     const hasCustomTendencia =
       o.valor_tendencia !== undefined &&
       o.valor_tendencia !== null &&
-      Number(o.valor_tendencia) > 0;
-    const valorTendencia = hasCustomTendencia ? Number(o.valor_tendencia) : o.orcamento_base;
+      Number(o.valor_tendencia) >= 0;
 
-    // Se o item estiver Cancelado, zeramos o saldo a contratar restante
-    const saldoBase = statusAtual === 'Cancelado' ? 0 : o.orcamento_base - valorContratado;
-    const saldoTendencia = statusAtual === 'Cancelado' ? 0 : valorTendencia - valorContratado;
-    // O saldo a contratar efetivo reflete a tendência se informada, senão usa o saldo base
-    const saldoAContratar = hasCustomTendencia ? saldoTendencia : saldoBase;
+    let valorTendencia = 0;
+    let saldoAContratar = 0;
+
+    if (isCancelado) {
+      valorTendencia = valorContratado;
+      saldoAContratar = 0;
+    } else if (isContratado) {
+      if (hasCustomTendencia && Number(o.valor_tendencia) > valorContratado) {
+        valorTendencia = Number(o.valor_tendencia);
+        saldoAContratar = Number(o.valor_tendencia) - valorContratado;
+      } else {
+        valorTendencia = valorContratado;
+        saldoAContratar = 0;
+      }
+    } else {
+      valorTendencia = hasCustomTendencia ? Number(o.valor_tendencia) : Number(o.orcamento_base);
+      saldoAContratar = Math.max(0, valorTendencia - valorContratado);
+    }
+
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
     return {
       ...o,
       valor_contratado: valorContratado,
       saldo_a_contratar: saldoAContratar,
-      saldo_tendencia: saldoTendencia,
-      valor_tendencia: o.valor_tendencia !== undefined ? o.valor_tendencia : null,
+      saldo_tendencia: saldoAContratar,
+      valor_tendencia: hasCustomTendencia ? Number(o.valor_tendencia) : (isContratado ? valorContratado : null),
       justificativa_tendencia: o.justificativa_tendencia || null,
       valor_medido: valorMedido,
       saldo_medicao: saldoMedicao,
@@ -767,23 +783,23 @@ export function calculateKpis(
         // Em obras totalmente canceladas, linhas abertas não geram economia artificial
         continue;
       }
-      // Em obras ativas/pausadas, o cancelamento da linha do orçamento elimina a necessidade
-      // de contratação futura daquele saldo, gerando economia real em relação ao orçamento base.
-      orcadoContratados += base;
+      // Apenas contratos já firmados antes do cancelamento contam como Base Contratados
+      if (contratadoItem > 0) {
+        orcadoContratados += base;
+        contratadoNosOrcamentos += contratadoItem;
+      }
       orcadoComparavel += base;
-      contratadoNosOrcamentos += contratadoItem;
       if (base > contratadoItem) {
         totalEconomiaItens += (base - contratadoItem);
       } else if (contratadoItem > base) {
         totalEstouroItens += (contratadoItem - base);
       }
+      totalTendencia += contratadoItem;
       continue;
     }
 
-    totalTendencia += valorReferencia;
-
-    // Um item é considerado contratado/fechado se possuir status 'Contratado' ou já tiver contrato vinculado (contratadoItem > 0)
-    const isFechado = o.status === 'Contratado' || contratadoItem > 0;
+    // Um item é considerado contratado/fechado se possuir status 'Contratado'
+    const isFechado = o.status === 'Contratado';
 
     if (!isFechado) {
       if (stObra === 'Cancelada') {
@@ -802,6 +818,7 @@ export function calculateKpis(
         }
       }
       orcadoComparavel += base;
+      totalTendencia += valorReferencia;
     } else {
       orcadoContratados += base;
       orcadoComparavel += base;
@@ -810,6 +827,21 @@ export function calculateKpis(
         totalEconomiaItens += base - contratadoItem;
       } else if (contratadoItem > base) {
         totalEstouroItens += contratadoItem - base;
+      }
+
+      // Se houver tendência configurada maior que o já contratado, computa o saldo residual aberto
+      if (hasCustomTendencia && Number(o.valor_tendencia) > contratadoItem) {
+        const saldoResidual = Number(o.valor_tendencia) - contratadoItem;
+        if (stObra === 'Paralisada') {
+          faltaContratarPausado += saldoResidual;
+          qtdFaltaContratarPausado++;
+        } else {
+          faltaContratar += saldoResidual;
+          qtdFaltaContratar++;
+        }
+        totalTendencia += Number(o.valor_tendencia);
+      } else {
+        totalTendencia += contratadoItem;
       }
     }
   }
@@ -933,11 +965,11 @@ export function calculateKpis(
     const orcamentoBase = orcsCat.reduce((acc, o) => acc + (Number(o.orcamento_base) || 0), 0);
     const valorContratado = ctsCat.reduce((acc, c) => acc + (Number(c.valor_contrato) || 0), 0);
     const saldoAContratar = orcsCat.reduce(
-      (acc, o) => acc + (o.status === 'Cancelado' ? 0 : (Number(o.saldo_a_contratar) || 0)),
+      (acc, o) => acc + (Number(o.saldo_a_contratar) || 0),
       0
     );
     const valorTendencia = orcsCat.reduce(
-      (acc, o) => acc + (o.valor_tendencia != null ? Number(o.valor_tendencia) : (Number(o.orcamento_base) || 0)),
+      (acc, o) => acc + (Number(o.valor_tendencia != null ? o.valor_tendencia : o.orcamento_base) || 0),
       0
     );
     const desvioValor = valorTendencia - orcamentoBase;

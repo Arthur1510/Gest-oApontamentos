@@ -88,10 +88,10 @@ export function RelatorioOrcamentoPdfModal({
 }: RelatorioOrcamentoPdfModalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const [localFiltroObra, setLocalFiltroObra] = useState<string>(filtroObraProp || '');
+  const [localFiltroObra, setLocalFiltroObra] = useState<string>(filtroObraProp || MODO_RESUMO_E_OBRAS);
 
   useEffect(() => {
-    setLocalFiltroObra(filtroObraProp || '');
+    setLocalFiltroObra(filtroObraProp || MODO_RESUMO_E_OBRAS);
   }, [filtroObraProp, isOpen]);
 
   const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | CategoriaContrato>('Todos');
@@ -108,6 +108,9 @@ export function RelatorioOrcamentoPdfModal({
   const [secoes, setSecoes] = useState({
     kpis: true,
     janela306090: true,
+    viabilidade: true,
+    quadroObras: true,
+    tendencias: true,
     disciplinas: true,
     contratos: true,
     curvaGrafico: true,
@@ -123,6 +126,9 @@ export function RelatorioOrcamentoPdfModal({
     setSecoes({
       kpis: valor,
       janela306090: valor,
+      viabilidade: valor,
+      quadroObras: valor,
+      tendencias: valor,
       disciplinas: valor,
       contratos: valor,
       curvaGrafico: valor,
@@ -131,11 +137,17 @@ export function RelatorioOrcamentoPdfModal({
     });
   };
 
-  const catParam = filtroCategoria === 'Todos' ? null : filtroCategoria;
   const isModoResumoEObras = localFiltroObra === MODO_RESUMO_E_OBRAS;
   const effectiveSingleObra = isModoResumoEObras ? null : localFiltroObra || null;
+  const effectiveCategory: CategoriaContrato | null =
+    filtroCategoria === 'Todos' ? null : filtroCategoria;
+  const categoryLabel: string = effectiveCategory
+    ? effectiveCategory === 'Projeto'
+      ? 'Projetos'
+      : effectiveCategory
+    : 'Todas as Categorias';
 
-  // Lista consolidada de todas as obras que possuem orçamento ou contrato ativo nos filtros
+  // Lista consolidada de todas as obras que possuem orçamento ou contrato ativo no escopo da categoria selecionada (ou todas)
   const consolidadoObras = useMemo(() => {
     const base = calculateConsolidadoObras(
       orcamentos,
@@ -143,7 +155,7 @@ export function RelatorioOrcamentoPdfModal({
       medicoes,
       obras,
       filtroFornecedor || null,
-      catParam
+      effectiveCategory
     );
     const list = [...base];
     if (ordemListas === 'alfabetica') {
@@ -153,7 +165,7 @@ export function RelatorioOrcamentoPdfModal({
       return list.sort((a, b) => b.faltaContratar - a.faltaContratar || b.valorAMedir - a.valorAMedir || b.totalPrevisto - a.totalPrevisto);
     }
     return list.sort((a, b) => b.totalPrevisto - a.totalPrevisto);
-  }, [orcamentos, contratos, medicoes, obras, filtroFornecedor, catParam, ordemListas]);
+  }, [orcamentos, contratos, medicoes, obras, filtroFornecedor, effectiveCategory, ordemListas]);
 
   // Curva S de Desembolso Financeiro (para exportação Excel ou visão simples)
   const curvaPontosRelatorio = useMemo(() => {
@@ -162,10 +174,10 @@ export function RelatorioOrcamentoPdfModal({
       effectiveSingleObra,
       filtroFornecedor || null,
       contratos,
-      catParam,
+      effectiveCategory,
       'desembolso'
     );
-  }, [medicoes, effectiveSingleObra, filtroFornecedor, contratos, catParam]);
+  }, [medicoes, effectiveSingleObra, filtroFornecedor, contratos, effectiveCategory]);
 
   const dataAtual = new Date().toLocaleDateString('pt-BR');
   const horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -191,6 +203,7 @@ export function RelatorioOrcamentoPdfModal({
     curvaGrafico: 224, // 28px título + 196px gráfico
     tableHeader: 54, // 28px título + 26px cabeçalho da tabela
     tableRow: 24, // Altura fixa de cada linha da tabela
+    viabilidadeTable: 230, // Tabela Resumo Executivo de Viabilidade (EAC 6 categorias + Total)
   };
 
   // Espaço útil exato disponível para os tópicos na relação (Cabeçalho <-> Rodapé):
@@ -205,6 +218,7 @@ export function RelatorioOrcamentoPdfModal({
   type PdfPageBlock =
     | { type: 'kpis' }
     | { type: 'janela306090' }
+    | { type: 'viabilidadeTable' }
     | {
         type: 'quadroObras';
         items: ItemConsolidadoObra[];
@@ -230,6 +244,22 @@ export function RelatorioOrcamentoPdfModal({
         isContinuation: boolean;
       }
     | {
+        type: 'tendencias';
+        items: Array<{
+          id: string;
+          obra?: string;
+          disciplina: string;
+          subdisciplina?: string;
+          categoria: CategoriaContrato;
+          orcamentoBase: number;
+          valorTendencia: number;
+          desvio: number;
+          justificativa: string;
+        }>;
+        isContinuation: boolean;
+        totalCount: number;
+      }
+    | {
         type: 'ocorrencias';
         items: Array<AditivoContrato & { empresa: string; obra: string }>;
         isContinuation: boolean;
@@ -239,6 +269,7 @@ export function RelatorioOrcamentoPdfModal({
     headerTitle: string;
     headerObraBadge: string;
     headerSubBadge?: string;
+    headerCategoryBadge?: string;
     isSectionFirstPage: boolean;
     kpis: KpiOrcamento;
     janela306090: JanelaCaixa306090;
@@ -280,20 +311,24 @@ export function RelatorioOrcamentoPdfModal({
       obraCodigo: string | null,
       headerTitle: string,
       headerObraBadge: string,
-      headerSubBadge?: string
+      headerSubBadge?: string,
+      headerCategoryBadge?: string,
+      categoriaOverride?: CategoriaContrato | null,
+      skipKpisAndJanela: boolean = false
     ): PdfPageDescriptor[] => {
-      const scopeKpis = calculateKpis(orcamentos, contratos, medicoes, obraCodigo, catParam, obras);
+      const effectiveCat = categoriaOverride !== undefined ? categoriaOverride : catParam;
+      const scopeKpis = calculateKpis(orcamentos, contratos, medicoes, obraCodigo, effectiveCat, obras);
       const scopeJanela = calculateJanela306090(
         medicoes,
         contratos,
         obraCodigo,
         filtroFornecedor || null,
-        catParam,
+        effectiveCat,
         undefined,
         obras
       );
       const scopeDisciplinas = sortDisciplinasList(
-        calculateConsolidadoDisciplinas(orcamentos, obraCodigo, catParam, obras)
+        calculateConsolidadoDisciplinas(orcamentos, obraCodigo, effectiveCat, obras)
       );
       const scopeContratos = sortContratosList(
         calculateConsolidadoContratos(
@@ -301,7 +336,7 @@ export function RelatorioOrcamentoPdfModal({
           medicoes,
           obraCodigo,
           filtroFornecedor || null,
-          catParam,
+          effectiveCat,
           orcamentos,
           obras
         )
@@ -311,7 +346,7 @@ export function RelatorioOrcamentoPdfModal({
         obraCodigo,
         filtroFornecedor || null,
         contratos,
-        catParam,
+        effectiveCat,
         'desembolso',
         obras
       );
@@ -324,7 +359,7 @@ export function RelatorioOrcamentoPdfModal({
       const scopeContratosFiltrados = contratos.filter((c) => {
         if (obraCodigo && getCanonicalObra(c.obra, obras) !== getCanonicalObra(obraCodigo, obras)) return false;
         if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-        if (filtroCategoria !== 'Todos' && c.categoria !== filtroCategoria) return false;
+        if (effectiveCat && c.categoria !== effectiveCat) return false;
         return true;
       });
 
@@ -332,6 +367,49 @@ export function RelatorioOrcamentoPdfModal({
         (c.aditivos || []).map((a) => ({ ...a, empresa: c.empresa, obra: c.obra }))
       );
       const scopeDistratados = scopeContratosFiltrados.filter((c) => c.status === 'Distratado');
+
+      // Premissas e Justificativas de Tendência cadastradas no orçamento
+      const scopeTendencias = orcamentos
+        .filter((o) => {
+          if (obraCodigo && getCanonicalObra(o.obra || o.nome_obra, obras) !== getCanonicalObra(obraCodigo, obras)) {
+            return false;
+          }
+          if (effectiveCat && o.categoria !== effectiveCat) {
+            return false;
+          }
+          const hasJustificativa = !!(o.justificativa_tendencia && o.justificativa_tendencia.trim() !== '');
+          const hasCustomValor =
+            o.valor_tendencia !== undefined &&
+            o.valor_tendencia !== null &&
+            Number(o.valor_tendencia) !== Number(o.orcamento_base);
+          return hasJustificativa || hasCustomValor;
+        })
+        .map((o) => {
+          const base = Number(o.orcamento_base) || 0;
+          const tend =
+            o.valor_tendencia !== undefined && o.valor_tendencia !== null
+              ? Number(o.valor_tendencia)
+              : base;
+          const desvio = tend - base;
+          return {
+            id: o.id,
+            obra: o.obra || o.nome_obra || '',
+            disciplina: o.disciplina,
+            subdisciplina: o.subdisciplina,
+            categoria: o.categoria,
+            orcamentoBase: base,
+            valorTendencia: tend,
+            desvio,
+            justificativa:
+              o.justificativa_tendencia?.trim() ||
+              (desvio > 0
+                ? 'Tendência projetada acima do orçamento base'
+                : desvio < 0
+                ? 'Economia projetada na contratação'
+                : 'Ajuste de tendência'),
+          };
+        })
+        .sort((a, b) => Math.abs(b.desvio) - Math.abs(a.desvio));
 
       const blockPages: PdfPageBlock[][] = [];
       let currentPage: PdfPageBlock[] = [];
@@ -355,22 +433,67 @@ export function RelatorioOrcamentoPdfModal({
         availPx -= blockHeightPx + actualGap;
       };
 
-      // 1. Cards Principais (KPIs)
-      if (secoes.kpis) {
-        const anyKpiExpanded =
-          expandedPdfBlocks.kpiContratado ||
-          expandedPdfBlocks.kpiFalta ||
-          expandedPdfBlocks.kpiMedido ||
-          expandedPdfBlocks.kpiAMedir;
-        pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+      if (!skipKpisAndJanela) {
+        // 1. Cards Principais (KPIs)
+        if (secoes.kpis) {
+          const anyKpiExpanded =
+            expandedPdfBlocks.kpiContratado ||
+            expandedPdfBlocks.kpiFalta ||
+            expandedPdfBlocks.kpiMedido ||
+            expandedPdfBlocks.kpiAMedir;
+          pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+        }
+
+        // 2. Janela 30 / 60 / 90 Dias
+        if (secoes.janela306090) {
+          pushFixedBlock(
+            { type: 'janela306090' },
+            expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
+          );
+        }
+
+        // 3. Quadro de Viabilidade da Obra (todas as categorias da obra)
+        if (secoes.viabilidade) {
+          pushFixedBlock({ type: 'viabilidadeTable' }, PDF_LAYOUT.viabilidadeTable);
+        }
       }
 
-      // 2. Janela 30 / 60 / 90 Dias
-      if (secoes.janela306090) {
-        pushFixedBlock(
-          { type: 'janela306090' },
-          expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
-        );
+      // 3.5 Premissas e Justificativas de Tendência da Obra
+      if (secoes.tendencias && scopeTendencias.length > 0) {
+        const rowH = 26;
+        const headerH = PDF_LAYOUT.sectionHeader + 26;
+        let remaining = [...scopeTendencias];
+        let isContinuation = false;
+
+        while (remaining.length > 0) {
+          const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const minRows = Math.min(remaining.length, 1);
+          const minNeeded = gap + headerH + minRows * rowH;
+
+          if (availPx < minNeeded && currentPage.length > 0) {
+            startNewPage();
+          }
+
+          const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const availForRows = availPx - effectiveGap - headerH;
+          const maxFit = Math.max(1, Math.floor(availForRows / rowH));
+          const chunk = remaining.slice(0, maxFit);
+
+          currentPage.push({
+            type: 'tendencias',
+            items: chunk,
+            isContinuation,
+            totalCount: scopeTendencias.length,
+          });
+
+          availPx -= effectiveGap + headerH + chunk.length * rowH;
+          remaining = remaining.slice(chunk.length);
+          isContinuation = true;
+
+          if (remaining.length > 0) {
+            startNewPage();
+          }
+        }
       }
 
       // 3. Consolidação por Disciplina
@@ -540,6 +663,9 @@ export function RelatorioOrcamentoPdfModal({
         headerTitle,
         headerObraBadge,
         headerSubBadge,
+        headerCategoryBadge:
+          headerCategoryBadge ||
+          (effectiveCat ? (effectiveCat === 'Projeto' ? 'Projetos' : effectiveCat) : 'Todas as Categorias'),
         isSectionFirstPage: idx === 0,
         kpis: scopeKpis,
         janela306090: scopeJanela,
@@ -549,97 +675,101 @@ export function RelatorioOrcamentoPdfModal({
       }));
     };
 
-    // MODO 3 (NOVO): Resumo Executivo Geral na(s) 1ª(s) página(s) + Todas as Obras Detalhadas abaixo (1 obra por nova folha A4)
-    if (isModoResumoEObras) {
-      const allPages: PdfPageDescriptor[] = [];
+    const targetCat: CategoriaContrato = filtroCategoria === 'Todos' ? 'Projeto' : filtroCategoria;
+    const targetCatLabel = targetCat === 'Projeto' ? 'Projetos' : targetCat;
 
-      // Parte A: Página(s) de Resumo Executivo do Portfólio (Totais de Todas as Obras + Quadro Comparativo por Obra)
-      const portfolioKpis = calculateKpis(orcamentos, contratos, medicoes, null, catParam, obras);
-      const portfolioJanela = calculateJanela306090(
+    // Helper para criar as páginas iniciais do Resumo Executivo (Cards Gerais em Projetos + 30/60/90 Geral + Quadro Resumo por Obra em Projetos)
+    const createExecutiveSummaryPages = (): PdfPageDescriptor[] => {
+      const macroKpis = calculateKpis(orcamentos, contratos, medicoes, null, targetCat, obras);
+      const macroJanela = calculateJanela306090(
         medicoes,
         contratos,
         null,
         filtroFornecedor || null,
-        catParam,
+        null,
         undefined,
         obras
       );
-      const portfolioCurva = calculateCurvaDesembolso(
+      const macroCurva = calculateCurvaDesembolso(
         medicoes,
         null,
         filtroFornecedor || null,
         contratos,
-        catParam,
+        null,
         'desembolso',
         obras
       );
-      const portfolioTotaisCurva = {
-        pago: portfolioCurva.reduce((acc, p) => acc + (p.pago || 0), 0),
-        aPagar: portfolioCurva.reduce((acc, p) => acc + (p.aPagar || 0), 0),
-        aMedir: portfolioCurva.reduce((acc, p) => acc + (p.aMedir || 0), 0),
+      const macroTotaisCurva = {
+        pago: macroCurva.reduce((acc, p) => acc + (p.pago || 0), 0),
+        aPagar: macroCurva.reduce((acc, p) => acc + (p.aPagar || 0), 0),
+        aMedir: macroCurva.reduce((acc, p) => acc + (p.aMedir || 0), 0),
       };
 
-      const summaryBlockPages: PdfPageBlock[][] = [];
-      let sumCurrentPage: PdfPageBlock[] = [];
-      let sumAvailPx = CONTENT_HEIGHT_PAGE_1;
+      const blockPages: PdfPageBlock[][] = [];
+      let currentPage: PdfPageBlock[] = [];
+      let availPx = CONTENT_HEIGHT_PAGE_1;
 
-      const startNewSummaryPage = () => {
-        if (sumCurrentPage.length > 0) {
-          summaryBlockPages.push(sumCurrentPage);
+      const startNewPage = () => {
+        if (currentPage.length > 0) {
+          blockPages.push(currentPage);
         }
-        sumCurrentPage = [];
-        sumAvailPx = CONTENT_HEIGHT_PAGE_N;
+        currentPage = [];
+        availPx = CONTENT_HEIGHT_PAGE_N;
       };
 
-      const pushSummaryFixed = (block: PdfPageBlock, blockHeightPx: number) => {
-        const gap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        if (sumAvailPx < blockHeightPx + gap && sumCurrentPage.length > 0) {
-          startNewSummaryPage();
+      const pushFixedBlock = (block: PdfPageBlock, blockHeightPx: number) => {
+        const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+        if (availPx < blockHeightPx + gap && currentPage.length > 0) {
+          startNewPage();
         }
-        const actualGap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-        sumCurrentPage.push(block);
-        sumAvailPx -= blockHeightPx + actualGap;
+        const actualGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+        currentPage.push(block);
+        availPx -= blockHeightPx + actualGap;
       };
 
-      // 1. Posição Geral Consolidada do Portfólio (KPIs de todas as obras)
-      const anyKpiExpanded =
-        expandedPdfBlocks.kpiContratado ||
-        expandedPdfBlocks.kpiFalta ||
-        expandedPdfBlocks.kpiMedido ||
-        expandedPdfBlocks.kpiAMedir;
-      pushSummaryFixed({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+      // 1. Cards Principais Gerais (Macro - todas as categorias)
+      if (secoes.kpis) {
+        const anyKpiExpanded =
+          expandedPdfBlocks.kpiContratado ||
+          expandedPdfBlocks.kpiFalta ||
+          expandedPdfBlocks.kpiMedido ||
+          expandedPdfBlocks.kpiAMedir;
+        pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
+      }
 
-      // 2. Janela 30/60/90 Dias Consolidada do Portfólio
-      pushSummaryFixed(
-        { type: 'janela306090' },
-        expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
-      );
+      // 2. Previsão de Desembolso Geral (30 / 60 / 90 Dias - todas as categorias)
+      if (secoes.janela306090) {
+        pushFixedBlock(
+          { type: 'janela306090' },
+          expandedPdfBlocks.pdf306090 ? PDF_LAYOUT.janelaExpanded : PDF_LAYOUT.janelaNormal
+        );
+      }
 
-      // 3. Quadro Resumo Comparativo de Todas as Obras Ativas
-      if (consolidadoObras.length > 0) {
+      // 3. Quadro Resumo por Obra Filtrado para Projetos
+      if (secoes.quadroObras && consolidadoObras.length > 0) {
         const cardH = expandedPdfBlocks.pdfQuadroObras ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
         let remaining = [...consolidadoObras];
         let isContinuation = false;
 
         while (remaining.length > 0) {
-          const gap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const gap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
           const minCards = Math.min(remaining.length, 2);
           const minNeeded =
             gap + PDF_LAYOUT.sectionHeader + minCards * cardH + (minCards - 1) * PDF_LAYOUT.cardGap;
 
-          if (sumAvailPx < minNeeded && sumCurrentPage.length > 0) {
-            startNewSummaryPage();
+          if (availPx < minNeeded && currentPage.length > 0) {
+            startNewPage();
           }
 
-          const effectiveGap = sumCurrentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
-          const availForCards = sumAvailPx - effectiveGap - PDF_LAYOUT.sectionHeader;
+          const effectiveGap = currentPage.length > 0 ? PDF_LAYOUT.sectionGap : 0;
+          const availForCards = availPx - effectiveGap - PDF_LAYOUT.sectionHeader;
           const maxFit = Math.max(
             1,
             Math.floor((availForCards + PDF_LAYOUT.cardGap) / (cardH + PDF_LAYOUT.cardGap))
           );
           const chunk = remaining.slice(0, maxFit);
 
-          sumCurrentPage.push({
+          currentPage.push({
             type: 'quadroObras',
             items: chunk,
             isContinuation,
@@ -647,42 +777,55 @@ export function RelatorioOrcamentoPdfModal({
           });
 
           const usedCardsPx = chunk.length * cardH + (chunk.length - 1) * PDF_LAYOUT.cardGap;
-          sumAvailPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
+          availPx -= effectiveGap + PDF_LAYOUT.sectionHeader + usedCardsPx;
           remaining = remaining.slice(chunk.length);
           isContinuation = true;
 
           if (remaining.length > 0) {
-            startNewSummaryPage();
+            startNewPage();
           }
         }
       }
 
-      if (sumCurrentPage.length > 0) {
-        summaryBlockPages.push(sumCurrentPage);
+      if (currentPage.length > 0) {
+        blockPages.push(currentPage);
       }
 
-      const finalSummaryPages = summaryBlockPages.length > 0 ? summaryBlockPages : [[]];
-      for (let i = 0; i < finalSummaryPages.length; i++) {
-        allPages.push({
-          headerTitle: 'RESUMO EXECUTIVO DO PORTFÓLIO — VISÃO CONSOLIDADA DE OBRAS',
-          headerObraBadge: 'RESUMO EXECUTIVO (TODAS AS OBRAS)',
-          headerSubBadge: `${consolidadoObras.length} ${consolidadoObras.length === 1 ? 'Obra' : 'Obras'}`,
-          isSectionFirstPage: i === 0,
-          kpis: portfolioKpis,
-          janela306090: portfolioJanela,
-          curvaPontos: portfolioCurva,
-          totaisCurva: portfolioTotaisCurva,
-          blocks: finalSummaryPages[i],
-        });
-      }
+      const finalBlockPages = blockPages.length > 0 ? blockPages : [[]];
 
-      // Parte B: Relatório Completo de Cada Obra Individualmente (iniciando cada obra em nova folha A4)
+      return finalBlockPages.map((blocks, idx) => ({
+        headerTitle: `RESUMO EXECUTIVO DO PORTFÓLIO — VISÃO GERAL DE ${targetCatLabel.toUpperCase()}`,
+        headerObraBadge: 'RESUMO EXECUTIVO (TODAS AS OBRAS)',
+        headerSubBadge: idx === 0 ? `Macro Portfólio (${targetCatLabel})` : 'Continuação Resumo',
+        headerCategoryBadge: targetCatLabel,
+        isSectionFirstPage: idx === 0,
+        kpis: macroKpis,
+        janela306090: macroJanela,
+        curvaPontos: macroCurva,
+        totaisCurva: macroTotaisCurva,
+        blocks,
+      }));
+    };
+
+    // MODO 1: RESUMO EXECUTIVO + TODAS AS OBRAS DETALHADAS (MODO PRINCIPAL)
+    if (isModoResumoEObras) {
+      const allPages: PdfPageDescriptor[] = [];
+
+      // 1. Página Inicial: Cards Macro + 30/60/90 Geral + Quadro Resumo de Obras (Projetos)
+      const summaryPages = createExecutiveSummaryPages();
+      allPages.push(...summaryPages);
+
+      // 2. Depois já começa a mostrar as obras individualmente:
+      // Em cada obra: Cards + 30/60/90 + Quadro para Viabilidade + Disciplinas + Contratos!
       consolidadoObras.forEach((obraItem, idx) => {
         const obraPages = buildScopePages(
           obraItem.codigo,
-          'CONSOLIDAÇÃO DE ORÇAMENTOS, CONTRATOS & MEDIÇÕES',
+          `DETALHAMENTO DE ${targetCatLabel.toUpperCase()} — ${obraItem.label}`,
           obraItem.label,
-          `Obra ${idx + 1} de ${consolidadoObras.length}`
+          `Obra ${idx + 1} de ${consolidadoObras.length} (${targetCatLabel})`,
+          targetCatLabel,
+          targetCat,
+          false
         );
         allPages.push(...obraPages);
       });
@@ -690,15 +833,21 @@ export function RelatorioOrcamentoPdfModal({
       return allPages;
     }
 
-    // MODO 1 (1 Obra Individual) ou MODO 2 (Todas as Obras Somadas)
-    const badgeLabel = effectiveSingleObra
-      ? getObraLabel(effectiveSingleObra, obras)
-      : 'TODAS AS OBRAS E EMPREENDIMENTOS (CONSOLIDADO)';
+    // MODO 2: CONSOLIDADO SOMADO (SEM DETALHAMENTO INDIVIDUAL DE CADA OBRA)
+    if (!effectiveSingleObra) {
+      return createExecutiveSummaryPages();
+    }
 
+    // MODO 3: OBRA INDIVIDUAL
+    const obraLabel = getObraLabel(effectiveSingleObra, obras);
     return buildScopePages(
       effectiveSingleObra,
-      'CONSOLIDAÇÃO DE ORÇAMENTOS, CONTRATOS & MEDIÇÕES',
-      badgeLabel
+      `DETALHAMENTO DE ${targetCatLabel.toUpperCase()} — ${obraLabel}`,
+      obraLabel,
+      targetCatLabel,
+      targetCatLabel,
+      targetCat,
+      false
     );
   }, [
     isModoResumoEObras,
@@ -988,11 +1137,14 @@ export function RelatorioOrcamentoPdfModal({
               {[
                 { key: 'kpis', label: '1. Cards Principais' },
                 { key: 'janela306090', label: '2. Desembolso 30/60/90 Dias' },
-                { key: 'disciplinas', label: '3. Consolidação por Disciplina' },
-                { key: 'contratos', label: '4. Consolidação dos Contratos' },
-                { key: 'curvaGrafico', label: '5. Curva S (Gráfico)' },
-                { key: 'curvaDesembolso', label: '6. Tabela Mensal Curva S' },
-                { key: 'ocorrencias', label: '7. Aditivos & Distratos' },
+                { key: 'viabilidade', label: '3. Quadro para Viabilidade' },
+                { key: 'tendencias', label: '4. Premissas de Tendência' },
+                { key: 'quadroObras', label: '5. Resumo de Obras' },
+                { key: 'disciplinas', label: '6. Consolidação por Disciplina' },
+                { key: 'contratos', label: '7. Consolidação dos Contratos' },
+                { key: 'curvaGrafico', label: '8. Curva S (Gráfico)' },
+                { key: 'curvaDesembolso', label: '9. Tabela Mensal Curva S' },
+                { key: 'ocorrencias', label: '10. Aditivos & Distratos' },
               ].map((item) => {
                 const ativo = secoes[item.key as keyof typeof secoes];
                 return (
@@ -1152,11 +1304,12 @@ export function RelatorioOrcamentoPdfModal({
                           <span className="truncate">{page.headerObraBadge}</span>
                         </span>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                          {filtroCategoria === 'Todos'
-                            ? 'Todas as Categorias'
-                            : filtroCategoria === 'Projeto'
-                            ? 'Projetos'
-                            : filtroCategoria}
+                          {page.headerCategoryBadge ||
+                            (filtroCategoria === 'Todos'
+                              ? 'Todas as Categorias'
+                              : filtroCategoria === 'Projeto'
+                              ? 'Projetos'
+                              : filtroCategoria)}
                         </span>
                       </div>
                     </div>
@@ -1184,11 +1337,12 @@ export function RelatorioOrcamentoPdfModal({
                           <span className="truncate">{page.headerObraBadge}</span>
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold border border-purple-200">
-                          {filtroCategoria === 'Todos'
-                            ? 'Todas as Categorias'
-                            : filtroCategoria === 'Projeto'
-                            ? 'Projetos'
-                            : filtroCategoria}
+                          {page.headerCategoryBadge ||
+                            (filtroCategoria === 'Todos'
+                              ? 'Todas as Categorias'
+                              : filtroCategoria === 'Projeto'
+                              ? 'Projetos'
+                              : filtroCategoria)}
                         </span>
                       </div>
                     </div>
@@ -1350,32 +1504,10 @@ export function RelatorioOrcamentoPdfModal({
                                     )}
                                   </div>
                                   <div className="flex items-center justify-between gap-1 text-[8.5px] text-slate-600 leading-none whitespace-nowrap">
-                                    <span className="truncate">
-                                      {estourouProjecaoKpi
-                                        ? 'Projeção vs. Orçado:'
-                                        : economizouKpi
-                                        ? 'Economia no Orçado:'
-                                        : faltaSuspensoKpi > 0 && pageKpis.faltaContratar > 0
-                                        ? 'Contratação Suspensa:'
-                                        : 'Projeção Total:'}
-                                    </span>
-                                    {estourouProjecaoKpi ? (
-                                      <strong className="text-rose-700 shrink-0">
-                                        +{formatCurrency(valorEstouroKpi)}
-                                      </strong>
-                                    ) : economizouKpi ? (
-                                      <strong className="text-emerald-700 shrink-0">
-                                        -{formatCurrency(economiaContratadosKpi)}
-                                      </strong>
-                                    ) : faltaSuspensoKpi > 0 && pageKpis.faltaContratar > 0 ? (
-                                      <strong className="text-amber-700 shrink-0">
-                                        {formatCurrencyShort(faltaSuspensoKpi)}
-                                      </strong>
-                                    ) : (
-                                      <strong className="text-slate-800 shrink-0">
-                                        {formatCurrency(pageKpis.custoTotalPrevisto)}
-                                      </strong>
-                                    )}
+                                    <span className="truncate">Tendência Total:</span>
+                                    <strong className="text-slate-800 shrink-0">
+                                      {formatCurrency(pageKpis.totalTendencia || pageKpis.totalOrcado)}
+                                    </strong>
                                   </div>
                                 </div>
                               </div>
@@ -1647,6 +1779,249 @@ export function RelatorioOrcamentoPdfModal({
                         );
                       }
 
+                      if (block.type === 'viabilidadeTable') {
+                        const rows = pageKpis.resumoViabilidade || [];
+                        const baseTotal = rows.reduce((acc, r) => acc + r.orcamentoBase, 0);
+                        const contratadoTotal = rows.reduce((acc, r) => acc + r.valorContratado, 0);
+                        const saldoTotal = rows.reduce((acc, r) => acc + r.saldoAContratar, 0);
+                        const tendenciaTotal = rows.reduce((acc, r) => acc + r.valorTendencia, 0);
+                        const desvioTotal = tendenciaTotal - baseTotal;
+                        const desvioPctTotal = baseTotal > 0 ? (desvioTotal / baseTotal) * 100 : 0;
+                        const contratadoPctTotal = baseTotal > 0 ? (contratadoTotal / baseTotal) * 100 : 0;
+
+                        const getCatBadge = (cat: string) => {
+                          switch (cat) {
+                            case 'Projeto':
+                              return 'bg-blue-50 text-blue-700 border-blue-200';
+                            case 'Legalização':
+                              return 'bg-purple-50 text-purple-700 border-purple-200';
+                            case 'Qualidade':
+                              return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                            case 'Orçamento':
+                              return 'bg-amber-50 text-amber-700 border-amber-200';
+                            case 'Negócios':
+                              return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                            case 'Obra':
+                              return 'bg-orange-50 text-orange-700 border-orange-200';
+                            default:
+                              return 'bg-slate-50 text-slate-700 border-slate-200';
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={`block-viabilidade-${bIdx}`}
+                            className="flex flex-col justify-start shrink-0 page-break-avoid"
+                          >
+                            <div
+                              style={{ height: '20px', marginBottom: '8px' }}
+                              className="flex items-center justify-between border-l-4 border-indigo-500 pl-2.5 shrink-0"
+                            >
+                              <div className="flex items-center gap-2">
+                                <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] leading-none">
+                                  Quadro para Viabilidade por Categoria
+                                </h2>
+                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 leading-none">
+                                  Todas as Categorias
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                              <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider text-[8px] border-b border-slate-200">
+                                  <tr>
+                                    <th className="py-1 px-2.5">Categoria</th>
+                                    <th className="py-1 px-2.5 text-right">Orçamento Base</th>
+                                    <th className="py-1 px-2.5 text-right">Contratado</th>
+                                    <th className="py-1 px-2.5 text-right">Falta Contratar</th>
+                                    <th className="py-1 px-2.5 text-right font-black text-indigo-700 bg-indigo-50/50">
+                                      Tendência Final
+                                    </th>
+                                    <th className="py-1 px-2.5 text-right">Desvio vs. Base</th>
+                                    <th className="py-1 px-2.5 text-right">Desvio (%)</th>
+                                    <th className="py-1 px-2.5 text-center">Contratado (%)</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-[8.5px] text-slate-700">
+                                  {rows.map((row) => {
+                                    const isDesvioPos = row.desvioValor > 1;
+                                    const isDesvioNeg = row.desvioValor < -1;
+                                    return (
+                                      <tr key={row.categoria} className="hover:bg-slate-50/40">
+                                        <td className="py-1 px-2.5 font-bold whitespace-nowrap">
+                                          <span className={`inline-block px-1.5 py-0.5 rounded border text-[7.5px] font-bold ${getCatBadge(row.categoria)}`}>
+                                            {row.categoria === 'Projeto' ? 'Projetos' : row.categoria}
+                                          </span>
+                                        </td>
+                                        <td className="py-1 px-2.5 text-right font-mono font-medium">{formatCurrency(row.orcamentoBase)}</td>
+                                        <td className="py-1 px-2.5 text-right font-mono font-semibold text-[#008EA9]">{formatCurrency(row.valorContratado)}</td>
+                                        <td className="py-1 px-2.5 text-right font-mono font-medium text-amber-700">{formatCurrency(row.saldoAContratar)}</td>
+                                        <td className="py-1 px-2.5 text-right font-mono font-black text-indigo-700 bg-indigo-50/30">{formatCurrency(row.valorTendencia)}</td>
+                                        <td className={`py-1 px-2.5 text-right font-mono font-bold ${
+                                          isDesvioPos ? 'text-rose-600' : isDesvioNeg ? 'text-emerald-600' : 'text-slate-500'
+                                        }`}>
+                                          {isDesvioPos
+                                            ? `+${formatCurrency(row.desvioValor)}`
+                                            : isDesvioNeg
+                                            ? `-${formatCurrency(Math.abs(row.desvioValor))}`
+                                            : 'R$ 0,00'}
+                                        </td>
+                                        <td className={`py-1 px-2.5 text-right font-mono font-semibold ${
+                                          isDesvioPos ? 'text-rose-600' : isDesvioNeg ? 'text-emerald-600' : 'text-slate-500'
+                                        }`}>
+                                          {row.orcamentoBase > 0 ? `${row.desvioPercentual > 0 ? '+' : ''}${row.desvioPercentual.toFixed(1)}%` : '-'}
+                                        </td>
+                                        <td className="py-1 px-2.5 text-center font-mono font-semibold text-slate-600">
+                                          {formatPercent(row.percentualContratado / 100)}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot className="bg-slate-100 text-slate-900 font-black border-t-2 border-slate-300 text-[9px]">
+                                  <tr>
+                                    <td className="py-1.5 px-2.5 uppercase tracking-wider font-black">TOTAL VIABILIDADE</td>
+                                    <td className="py-1.5 px-2.5 text-right font-mono">{formatCurrency(baseTotal)}</td>
+                                    <td className="py-1.5 px-2.5 text-right font-mono text-[#008EA9]">{formatCurrency(contratadoTotal)}</td>
+                                    <td className="py-1.5 px-2.5 text-right font-mono text-amber-700">{formatCurrency(saldoTotal)}</td>
+                                    <td className="py-1.5 px-2.5 text-right font-mono font-black text-indigo-700 bg-indigo-50/50">{formatCurrency(tendenciaTotal)}</td>
+                                    <td className={`py-1.5 px-2.5 text-right font-mono font-bold ${
+                                      desvioTotal > 1 ? 'text-rose-600' : desvioTotal < -1 ? 'text-emerald-600' : 'text-slate-900'
+                                    }`}>
+                                      {desvioTotal > 1
+                                        ? `+${formatCurrency(desvioTotal)}`
+                                        : desvioTotal < -1
+                                        ? `-${formatCurrency(Math.abs(desvioTotal))}`
+                                        : 'R$ 0,00'}
+                                    </td>
+                                    <td className={`py-1.5 px-2.5 text-right font-mono font-bold ${
+                                      desvioTotal > 1 ? 'text-rose-600' : desvioTotal < -1 ? 'text-emerald-600' : 'text-slate-900'
+                                    }`}>
+                                      {baseTotal > 0 ? `${desvioPctTotal > 0 ? '+' : ''}${desvioPctTotal.toFixed(1)}%` : '0.0%'}
+                                    </td>
+                                    <td className="py-1.5 px-2.5 text-center font-mono">
+                                      {formatPercent(contratadoPctTotal / 100)}
+                                    </td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      if (block.type === 'tendencias') {
+                        const totalBase = block.items.reduce((acc, it) => acc + it.orcamentoBase, 0);
+                        const totalTend = block.items.reduce((acc, it) => acc + it.valorTendencia, 0);
+                        const totalDesv = totalTend - totalBase;
+
+                        return (
+                          <div
+                            key={`block-tendencias-${bIdx}`}
+                            className="flex flex-col justify-start shrink-0 page-break-avoid"
+                          >
+                            <div
+                              style={{ height: '20px', marginBottom: '8px' }}
+                              className="flex items-center justify-between border-l-4 border-indigo-600 pl-2.5 shrink-0"
+                            >
+                              <div className="flex items-center gap-2">
+                                <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
+                                  <TrendingUp className="h-3.5 w-3.5 text-indigo-600" />
+                                  {block.isContinuation
+                                    ? `Premissas e Justificativas de Tendência — Continuação (${block.totalCount} itens)`
+                                    : `Premissas e Justificativas de Tendência (${block.totalCount} itens)`}
+                                </h2>
+                                <span className="text-[8.5px] font-bold px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 leading-none">
+                                  Desvios & Justificativas
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+                              <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider text-[8px] border-b border-slate-200">
+                                  <tr>
+                                    <th className="py-1 px-2.5 w-[28%]">Disciplina / Subdisciplina</th>
+                                    <th className="py-1 px-2 text-right w-[14%]">Orçado Base</th>
+                                    <th className="py-1 px-2 text-right w-[14%] font-black text-indigo-700 bg-indigo-50/50">
+                                      Tendência Final
+                                    </th>
+                                    <th className="py-1 px-2 text-right w-[14%]">Desvio Projetado</th>
+                                    <th className="py-1 px-2.5 w-[30%]">Premissa / Justificativa</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-[8.5px] text-slate-700">
+                                  {block.items.map((item) => {
+                                    const isPos = item.desvio > 1;
+                                    const isNeg = item.desvio < -1;
+                                    return (
+                                      <tr key={item.id} className="hover:bg-slate-50/40">
+                                        <td className="py-1 px-2.5 font-bold truncate max-w-[180px]">
+                                          <div className="flex flex-col">
+                                            <span className="text-[#072B3B]">{item.disciplina}</span>
+                                            {item.subdisciplina && (
+                                              <span className="text-[7.5px] font-normal text-slate-500">
+                                                {item.subdisciplina}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td className="py-1 px-2 text-right font-mono text-slate-600 whitespace-nowrap">
+                                          {formatCurrency(item.orcamentoBase)}
+                                        </td>
+                                        <td className="py-1 px-2 text-right font-mono font-black text-indigo-700 bg-indigo-50/30 whitespace-nowrap">
+                                          {formatCurrency(item.valorTendencia)}
+                                        </td>
+                                        <td className="py-1 px-2 text-right font-mono font-bold whitespace-nowrap">
+                                          {isPos ? (
+                                            <span className="text-rose-600">+{formatCurrency(item.desvio)}</span>
+                                          ) : isNeg ? (
+                                            <span className="text-emerald-600">-{formatCurrency(Math.abs(item.desvio))}</span>
+                                          ) : (
+                                            <span className="text-slate-400">R$ 0,00</span>
+                                          )}
+                                        </td>
+                                        <td className="py-1 px-2.5 text-slate-600 text-[8px] italic">
+                                          <span className="line-clamp-2" title={item.justificativa}>
+                                            {item.justificativa}
+                                          </span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                {block.items.length > 1 && (
+                                  <tfoot className="bg-slate-50 text-slate-900 font-black border-t border-slate-200 text-[8.5px]">
+                                    <tr>
+                                      <td className="py-1 px-2.5 uppercase tracking-wider font-black text-slate-700">
+                                        Total dos Itens Ajustados
+                                      </td>
+                                      <td className="py-1 px-2 text-right font-mono text-slate-700">
+                                        {formatCurrency(totalBase)}
+                                      </td>
+                                      <td className="py-1 px-2 text-right font-mono font-black text-indigo-700 bg-indigo-50/40">
+                                        {formatCurrency(totalTend)}
+                                      </td>
+                                      <td className={`py-1 px-2 text-right font-mono font-bold ${
+                                        totalDesv > 1 ? 'text-rose-600' : totalDesv < -1 ? 'text-emerald-600' : 'text-slate-900'
+                                      }`}>
+                                        {totalDesv > 1
+                                          ? `+${formatCurrency(totalDesv)}`
+                                          : totalDesv < -1
+                                          ? `-${formatCurrency(Math.abs(totalDesv))}`
+                                          : 'R$ 0,00'}
+                                      </td>
+                                      <td className="py-1 px-2.5"></td>
+                                    </tr>
+                                  </tfoot>
+                                )}
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       if (block.type === 'quadroObras') {
                         const cardH = expandedPdfBlocks.pdfQuadroObras
                           ? PDF_LAYOUT.cardExpanded
@@ -1661,8 +2036,8 @@ export function RelatorioOrcamentoPdfModal({
                               <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
                                 <Building className="h-3.5 w-3.5 text-[#00A3C4]" />
                                 {block.isContinuation
-                                  ? `3. Quadro Resumo por Obra — Continuação (${block.totalCount} obras)`
-                                  : `3. Quadro Resumo por Obra (${block.totalCount} obras)`}
+                                  ? `Quadro Resumo por Obra — Continuação (${block.totalCount} obras)`
+                                  : `Quadro Resumo por Obra (${block.totalCount} obras)`}
                               </h2>
                               <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
                                 <span className="flex items-center gap-1">
@@ -1915,8 +2290,8 @@ export function RelatorioOrcamentoPdfModal({
                               <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
                                 <Layers className="h-3.5 w-3.5 text-[#00A3C4]" />
                                 {block.isContinuation
-                                  ? `3. Consolidação por Disciplina — Continuação (${block.totalCount})`
-                                  : `3. Consolidação por Disciplina (${block.totalCount})`}
+                                  ? `Consolidação por Disciplina — Continuação (${block.totalCount})`
+                                  : `Consolidação por Disciplina (${block.totalCount})`}
                               </h2>
                               <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
                                 <span className="flex items-center gap-1">
@@ -2128,8 +2503,8 @@ export function RelatorioOrcamentoPdfModal({
                               <h2 className="text-[11px] font-black uppercase tracking-wider text-[#072B3B] flex items-center gap-1.5 leading-none">
                                 <Briefcase className="h-3.5 w-3.5 text-[#00A3C4]" />
                                 {block.isContinuation
-                                  ? `4. Consolidação dos Contratos — Continuação (${block.totalCount} contratos)`
-                                  : `4. Consolidação dos Contratos (${block.totalCount} contratos)`}
+                                  ? `Consolidação dos Contratos — Continuação (${block.totalCount} contratos)`
+                                  : `Consolidação dos Contratos (${block.totalCount} contratos)`}
                               </h2>
                               <div className="flex items-center gap-3 text-[8.5px] text-slate-500">
                                 <span className="flex items-center gap-1">

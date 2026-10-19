@@ -467,24 +467,8 @@ export function OrcamentoDashboard({
               )}
             </div>
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
-              <span className="truncate">Base Contratados:</span>
-              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.orcadoContratados)}</strong>
-            </div>
-            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap">
-              <span className="text-slate-500 dark:text-slate-400 truncate">Desvio Realizado:</span>
-              {kpis.diferencaContratados < -1 ? (
-                <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                  -{formatCurrency(Math.abs(kpis.diferencaContratados))} (Economia)
-                </strong>
-              ) : kpis.diferencaContratados > 1 ? (
-                <strong className="text-rose-600 dark:text-rose-400 shrink-0">
-                  +{formatCurrency(kpis.diferencaContratados)} (Estouro)
-                </strong>
-              ) : (
-                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
-                  No orçado
-                </strong>
-              )}
+              <span className="truncate">Orçamento Base:</span>
+              <strong className="text-slate-800 dark:text-slate-200 shrink-0">{formatCurrency(kpis.totalOrcado)}</strong>
             </div>
 
             {expandedCards.contratado && (
@@ -599,22 +583,6 @@ export function OrcamentoDashboard({
               )}
             </div>
 
-            <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap">
-              <span className="text-slate-500 dark:text-slate-400 truncate">Desvio de Premissa:</span>
-              {kpis.desvioTendencia && kpis.desvioTendencia > 1 ? (
-                <strong className="text-amber-600 dark:text-amber-400 shrink-0">
-                  +{formatCurrency(kpis.desvioTendencia)} vs. Base
-                </strong>
-              ) : kpis.desvioTendencia && kpis.desvioTendencia < -1 ? (
-                <strong className="text-emerald-600 dark:text-emerald-400 shrink-0">
-                  -{formatCurrency(Math.abs(kpis.desvioTendencia))} vs. Base
-                </strong>
-              ) : (
-                <strong className="text-slate-600 dark:text-slate-300 shrink-0">
-                  Igual à Base
-                </strong>
-              )}
-            </div>
             <div className="flex items-center justify-between gap-2 text-xs leading-4 whitespace-nowrap text-slate-500 dark:text-slate-400">
               <span className="truncate">Tendência Total:</span>
               <strong className="text-indigo-600 dark:text-indigo-400 font-extrabold shrink-0">
