@@ -6,6 +6,7 @@ import {
   Medicao,
   STATUS_MEDICAO_COLORS,
   STATUS_CONTRATO_COLORS,
+  getCategoriaBadgeClass,
 } from '@/types/orcamento';
 import { formatCurrency, formatPercent, formatDateBR, parseMesCompetencia } from '@/lib/orcamento-utils';
 import { Button } from '@/components/ui/button';
@@ -218,7 +219,7 @@ export function ContratoDetailModal({
                 <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${statusColor.bg} ${statusColor.text} border ${statusColor.border}`}>
                   {contrato.status || 'Ativo'}
                 </span>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB]">
+                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(contrato.categoria)}`}>
                   {contrato.categoria || 'Projeto'}
                 </span>
               </div>

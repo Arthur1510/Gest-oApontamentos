@@ -13,12 +13,101 @@ export const STATUS_ORCAMENTO_OPCOES: StatusOrcamento[] = [
   'Cancelado',
 ];
 
-export type CategoriaContrato = 'Projeto' | 'Legalização';
+export type CategoriaContrato =
+  | 'Projeto'
+  | 'Legalização'
+  | 'Qualidade'
+  | 'Orçamento'
+  | 'Negócios'
+  | 'Obra';
 
 export const CATEGORIA_CONTRATO_OPCOES: CategoriaContrato[] = [
   'Projeto',
   'Legalização',
+  'Qualidade',
+  'Orçamento',
+  'Negócios',
+  'Obra',
 ];
+
+export const CATEGORIA_CONTRATO_CONFIG: Record<
+  CategoriaContrato,
+  {
+    label: string;
+    plural: string;
+    badge: string;
+    activeButton: string;
+    text: string;
+    description: string;
+  }
+> = {
+  Projeto: {
+    label: 'Projeto',
+    plural: 'Projetos',
+    badge: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30',
+    activeButton: 'bg-[#00A3C4] text-white shadow-2xs',
+    text: 'text-[#00A3C4]',
+    description: 'Projetos / Eng.',
+  },
+  Legalização: {
+    label: 'Legalização',
+    plural: 'Legalização',
+    badge: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30',
+    activeButton: 'bg-purple-600 text-white shadow-2xs',
+    text: 'text-purple-600 dark:text-purple-400',
+    description: 'Taxas / Órgãos',
+  },
+  Qualidade: {
+    label: 'Qualidade',
+    plural: 'Qualidade',
+    badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30',
+    activeButton: 'bg-emerald-600 text-white shadow-2xs',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    description: 'Controle / Inspeção',
+  },
+  Orçamento: {
+    label: 'Orçamento',
+    plural: 'Orçamento',
+    badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30',
+    activeButton: 'bg-amber-600 text-white shadow-2xs',
+    text: 'text-amber-600 dark:text-amber-400',
+    description: 'Planejamento / Custos',
+  },
+  Negócios: {
+    label: 'Negócios',
+    plural: 'Negócios',
+    badge: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30',
+    activeButton: 'bg-indigo-600 text-white shadow-2xs',
+    text: 'text-indigo-600 dark:text-indigo-400',
+    description: 'Novos Negócios / Comercial',
+  },
+  Obra: {
+    label: 'Obra',
+    plural: 'Obras',
+    badge: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30',
+    activeButton: 'bg-orange-600 text-white shadow-2xs',
+    text: 'text-orange-600 dark:text-orange-400',
+    description: 'Execução / Obras Civis',
+  },
+};
+
+export function getCategoriaBadgeClass(cat?: CategoriaContrato | string | null): string {
+  switch (cat) {
+    case 'Legalização':
+      return 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30';
+    case 'Qualidade':
+      return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30';
+    case 'Orçamento':
+      return 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30';
+    case 'Negócios':
+      return 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30';
+    case 'Obra':
+      return 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30';
+    case 'Projeto':
+    default:
+      return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30';
+  }
+}
 
 export type StatusMedicao =
   | 'A Medir'
@@ -90,13 +179,19 @@ export interface ItemOrcamento {
   orcamento_base: number;
   valor_contratado: number;
   saldo_a_contratar: number;
+  valor_tendencia?: number | null; // Custo Final Previsto / Tendência de Contratação
+  justificativa_tendencia?: string | null; // Premissa / Justificativa da Tendência
+  saldo_tendencia?: number; // Saldo a contratar considerando a tendência (Tendência - Contratado)
   valor_medido: number;
   saldo_medicao: number;
   categoria: CategoriaContrato;
   status: StatusOrcamento;
 }
 
-export type NovoItemOrcamento = Omit<ItemOrcamento, 'id' | 'valor_contratado' | 'saldo_a_contratar' | 'valor_medido' | 'saldo_medicao'>;
+export type NovoItemOrcamento = Omit<
+  ItemOrcamento,
+  'id' | 'valor_contratado' | 'saldo_a_contratar' | 'saldo_tendencia' | 'valor_medido' | 'saldo_medicao'
+>;
 
 export type StatusContrato = 'Ativo' | 'Distratado' | 'Concluído';
 
@@ -293,9 +388,13 @@ export interface KpiOrcamento {
   totalCancelado: number;
   totalContratosCount: number;
   totalMedicoesCount: number;
-  // Métricas específicas de Projetos vs Legalização
+  // Métricas específicas por Categoria
   totalProjetosContratado: number;
   totalLegalizacaoContratado: number;
+  totalQualidadeContratado?: number;
+  totalOrcamentoContratado?: number;
+  totalNegociosContratado?: number;
+  totalObraContratado?: number;
   // Métricas de Medições em Atraso (Vencidas no Cronograma)
   totalEmAtraso: number;
   qtdEmAtraso: number;
@@ -316,6 +415,8 @@ export interface KpiOrcamento {
   diferencaContratados: number; // contratadoDosContratados - orcadoContratados (< 0 = economia líquida nos contratados)
   totalEconomiaItens: number; // soma das economias em itens já contratados abaixo do orçado
   totalEstouroItens: number;  // soma dos valores contratados acima do orçado nos itens
+  totalTendencia?: number;    // Soma total das tendências projetadas de todos os itens
+  desvioTendencia?: number;   // totalTendencia - totalOrcado
 }
 
 export const STATUS_MEDICAO_COLORS: Record<StatusMedicao, { bg: string; text: string; border: string; badge: string }> = {

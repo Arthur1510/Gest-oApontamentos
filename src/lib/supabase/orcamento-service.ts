@@ -80,6 +80,10 @@ export async function fetchOrcamentoDataFromSupabase(): Promise<{
       saldo_a_contratar: orc.saldo_a_contratar !== undefined && orc.saldo_a_contratar !== null
         ? Number(orc.saldo_a_contratar)
         : Number(orc.orcamento_base) || 0,
+      valor_tendencia: orc.valor_tendencia !== undefined && orc.valor_tendencia !== null
+        ? Number(orc.valor_tendencia)
+        : null,
+      justificativa_tendencia: orc.justificativa_tendencia || null,
       valor_medido: Number(orc.valor_medido) || 0,
       saldo_medicao: Number(orc.saldo_medicao) || 0,
       categoria: orc.categoria || 'Projeto',
@@ -452,6 +456,8 @@ export async function saveOrcamentoItemSupabase(item: ItemOrcamento): Promise<{ 
         saldo_medicao: cleanSaldoMedicao,
         categoria: item.categoria || 'Projeto',
         status: item.status || 'A contratar',
+        valor_tendencia: item.valor_tendencia !== undefined && item.valor_tendencia !== null ? Number(item.valor_tendencia) : null,
+        justificativa_tendencia: item.justificativa_tendencia || null,
       };
       const { error } = await supabase.from('orcamentos_base').upsert(fullPayload);
       if (!error) {

@@ -774,6 +774,8 @@ export default function OrcamentosPage() {
             ...itemData,
             id: o.id,
             orcamento_base: Number(itemData.orcamento_base) || 0,
+            valor_tendencia: itemData.valor_tendencia !== undefined ? itemData.valor_tendencia : (o.valor_tendencia ?? null),
+            justificativa_tendencia: itemData.justificativa_tendencia !== undefined ? itemData.justificativa_tendencia : (o.justificativa_tendencia ?? null),
             status: itemData.status || o.status || 'A contratar',
             categoria: itemData.categoria || o.categoria || 'Projeto',
           };
@@ -808,6 +810,8 @@ export default function OrcamentosPage() {
         disciplina: itemData.disciplina,
         subdisciplina: itemData.subdisciplina || itemData.disciplina,
         orcamento_base: Number(itemData.orcamento_base) || 0,
+        valor_tendencia: itemData.valor_tendencia !== undefined ? itemData.valor_tendencia : null,
+        justificativa_tendencia: itemData.justificativa_tendencia || null,
         valor_contratado: 0,
         saldo_a_contratar: Number(itemData.orcamento_base) || 0,
         valor_medido: 0,
@@ -1336,6 +1340,7 @@ export default function OrcamentosPage() {
               }}
               onExcluirItem={handleExcluirOrcamento}
               onMudarStatusItem={handleMudarStatusOrcamento}
+              onSalvarItem={handleSalvarOrcamento}
             />
           )}
 

@@ -7,6 +7,7 @@ import {
   Obra,
   StatusObra,
   StatusOrcamento,
+  CategoriaContrato,
   MesJanela306090,
   JanelaCaixa306090,
   ItemConsolidadoDisciplina,
@@ -396,14 +397,26 @@ export function recalculateOrcamentos(
         ? 'Contratado'
         : o.status || (valorContratado > 0 ? 'Contratado' : 'A contratar');
 
+    const hasCustomTendencia =
+      o.valor_tendencia !== undefined &&
+      o.valor_tendencia !== null &&
+      Number(o.valor_tendencia) > 0;
+    const valorTendencia = hasCustomTendencia ? Number(o.valor_tendencia) : o.orcamento_base;
+
     // Se o item estiver Cancelado, zeramos o saldo a contratar restante
-    const saldoAContratar = statusAtual === 'Cancelado' ? 0 : o.orcamento_base - valorContratado;
+    const saldoBase = statusAtual === 'Cancelado' ? 0 : o.orcamento_base - valorContratado;
+    const saldoTendencia = statusAtual === 'Cancelado' ? 0 : valorTendencia - valorContratado;
+    // O saldo a contratar efetivo reflete a tendência se informada, senão usa o saldo base
+    const saldoAContratar = hasCustomTendencia ? saldoTendencia : saldoBase;
     const saldoMedicao = Math.max(0, valorContratado - valorMedido);
 
     return {
       ...o,
       valor_contratado: valorContratado,
       saldo_a_contratar: saldoAContratar,
+      saldo_tendencia: saldoTendencia,
+      valor_tendencia: o.valor_tendencia !== undefined ? o.valor_tendencia : null,
+      justificativa_tendencia: o.justificativa_tendencia || null,
       valor_medido: valorMedido,
       saldo_medicao: saldoMedicao,
       status: statusAtual,
@@ -540,7 +553,7 @@ export function calculateCurvaDesembolso(
   filtroObra?: string | null,
   filtroEmpresa?: string | null,
   contratos?: Contrato[] | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  filtroCategoria?: CategoriaContrato | null,
   criterio: CriterioCurvaS = 'desembolso',
   obras?: Obra[]
 ): CurvaDesembolsoPonto[] {
@@ -667,7 +680,7 @@ export function calculateKpis(
   contratos: Contrato[],
   medicoes: Medicao[],
   filtroObra?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  filtroCategoria?: CategoriaContrato | null,
   obras?: Obra[]
 ): KpiOrcamento {
   // Mapa de categoria por contrato
@@ -713,11 +726,17 @@ export function calculateKpis(
   let totalEconomiaItens = 0;
   let totalEstouroItens = 0;
   let orcadoComparavel = 0;
+  let totalTendencia = 0;
 
   for (const o of filteredOrc) {
     const base = Number(o.orcamento_base) || 0;
     const contratadoItem = Number(o.valor_contratado) || 0;
     const stObra = getObraStatus(o.obra || o.nome_obra, obras);
+    const hasCustomTendencia =
+      o.valor_tendencia !== undefined &&
+      o.valor_tendencia !== null &&
+      Number(o.valor_tendencia) > 0;
+    const valorReferencia = hasCustomTendencia ? Number(o.valor_tendencia) : base;
 
     if (o.status === 'Cancelado') {
       if (stObra === 'Cancelada') {
@@ -737,6 +756,8 @@ export function calculateKpis(
       continue;
     }
 
+    totalTendencia += valorReferencia;
+
     // Um item é considerado contratado/fechado se possuir status 'Contratado' ou já tiver contrato vinculado (contratadoItem > 0)
     const isFechado = o.status === 'Contratado' || contratadoItem > 0;
 
@@ -745,7 +766,8 @@ export function calculateKpis(
         // Em obras canceladas, itens ainda não contratados têm faltaContratar zerado e não contam como economia
         continue;
       }
-      const saldoAberto = Math.max(0, base - contratadoItem);
+      // O saldo aberto considera a tendência de custo estipulada pelo usuário para a linha
+      const saldoAberto = Math.max(0, valorReferencia - contratadoItem);
       if (saldoAberto > 0) {
         if (stObra === 'Paralisada') {
           faltaContratarPausado += saldoAberto;
@@ -864,6 +886,22 @@ export function calculateKpis(
     .filter((c) => c.categoria === 'Legalização')
     .reduce((acc, c) => acc + c.valor_contrato, 0);
 
+  const totalQualidadeContratado = filteredCt
+    .filter((c) => c.categoria === 'Qualidade')
+    .reduce((acc, c) => acc + c.valor_contrato, 0);
+
+  const totalOrcamentoContratado = filteredCt
+    .filter((c) => c.categoria === 'Orçamento')
+    .reduce((acc, c) => acc + c.valor_contrato, 0);
+
+  const totalNegociosContratado = filteredCt
+    .filter((c) => c.categoria === 'Negócios')
+    .reduce((acc, c) => acc + c.valor_contrato, 0);
+
+  const totalObraContratado = filteredCt
+    .filter((c) => c.categoria === 'Obra')
+    .reduce((acc, c) => acc + c.valor_contrato, 0);
+
   return {
     totalOrcado,
     orcadoContratados,
@@ -883,6 +921,10 @@ export function calculateKpis(
     totalMedicoesCount: filteredMed.length,
     totalProjetosContratado,
     totalLegalizacaoContratado,
+    totalQualidadeContratado,
+    totalOrcamentoContratado,
+    totalNegociosContratado,
+    totalObraContratado,
     totalEmAtraso,
     qtdEmAtraso,
     totalMedidoNaoPago,
@@ -899,6 +941,8 @@ export function calculateKpis(
     diferencaContratados,
     totalEconomiaItens,
     totalEstouroItens,
+    totalTendencia,
+    desvioTendencia: totalTendencia - totalOrcado,
   };
 }
 
@@ -910,7 +954,7 @@ export function calculateJanela306090(
   contratos?: Contrato[] | null,
   filtroObra?: string | null,
   filtroFornecedor?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  filtroCategoria?: CategoriaContrato | null,
   dataReferencia?: string,
   obras?: Obra[]
 ): JanelaCaixa306090 {
@@ -1038,7 +1082,7 @@ export function calculateJanela306090(
 export function calculateConsolidadoDisciplinas(
   orcamentos: ItemOrcamento[],
   filtroObra?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  filtroCategoria?: CategoriaContrato | null,
   obras?: Obra[]
 ): ItemConsolidadoDisciplina[] {
   const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
@@ -1183,7 +1227,7 @@ export function calculateConsolidadoContratos(
   medicoes: Medicao[],
   filtroObra?: string | null,
   filtroFornecedor?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null,
+  filtroCategoria?: CategoriaContrato | null,
   orcamentos?: ItemOrcamento[] | null,
   obras?: Obra[]
 ): ItemConsolidadoContrato[] {
@@ -1365,7 +1409,7 @@ export function calculateConsolidadoObras(
   medicoes: Medicao[],
   obras: Obra[],
   filtroFornecedor?: string | null,
-  filtroCategoria?: 'Projeto' | 'Legalização' | null
+  filtroCategoria?: CategoriaContrato | null
 ): ItemConsolidadoObra[] {
   // Mapa de chave canônica para dados representativos da obra
   const canonMap = new Map<

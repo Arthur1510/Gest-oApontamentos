@@ -7,6 +7,9 @@ import {
   Medicao,
   Obra,
   Fornecedor,
+  CategoriaContrato,
+  CATEGORIA_CONTRATO_OPCOES,
+  CATEGORIA_CONTRATO_CONFIG,
 } from '@/types/orcamento';
 import {
   formatCurrency,
@@ -78,7 +81,7 @@ export function OrcamentoDashboard({
 }: OrcamentoDashboardProps) {
   const [showTabelaCurva, setShowTabelaCurva] = useState(false);
   const [criterioCurva, setCriterioCurva] = useState<CriterioCurvaS>('desembolso');
-  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
+  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | CategoriaContrato>('Todos');
   const [ordemDisciplinas, setOrdemDisciplinas] = useState<'valor' | 'alfabetica' | 'saldo'>('valor');
   const [ordemContratos, setOrdemContratos] = useState<'valor' | 'alfabetica' | 'saldo'>('valor');
 
@@ -202,8 +205,15 @@ export function OrcamentoDashboard({
   }, [contratos, filtroObra, filtroFornecedor]);
 
   const countTodos = contratosBase.length;
-  const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
-  const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
+  const countsCategoria = useMemo(() => {
+    const counts: Record<string, number> = {
+      Todos: contratosBase.length,
+    };
+    CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
+      counts[cat] = contratosBase.filter((c) => c.categoria === cat).length;
+    });
+    return counts;
+  }, [contratosBase]);
 
   // Proporções visuais para as barras dos cards principais (Contratado Base + Economia ou A Contratar + Suspenso + Desvio em vermelho)
   const estourouProjecaoKpi = kpis.diferencaOrcamento > 1 || kpis.diferencaContratados > 1;
@@ -283,8 +293,8 @@ export function OrcamentoDashboard({
             ))}
           </select>
 
-          {/* Filtro Categoria: Projetos vs Legalização */}
-          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
+          {/* Filtro Categoria */}
+          <div className="flex flex-wrap items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] min-h-9">
             <button
               type="button"
               onClick={() => setFiltroCategoria('Todos')}
@@ -296,28 +306,24 @@ export function OrcamentoDashboard({
             >
               Todos ({countTodos})
             </button>
-            <button
-              type="button"
-              onClick={() => setFiltroCategoria('Projeto')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroCategoria === 'Projeto'
-                  ? 'bg-[#00A3C4] text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Projetos ({countProjetos})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltroCategoria('Legalização')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroCategoria === 'Legalização'
-                  ? 'bg-purple-600 text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Legalização ({countLegalizacao})
-            </button>
+            {CATEGORIA_CONTRATO_OPCOES.map((cat) => {
+              const cfg = CATEGORIA_CONTRATO_CONFIG[cat];
+              const isSelected = filtroCategoria === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setFiltroCategoria(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    isSelected
+                      ? cfg.activeButton
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  {cfg.plural} ({countsCategoria[cat] || 0})
+                </button>
+              );
+            })}
           </div>
 
           {(filtroObra || filtroFornecedor || filtroCategoria !== 'Todos') && (
@@ -408,14 +414,30 @@ export function OrcamentoDashboard({
             </div>
 
             {expandedCards.contratado && (
-              <div className="pt-2.5 border-t border-slate-100 dark:border-[#0B384D] grid grid-cols-2 gap-3 text-xs animate-in fade-in-0">
+              <div className="pt-2.5 border-t border-slate-100 dark:border-[#0B384D] grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 text-xs animate-in fade-in-0">
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
                   <span className="text-slate-400 block text-[11px]">Projetos</span>
-                  <strong className="text-slate-800 dark:text-white text-sm">{formatCurrency(kpis.totalProjetosContratado)}</strong>
+                  <strong className="text-blue-600 dark:text-blue-400 text-xs sm:text-sm">{formatCurrency(kpis.totalProjetosContratado)}</strong>
                 </div>
                 <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
                   <span className="text-slate-400 block text-[11px]">Legalização</span>
-                  <strong className="text-purple-600 dark:text-purple-400 text-sm">{formatCurrency(kpis.totalLegalizacaoContratado)}</strong>
+                  <strong className="text-purple-600 dark:text-purple-400 text-xs sm:text-sm">{formatCurrency(kpis.totalLegalizacaoContratado)}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
+                  <span className="text-slate-400 block text-[11px]">Qualidade</span>
+                  <strong className="text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{formatCurrency(kpis.totalQualidadeContratado || 0)}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
+                  <span className="text-slate-400 block text-[11px]">Orçamento</span>
+                  <strong className="text-amber-600 dark:text-amber-400 text-xs sm:text-sm">{formatCurrency(kpis.totalOrcamentoContratado || 0)}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
+                  <span className="text-slate-400 block text-[11px]">Negócios</span>
+                  <strong className="text-indigo-600 dark:text-indigo-400 text-xs sm:text-sm">{formatCurrency(kpis.totalNegociosContratado || 0)}</strong>
+                </div>
+                <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-[#072432]">
+                  <span className="text-slate-400 block text-[11px]">Obra</span>
+                  <strong className="text-orange-600 dark:text-orange-400 text-xs sm:text-sm">{formatCurrency(kpis.totalObraContratado || 0)}</strong>
                 </div>
               </div>
             )}
@@ -563,6 +585,14 @@ export function OrcamentoDashboard({
                     <span className="text-rose-700 dark:text-rose-400 block text-[11px]">Desvio nos Contratados</span>
                     <strong className="text-rose-600 dark:text-rose-400 text-sm">
                       +{formatCurrency(kpis.totalEstouroItens || 0)} vs. orçado
+                    </strong>
+                  </div>
+                )}
+                {kpis.desvioTendencia !== undefined && Math.abs(kpis.desvioTendencia) > 0.01 && (
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 col-span-2">
+                    <span className="text-indigo-700 dark:text-indigo-400 block text-[11px]">Tendência de Contratação (Premissas)</span>
+                    <strong className="text-indigo-600 dark:text-indigo-400 text-sm">
+                      {formatCurrency(kpis.totalTendencia || 0)} ({kpis.desvioTendencia > 0 ? `+${formatCurrency(kpis.desvioTendencia)} vs. Base` : `-${formatCurrency(Math.abs(kpis.desvioTendencia))} vs. Base`})
                     </strong>
                   </div>
                 )}

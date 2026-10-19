@@ -102,18 +102,33 @@ export function ContratoFormModal({
 
   const handleFornecedorChange = (empresaNome: string) => {
     const f = fornecedores.find((forn) => forn.fornecedor === empresaNome);
-    const isLegalizacao =
-      empresaNome.toUpperCase() === 'TAXAS' ||
-      empresaNome.toUpperCase().includes('THAIS') ||
-      empresaNome.toUpperCase().includes('COSTA') ||
-      f?.tipo?.toUpperCase().includes('LEGALIZA');
+    const fTipo = f?.tipo?.toUpperCase() || '';
+    const empUpper = empresaNome.toUpperCase();
+
+    let novaCategoria: CategoriaContrato | null = null;
+    if (
+      empUpper === 'TAXAS' ||
+      empUpper.includes('THAIS') ||
+      empUpper.includes('COSTA') ||
+      fTipo.includes('LEGALIZA')
+    ) {
+      novaCategoria = 'Legalização';
+    } else if (fTipo.includes('QUALIDADE')) {
+      novaCategoria = 'Qualidade';
+    } else if (fTipo.includes('ORÇAMENTO') || fTipo.includes('ORCAMENTO')) {
+      novaCategoria = 'Orçamento';
+    } else if (fTipo.includes('NEGÓCIO') || fTipo.includes('NEGOCIO')) {
+      novaCategoria = 'Negócios';
+    } else if (fTipo.includes('OBRA')) {
+      novaCategoria = 'Obra';
+    }
 
     setFormData((prev) => ({
       ...prev,
       empresa: empresaNome,
       // NUNCA sobrescrever o num_sienge digitado pelo usuário com o id_sienge do fornecedor!
       disciplina: f?.tipo ? f.tipo : prev.disciplina,
-      categoria: isLegalizacao ? 'Legalização' : prev.categoria,
+      categoria: novaCategoria || prev.categoria,
     }));
   };
 
@@ -328,6 +343,10 @@ export function ContratoFormModal({
               >
                 <option value="Projeto">Projeto (Projetos / Eng.)</option>
                 <option value="Legalização">Legalização (Taxas / Órgãos)</option>
+                <option value="Qualidade">Qualidade (Controle / Inspeção)</option>
+                <option value="Orçamento">Orçamento (Planejamento / Custos)</option>
+                <option value="Negócios">Negócios (Comercial / Novos Negócios)</option>
+                <option value="Obra">Obra (Execução / Obras Civis)</option>
               </select>
             </div>
 

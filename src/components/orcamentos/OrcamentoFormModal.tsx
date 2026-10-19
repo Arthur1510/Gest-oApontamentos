@@ -13,7 +13,7 @@ import {
 } from '@/types/orcamento';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, DollarSign } from 'lucide-react';
+import { X, DollarSign, TrendingUp, Info } from 'lucide-react';
 
 interface OrcamentoFormModalProps {
   itemParaEditar: ItemOrcamento | null;
@@ -41,6 +41,8 @@ export function OrcamentoFormModal({
     disciplina: string;
     subdisciplina: string;
     orcamento_base: number;
+    valor_tendencia: string;
+    justificativa_tendencia: string;
     status: StatusOrcamento;
     categoria: CategoriaContrato;
   }>({
@@ -49,6 +51,8 @@ export function OrcamentoFormModal({
     disciplina: '',
     subdisciplina: '',
     orcamento_base: 0,
+    valor_tendencia: '',
+    justificativa_tendencia: '',
     status: 'A contratar',
     categoria: 'Projeto',
   });
@@ -62,6 +66,8 @@ export function OrcamentoFormModal({
         disciplina: itemParaEditar.disciplina,
         subdisciplina: itemParaEditar.subdisciplina,
         orcamento_base: Number(itemParaEditar.orcamento_base) || 0,
+        valor_tendencia: itemParaEditar.valor_tendencia != null ? String(itemParaEditar.valor_tendencia) : '',
+        justificativa_tendencia: itemParaEditar.justificativa_tendencia || '',
         status: itemParaEditar.status,
         categoria: itemParaEditar.categoria || 'Projeto',
       });
@@ -72,6 +78,8 @@ export function OrcamentoFormModal({
         disciplina: disciplinas[0]?.disciplina || '',
         subdisciplina: '',
         orcamento_base: 0,
+        valor_tendencia: '',
+        justificativa_tendencia: '',
         status: 'A contratar',
         categoria: 'Projeto',
       });
@@ -119,6 +127,9 @@ export function OrcamentoFormModal({
 
     const obraObj = obrasDisponiveis.find((o: Obra) => o.codigo === formData.obra);
 
+    const numTendencia = formData.valor_tendencia.trim() === '' ? null : Number(formData.valor_tendencia);
+    const justificativa = formData.justificativa_tendencia.trim() || null;
+
     setIsSubmitting(true);
     try {
       const res = await onSalvar({
@@ -128,6 +139,8 @@ export function OrcamentoFormModal({
         disciplina: formData.disciplina,
         subdisciplina: formData.subdisciplina || formData.disciplina,
         orcamento_base: Number(formData.orcamento_base) || 0,
+        valor_tendencia: numTendencia,
+        justificativa_tendencia: justificativa,
         status: formData.status,
         categoria: formData.categoria,
       });
@@ -201,12 +214,24 @@ export function OrcamentoFormModal({
               value={formData.disciplina}
               onChange={(e) => {
                 const disc = e.target.value;
-                const isLeg = disc.toUpperCase().includes('TAXA') || disc.toUpperCase().includes('LEGALIZA');
+                const discUpper = disc.toUpperCase();
+                let novaCat = formData.categoria;
+                if (discUpper.includes('TAXA') || discUpper.includes('LEGALIZA')) {
+                  novaCat = 'Legalização';
+                } else if (discUpper.includes('QUALIDADE')) {
+                  novaCat = 'Qualidade';
+                } else if (discUpper.includes('ORÇAMENTO') || discUpper.includes('ORCAMENTO')) {
+                  novaCat = 'Orçamento';
+                } else if (discUpper.includes('NEGÓCIO') || discUpper.includes('NEGOCIO')) {
+                  novaCat = 'Negócios';
+                } else if (discUpper.includes('OBRA')) {
+                  novaCat = 'Obra';
+                }
                 setFormData({
                   ...formData,
                   disciplina: disc,
                   subdisciplina: '',
-                  categoria: isLeg ? 'Legalização' : formData.categoria,
+                  categoria: novaCat,
                 });
               }}
               className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-[#0B384D] text-slate-800 dark:text-slate-100 h-9"
@@ -261,6 +286,72 @@ export function OrcamentoFormModal({
             </div>
           </div>
 
+          {/* Seção: Tendência de Contratação & Premissa */}
+          <div className="p-3.5 rounded-xl border border-indigo-200 dark:border-indigo-900/50 bg-indigo-50/50 dark:bg-[#072535] space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                Tendência de Contratação (R$)
+              </label>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                (Opcional - substitui saldo a contratar)
+              </span>
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                R$
+              </span>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={formData.valor_tendencia}
+                onChange={(e) => setFormData({ ...formData, valor_tendencia: e.target.value })}
+                placeholder={`Padrão: ${formData.orcamento_base > 0 ? formData.orcamento_base.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'} (Igual à base)`}
+                className="pl-9 text-xs h-9 rounded-xl bg-white dark:bg-[#0B384D] font-bold border-indigo-200 dark:border-indigo-800"
+              />
+            </div>
+
+            {/* Variação vs Orçamento Base */}
+            {formData.valor_tendencia.trim() !== '' && !isNaN(Number(formData.valor_tendencia)) && (
+              <div className="flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg bg-white/80 dark:bg-[#082E40] border border-indigo-100 dark:border-indigo-950">
+                {Number(formData.valor_tendencia) > formData.orcamento_base ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+                    ▲ +R$ {(Number(formData.valor_tendencia) - formData.orcamento_base).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Aumento previsto)
+                  </span>
+                ) : Number(formData.valor_tendencia) < formData.orcamento_base ? (
+                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                    ▼ -R$ {(formData.orcamento_base - Number(formData.valor_tendencia)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (Economia prevista)
+                  </span>
+                ) : (
+                  <span className="text-slate-500 dark:text-slate-400 font-medium">
+                    Tendência igual ao Orçamento Base
+                  </span>
+                )}
+
+                {itemParaEditar && itemParaEditar.valor_contratado > 0 && (
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Novo saldo: R$ {Math.max(0, Number(formData.valor_tendencia) - (itemParaEditar.valor_contratado || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Premissa / Justificativa */}
+            <div>
+              <label className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Premissa / Justificativa da Tendência
+              </label>
+              <Input
+                value={formData.justificativa_tendencia}
+                onChange={(e) => setFormData({ ...formData, justificativa_tendencia: e.target.value })}
+                placeholder="Ex: Escopo ampliado devido a novas diretrizes ou cotações acima da meta..."
+                className="text-xs h-8 rounded-lg bg-white dark:bg-[#0B384D] border-slate-200 dark:border-slate-700"
+              />
+            </div>
+          </div>
+
           {/* Categoria e Status */}
           <div className="grid grid-cols-2 gap-3">
             {/* Categoria */}
@@ -275,6 +366,10 @@ export function OrcamentoFormModal({
               >
                 <option value="Projeto">Projeto (Projetos / Eng.)</option>
                 <option value="Legalização">Legalização (Taxas / Órgãos)</option>
+                <option value="Qualidade">Qualidade (Controle / Inspeção)</option>
+                <option value="Orçamento">Orçamento (Planejamento / Custos)</option>
+                <option value="Negócios">Negócios (Comercial / Novos Negócios)</option>
+                <option value="Obra">Obra (Execução / Obras Civis)</option>
               </select>
             </div>
 

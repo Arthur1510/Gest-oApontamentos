@@ -8,6 +8,10 @@ import {
   StatusOrcamento,
   STATUS_ORCAMENTO_OPCOES,
   STATUS_ORCAMENTO_COLORS,
+  CategoriaContrato,
+  CATEGORIA_CONTRATO_OPCOES,
+  CATEGORIA_CONTRATO_CONFIG,
+  getCategoriaBadgeClass,
 } from '@/types/orcamento';
 import { formatCurrency, formatPercent, getCanonicalObra } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
@@ -25,6 +29,10 @@ import {
   ArrowUp,
   ArrowDown,
   Building,
+  TrendingUp,
+  TrendingDown,
+  Info,
+  X,
 } from 'lucide-react';
 
 interface OrcamentoBaseTableProps {
@@ -37,6 +45,7 @@ interface OrcamentoBaseTableProps {
   onEditarItem: (item: ItemOrcamento) => void;
   onExcluirItem: (id: string) => void;
   onMudarStatusItem?: (item: ItemOrcamento, novoStatus: StatusOrcamento) => void;
+  onSalvarItem?: (item: ItemOrcamento) => Promise<boolean | void> | void;
 }
 
 type SortField =
@@ -45,6 +54,7 @@ type SortField =
   | 'disciplina'
   | 'subdisciplina'
   | 'orcamento_base'
+  | 'valor_tendencia'
   | 'valor_contratado'
   | 'saldo_a_contratar'
   | 'valor_medido'
@@ -63,11 +73,49 @@ export function OrcamentoBaseTable({
   onEditarItem,
   onExcluirItem,
   onMudarStatusItem,
+  onSalvarItem,
 }: OrcamentoBaseTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [filtroDisciplina, setFiltroDisciplina] = useState<string>('');
-  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
+  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | CategoriaContrato>('Todos');
+
+  // Estados de edição rápida de tendência
+  const [itemParaEditarTendencia, setItemParaEditarTendencia] = useState<ItemOrcamento | null>(null);
+  const [valorTendenciaTemp, setValorTendenciaTemp] = useState<string>('');
+  const [justificativaTemp, setJustificativaTemp] = useState<string>('');
+  const [isSavingTendencia, setIsSavingTendencia] = useState(false);
+
+  const handleAbrirEdicaoTendencia = (item: ItemOrcamento) => {
+    setItemParaEditarTendencia(item);
+    setValorTendenciaTemp(item.valor_tendencia != null ? String(item.valor_tendencia) : String(item.orcamento_base || ''));
+    setJustificativaTemp(item.justificativa_tendencia || '');
+  };
+
+  const handleSalvarTendenciaRapida = async () => {
+    if (!itemParaEditarTendencia) return;
+    setIsSavingTendencia(true);
+    try {
+      const num = valorTendenciaTemp.trim() === '' ? null : Number(valorTendenciaTemp);
+      const just = justificativaTemp.trim() || null;
+      const itemAtualizado: ItemOrcamento = {
+        ...itemParaEditarTendencia,
+        valor_tendencia: num,
+        justificativa_tendencia: just,
+      };
+      if (onSalvarItem) {
+        await onSalvarItem(itemAtualizado);
+      } else {
+        onEditarItem(itemAtualizado);
+      }
+      setItemParaEditarTendencia(null);
+    } catch (err) {
+      console.error('Erro ao salvar tendência rápida:', err);
+      alert('Erro ao atualizar tendência.');
+    } finally {
+      setIsSavingTendencia(false);
+    }
+  };
 
   // Estados de ordenação
   const [sortField, setSortField] = useState<SortField | null>(null);
@@ -122,8 +170,15 @@ export function OrcamentoBaseTable({
   }, [orcamentos, obras, filtroObra, filtroStatus, filtroDisciplina, searchQuery]);
 
   const countTodos = orcamentosBase.length;
-  const countProjetos = useMemo(() => orcamentosBase.filter((o) => o.categoria === 'Projeto').length, [orcamentosBase]);
-  const countLegalizacao = useMemo(() => orcamentosBase.filter((o) => o.categoria === 'Legalização').length, [orcamentosBase]);
+  const countsCategoria = useMemo(() => {
+    const counts: Record<string, number> = {
+      Todos: orcamentosBase.length,
+    };
+    CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
+      counts[cat] = orcamentosBase.filter((o) => o.categoria === cat).length;
+    });
+    return counts;
+  }, [orcamentosBase]);
 
   // Lista única de disciplinas (considera filtro de obra caso selecionado)
   const disciplinasUnicas = useMemo(() => {
@@ -188,6 +243,12 @@ export function OrcamentoBaseTable({
         case 'orcamento_base':
           cmp = (a.orcamento_base || 0) - (b.orcamento_base || 0);
           break;
+        case 'valor_tendencia': {
+          const valA = a.valor_tendencia != null ? a.valor_tendencia : (a.orcamento_base || 0);
+          const valB = b.valor_tendencia != null ? b.valor_tendencia : (b.orcamento_base || 0);
+          cmp = valA - valB;
+          break;
+        }
         case 'valor_contratado':
           cmp = (a.valor_contratado || 0) - (b.valor_contratado || 0);
           break;
@@ -217,6 +278,7 @@ export function OrcamentoBaseTable({
   // Totais da tabela filtrada
   const totais = useMemo(() => {
     let base = 0;
+    let tendencia = 0;
     let contratado = 0;
     let saldoContratar = 0;
     let medido = 0;
@@ -224,6 +286,7 @@ export function OrcamentoBaseTable({
 
     for (const o of orcamentosFiltrados) {
       base += o.orcamento_base || 0;
+      tendencia += o.valor_tendencia != null ? o.valor_tendencia : (o.orcamento_base || 0);
       contratado += o.valor_contratado || 0;
       saldoContratar += o.status === 'Cancelado' ? 0 : (o.saldo_a_contratar || 0);
       medido += o.valor_medido || 0;
@@ -232,6 +295,7 @@ export function OrcamentoBaseTable({
 
     return {
       base,
+      tendencia,
       contratado,
       saldoContratar,
       medido,
@@ -297,8 +361,8 @@ export function OrcamentoBaseTable({
             ))}
           </select>
 
-          {/* Filtro Categoria: Projetos vs Legalização */}
-          <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
+          {/* Filtro Categoria */}
+          <div className="flex flex-wrap items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] min-h-9">
             <button
               type="button"
               onClick={() => setFiltroCategoria('Todos')}
@@ -310,28 +374,24 @@ export function OrcamentoBaseTable({
             >
               Todos ({countTodos})
             </button>
-            <button
-              type="button"
-              onClick={() => setFiltroCategoria('Projeto')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroCategoria === 'Projeto'
-                  ? 'bg-[#00A3C4] text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Projetos ({countProjetos})
-            </button>
-            <button
-              type="button"
-              onClick={() => setFiltroCategoria('Legalização')}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filtroCategoria === 'Legalização'
-                  ? 'bg-purple-600 text-white shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-              }`}
-            >
-              Legalização ({countLegalizacao})
-            </button>
+            {CATEGORIA_CONTRATO_OPCOES.map((cat) => {
+              const cfg = CATEGORIA_CONTRATO_CONFIG[cat];
+              const isSelected = filtroCategoria === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setFiltroCategoria(cat)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    isSelected
+                      ? cfg.activeButton
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                  }`}
+                >
+                  {cfg.plural} ({countsCategoria[cat] || 0})
+                </button>
+              );
+            })}
           </div>
 
           {(searchQuery || filtroObra || filtroDisciplina || filtroStatus || filtroCategoria !== 'Todos' || sortField !== null) && (
@@ -378,7 +438,7 @@ export function OrcamentoBaseTable({
               </span>
             ) : (
               <span className="font-bold text-[#008EA9] dark:text-[#00C4EB] bg-[#00A3C4]/10 px-2 py-0.5 rounded-md border border-[#00A3C4]/30">
-                Coluna: {sortField === 'obra' ? 'Obra' : sortField === 'categoria' ? 'Tipo' : sortField === 'disciplina' ? 'Disciplina' : sortField === 'subdisciplina' ? 'Subdisciplina' : sortField === 'orcamento_base' ? 'Orçamento Base' : sortField === 'valor_contratado' ? 'Valor Contratado' : sortField === 'saldo_a_contratar' ? 'Saldo a Contratar' : sortField === 'valor_medido' ? 'Valor Medido' : sortField === 'saldo_medicao' ? 'Saldo Medição' : 'Status'} ({sortDirection === 'asc' ? 'Crescente / A–Z' : 'Decrescente / Z–A'})
+                Coluna: {sortField === 'obra' ? 'Obra' : sortField === 'categoria' ? 'Tipo' : sortField === 'disciplina' ? 'Disciplina' : sortField === 'subdisciplina' ? 'Subdisciplina' : sortField === 'orcamento_base' ? 'Orçamento Base' : sortField === 'valor_tendencia' ? 'Tendência' : sortField === 'valor_contratado' ? 'Valor Contratado' : sortField === 'saldo_a_contratar' ? 'Saldo a Contratar' : sortField === 'valor_medido' ? 'Valor Medido' : sortField === 'saldo_medicao' ? 'Saldo Medição' : 'Status'} ({sortDirection === 'asc' ? 'Crescente / A–Z' : 'Decrescente / Z–A'})
               </span>
             )}
           </div>
@@ -415,7 +475,7 @@ export function OrcamentoBaseTable({
                 <th
                   onClick={() => handleSort('categoria')}
                   className="py-3 px-3.5 cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
-                  title="Clique para ordenar por Tipo (Projeto / Legalização)"
+                  title="Clique para ordenar por Tipo (Projeto / Legalização / Qualidade...)"
                 >
                   <div className="flex items-center gap-1.5">
                     <span>Tipo</span>
@@ -453,6 +513,18 @@ export function OrcamentoBaseTable({
                   <div className="flex items-center justify-end gap-1.5">
                     <span>Orçamento Base</span>
                     {renderSortIcon('orcamento_base')}
+                  </div>
+                </th>
+
+                <th
+                  onClick={() => handleSort('valor_tendencia')}
+                  className="py-3 px-3.5 text-right cursor-pointer select-none group hover:bg-slate-100 dark:hover:bg-[#083042] transition-colors"
+                  title="Tendência de Contratação (previsão orçamentária considerando premissas de contratação)"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <TrendingUp className="h-3 w-3 text-indigo-500" />
+                    <span>Tendência</span>
+                    {renderSortIcon('valor_tendencia')}
                   </div>
                 </th>
 
@@ -517,7 +589,7 @@ export function OrcamentoBaseTable({
             <tbody className="divide-y divide-slate-100 dark:divide-[#0B384D]/60 text-slate-700 dark:text-slate-200">
               {orcamentosOrdenados.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="py-10 text-center text-slate-400">
+                  <td colSpan={12} className="py-10 text-center text-slate-400">
                     Nenhum item de orçamento encontrado para os filtros selecionados.
                   </td>
                 </tr>
@@ -534,10 +606,14 @@ export function OrcamentoBaseTable({
                   const isEstouro = !isCancelado && saldoAContratar < -0.01;
                   const isEconomia = !isCancelado && isContratado && saldoAContratar > 0.01;
 
+                  const valorTendenciaItem = item.valor_tendencia != null ? item.valor_tendencia : item.orcamento_base;
+                  const temTendenciaCustom = item.valor_tendencia != null && item.valor_tendencia !== item.orcamento_base;
+                  const diffTendencia = valorTendenciaItem - item.orcamento_base;
+
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors"
+                      className="group/row hover:bg-slate-50 dark:hover:bg-[#0B384D]/30 transition-colors"
                     >
                       <td className="py-2.5 px-3.5 font-bold whitespace-nowrap">
                         <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-extrabold">
@@ -546,11 +622,7 @@ export function OrcamentoBaseTable({
                       </td>
                       <td className="py-2.5 px-3.5 whitespace-nowrap">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            item.categoria === 'Legalização'
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-300/50'
-                              : 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300 border border-cyan-200/50'
-                          }`}
+                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(item.categoria)}`}
                         >
                           {item.categoria || 'Projeto'}
                         </span>
@@ -564,6 +636,61 @@ export function OrcamentoBaseTable({
                       <td className="py-2.5 px-3.5 text-right font-bold text-slate-900 dark:text-white font-mono whitespace-nowrap">
                         {formatCurrency(item.orcamento_base)}
                       </td>
+
+                      {/* Coluna Tendência de Contratação */}
+                      <td className="py-2.5 px-3.5 text-right font-mono whitespace-nowrap bg-indigo-50/20 dark:bg-indigo-950/10">
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleAbrirEdicaoTendencia(item)}
+                              className={`cursor-pointer hover:underline font-bold transition-colors text-right ${
+                                temTendenciaCustom
+                                  ? 'text-indigo-600 dark:text-indigo-400'
+                                  : 'text-slate-700 dark:text-slate-300'
+                              }`}
+                              title="Clique para editar a tendência e premissa desta linha"
+                            >
+                              {formatCurrency(valorTendenciaItem)}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleAbrirEdicaoTendencia(item)}
+                              className="opacity-0 group-hover/row:opacity-100 p-0.5 rounded text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-opacity"
+                              title="Ajustar premissa de tendência"
+                            >
+                              <Edit2 className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+
+                          {temTendenciaCustom ? (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {diffTendencia > 0 ? (
+                                <span className="text-[9px] font-sans font-bold text-amber-600 dark:text-amber-400">
+                                  ▲ +{formatCurrency(diffTendencia)}
+                                </span>
+                              ) : (
+                                <span className="text-[9px] font-sans font-bold text-emerald-600 dark:text-emerald-400">
+                                  ▼ -{formatCurrency(Math.abs(diffTendencia))}
+                                </span>
+                              )}
+                              {item.justificativa_tendencia && (
+                                <span
+                                  className="text-[9px] font-sans text-indigo-600 dark:text-indigo-300 font-medium cursor-help max-w-[130px] truncate"
+                                  title={`Premissa: ${item.justificativa_tendencia}`}
+                                >
+                                  • {item.justificativa_tendencia}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-[9px] font-sans text-slate-400 dark:text-slate-500">
+                              Igual à base
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
                       <td className="py-2.5 px-3.5 text-right font-semibold text-[#008EA9] dark:text-[#00C4EB] font-mono whitespace-nowrap">
                         {formatCurrency(item.valor_contratado)}
                       </td>
@@ -583,6 +710,11 @@ export function OrcamentoBaseTable({
                           {isCancelado && (
                             <span className="text-[9px] font-sans font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                               Cancelado
+                            </span>
+                          )}
+                          {!isCancelado && temTendenciaCustom && (
+                            <span className="text-[9px] font-sans font-semibold text-indigo-600 dark:text-indigo-400">
+                              Pela tendência
                             </span>
                           )}
                           {isEstouro && (
@@ -650,6 +782,26 @@ export function OrcamentoBaseTable({
                 <td className="py-3 px-3.5 text-right text-xs">
                   {formatCurrency(totais.base)}
                 </td>
+                <td className="py-3 px-3.5 text-right text-xs font-mono bg-indigo-50/20 dark:bg-indigo-950/20">
+                  <div className="flex flex-col items-end">
+                    <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">
+                      {formatCurrency(totais.tendencia)}
+                    </span>
+                    {Math.abs(totais.tendencia - totais.base) > 0.01 && (
+                      <span
+                        className={`text-[10px] font-sans font-bold ${
+                          totais.tendencia > totais.base
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-emerald-600 dark:text-emerald-400'
+                        }`}
+                      >
+                        {totais.tendencia > totais.base
+                          ? `▲ +${formatCurrency(totais.tendencia - totais.base)}`
+                          : `▼ -${formatCurrency(totais.base - totais.tendencia)}`}
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="py-3 px-3.5 text-right text-xs text-[#008EA9] dark:text-[#00C4EB]">
                   {formatCurrency(totais.contratado)}
                 </td>
@@ -676,6 +828,93 @@ export function OrcamentoBaseTable({
           </table>
         </div>
       </div>
+
+      {/* Modal de Edição Rápida da Tendência */}
+      {itemParaEditarTendencia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in-0">
+          <div className="bg-white dark:bg-[#072B3B] rounded-2xl border border-slate-200 dark:border-[#0B384D] max-w-sm w-full p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#0B384D] pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  <TrendingUp className="h-4 w-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">Tendência de Contratação</h4>
+                  <p className="text-[11px] text-slate-500 truncate max-w-[200px]">
+                    {itemParaEditarTendencia.obra} - {itemParaEditarTendencia.disciplina}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setItemParaEditarTendencia(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-xs p-2.5 rounded-xl bg-slate-50 dark:bg-[#0B384D] border border-slate-200 dark:border-slate-700 flex justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Orçamento Base:</span>
+                <span className="font-bold font-mono text-slate-900 dark:text-white">
+                  {formatCurrency(itemParaEditarTendencia.orcamento_base)}
+                </span>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Novo Valor de Tendência (R$)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={valorTendenciaTemp}
+                  onChange={(e) => setValorTendenciaTemp(e.target.value)}
+                  placeholder={`Padrão: ${itemParaEditarTendencia.orcamento_base}`}
+                  className="text-xs h-9 rounded-xl font-bold font-mono"
+                  autoFocus
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  * Se vazio ou igual à base, assume o Orçamento Base.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Premissa / Justificativa
+                </label>
+                <Input
+                  value={justificativaTemp}
+                  onChange={(e) => setJustificativaTemp(e.target.value)}
+                  placeholder="Ex: Aumento devido a cotações ou mudança de premissa..."
+                  className="text-xs h-9 rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-[#0B384D]">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setItemParaEditarTendencia(null)}
+                className="text-xs"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                disabled={isSavingTendencia}
+                onClick={handleSalvarTendenciaRapida}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold gap-1.5"
+              >
+                {isSavingTendencia ? 'Salvando...' : 'Salvar Tendência'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

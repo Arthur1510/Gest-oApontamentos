@@ -7,6 +7,10 @@ import {
   Obra,
   Fornecedor,
   STATUS_CONTRATO_COLORS,
+  CategoriaContrato,
+  CATEGORIA_CONTRATO_OPCOES,
+  CATEGORIA_CONTRATO_CONFIG,
+  getCategoriaBadgeClass,
 } from '@/types/orcamento';
 import { formatCurrency, formatPercent, getCanonicalObra, getObraStatus } from '@/lib/orcamento-utils';
 import { Input } from '@/components/ui/input';
@@ -60,7 +64,7 @@ export function ContratosTable({
 }: ContratosTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filtroFornecedor, setFiltroFornecedor] = useState('');
-  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
+  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | CategoriaContrato>('Todos');
   const [filtroStatus, setFiltroStatus] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
 
@@ -96,8 +100,15 @@ export function ContratosTable({
   }, [contratos, obras, filtroObra, filtroFornecedor, filtroStatus, searchQuery]);
 
   const countTodos = contratosBase.length;
-  const countProjetos = useMemo(() => contratosBase.filter((c) => c.categoria === 'Projeto').length, [contratosBase]);
-  const countLegalizacao = useMemo(() => contratosBase.filter((c) => c.categoria === 'Legalização').length, [contratosBase]);
+  const countsCategoria = useMemo(() => {
+    const counts: Record<string, number> = {
+      Todos: contratosBase.length,
+    };
+    CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
+      counts[cat] = contratosBase.filter((c) => c.categoria === cat).length;
+    });
+    return counts;
+  }, [contratosBase]);
   const countDistratados = useMemo(() => {
     const canonFiltro = filtroObra ? getCanonicalObra(filtroObra, obras) : '';
     return contratos.filter((c) => {
@@ -205,8 +216,8 @@ export function ContratosTable({
               <option value="Concluído">Concluídos</option>
             </select>
 
-            {/* Filtro Categoria: Projetos vs Legalização */}
-            <div className="flex items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
+            {/* Filtro Categoria */}
+            <div className="flex flex-wrap items-center rounded-xl bg-slate-100 dark:bg-[#0B384D] p-0.5 border border-slate-200 dark:border-[#0B384D] min-h-9">
               <button
                 type="button"
                 onClick={() => setFiltroCategoria('Todos')}
@@ -218,28 +229,24 @@ export function ContratosTable({
               >
                 Todos ({countTodos})
               </button>
-              <button
-                type="button"
-                onClick={() => setFiltroCategoria('Projeto')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroCategoria === 'Projeto'
-                    ? 'bg-[#00A3C4] text-white shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                Projetos ({countProjetos})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFiltroCategoria('Legalização')}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                  filtroCategoria === 'Legalização'
-                    ? 'bg-purple-600 text-white shadow-2xs'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                Legalização ({countLegalizacao})
-              </button>
+              {CATEGORIA_CONTRATO_OPCOES.map((cat) => {
+                const cfg = CATEGORIA_CONTRATO_CONFIG[cat];
+                const isSelected = filtroCategoria === cat;
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setFiltroCategoria(cat)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      isSelected
+                        ? cfg.activeButton
+                        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+                    }`}
+                  >
+                    {cfg.plural} ({countsCategoria[cat] || 0})
+                  </button>
+                );
+              })}
             </div>
 
             {(searchQuery || filtroObra || filtroFornecedor || filtroStatus || filtroCategoria !== 'Todos') && (
@@ -367,7 +374,7 @@ export function ContratosTable({
                       <span className="px-2 py-0.5 rounded-md bg-[#00A3C4]/15 text-[#008EA9] dark:text-[#00C4EB] text-[10px] font-black">
                         {c.obra}
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 dark:bg-[#0B384D] text-slate-500 font-bold">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold ${getCategoriaBadgeClass(c.categoria)}`}>
                         {c.categoria || 'Projeto'}
                       </span>
                     </div>
@@ -579,11 +586,7 @@ export function ContratosTable({
 
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <span
-                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                            c.categoria === 'Legalização'
-                              ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
-                              : 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30'
-                          }`}
+                          className={`inline-block px-2 py-0.5 rounded-md text-[10px] font-bold ${getCategoriaBadgeClass(c.categoria)}`}
                         >
                           {c.categoria || 'Projeto'}
                         </span>

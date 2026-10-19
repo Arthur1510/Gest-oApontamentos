@@ -14,6 +14,8 @@ import {
   ItemConsolidadoContrato,
   ItemConsolidadoObra,
   AditivoContrato,
+  CategoriaContrato,
+  CATEGORIA_CONTRATO_OPCOES,
 } from '@/types/orcamento';
 import {
   formatCurrency,
@@ -92,7 +94,7 @@ export function RelatorioOrcamentoPdfModal({
     setLocalFiltroObra(filtroObraProp || '');
   }, [filtroObraProp, isOpen]);
 
-  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | 'Projeto' | 'Legalização'>('Todos');
+  const [filtroCategoria, setFiltroCategoria] = useState<'Todos' | CategoriaContrato>('Todos');
   const [ordemListas, setOrdemListas] = useState<'valor' | 'alfabetica' | 'saldo'>('valor');
   const [showConfig, setShowConfig] = useState<boolean>(true);
 
@@ -914,8 +916,8 @@ export function RelatorioOrcamentoPdfModal({
               {/* Filtro de Categoria */}
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-700 dark:text-slate-300 text-xs">Categoria:</span>
-                <div className="flex items-center rounded-xl bg-white dark:bg-[#072B3B] p-0.5 border border-slate-200 dark:border-[#0B384D] h-9">
-                  {(['Todos', 'Projeto', 'Legalização'] as const).map((cat) => (
+                <div className="flex flex-wrap items-center rounded-xl bg-white dark:bg-[#072B3B] p-0.5 border border-slate-200 dark:border-[#0B384D] min-h-9">
+                  {(['Todos', ...CATEGORIA_CONTRATO_OPCOES] as const).map((cat) => (
                     <button
                       key={cat}
                       type="button"
@@ -1151,7 +1153,7 @@ export function RelatorioOrcamentoPdfModal({
                         </span>
                         <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-purple-50 text-purple-700 font-bold border border-purple-200">
                           {filtroCategoria === 'Todos'
-                            ? 'Projetos & Legalização'
+                            ? 'Todas as Categorias'
                             : filtroCategoria === 'Projeto'
                             ? 'Projetos'
                             : filtroCategoria}
@@ -1183,7 +1185,7 @@ export function RelatorioOrcamentoPdfModal({
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-bold border border-purple-200">
                           {filtroCategoria === 'Todos'
-                            ? 'Projetos & Legalização'
+                            ? 'Todas as Categorias'
                             : filtroCategoria === 'Projeto'
                             ? 'Projetos'
                             : filtroCategoria}
