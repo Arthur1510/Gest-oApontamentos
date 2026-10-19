@@ -316,7 +316,7 @@ export function RelatorioOrcamentoPdfModal({
       categoriaOverride?: CategoriaContrato | null,
       skipKpisAndJanela: boolean = false
     ): PdfPageDescriptor[] => {
-      const effectiveCat = categoriaOverride !== undefined ? categoriaOverride : catParam;
+      const effectiveCat = categoriaOverride !== undefined ? categoriaOverride : effectiveCategory;
       const scopeKpis = calculateKpis(orcamentos, contratos, medicoes, obraCodigo, effectiveCat, obras);
       const scopeJanela = calculateJanela306090(
         medicoes,
@@ -675,18 +675,15 @@ export function RelatorioOrcamentoPdfModal({
       }));
     };
 
-    const targetCat: CategoriaContrato = filtroCategoria === 'Todos' ? 'Projeto' : filtroCategoria;
-    const targetCatLabel = targetCat === 'Projeto' ? 'Projetos' : targetCat;
-
-    // Helper para criar as páginas iniciais do Resumo Executivo (Cards Gerais em Projetos + 30/60/90 Geral + Quadro Resumo por Obra em Projetos)
+    // Helper para criar as páginas iniciais do Resumo Executivo (Cards Gerais + 30/60/90 + Quadro Resumo por Obra filtrado na categoria ativa)
     const createExecutiveSummaryPages = (): PdfPageDescriptor[] => {
-      const macroKpis = calculateKpis(orcamentos, contratos, medicoes, null, targetCat, obras);
+      const macroKpis = calculateKpis(orcamentos, contratos, medicoes, null, effectiveCategory, obras);
       const macroJanela = calculateJanela306090(
         medicoes,
         contratos,
         null,
         filtroFornecedor || null,
-        null,
+        effectiveCategory,
         undefined,
         obras
       );
@@ -695,7 +692,7 @@ export function RelatorioOrcamentoPdfModal({
         null,
         filtroFornecedor || null,
         contratos,
-        null,
+        effectiveCategory,
         'desembolso',
         obras
       );
@@ -727,7 +724,7 @@ export function RelatorioOrcamentoPdfModal({
         availPx -= blockHeightPx + actualGap;
       };
 
-      // 1. Cards Principais Gerais (Macro - todas as categorias)
+      // 1. Cards Principais Gerais (Macro - na categoria selecionada)
       if (secoes.kpis) {
         const anyKpiExpanded =
           expandedPdfBlocks.kpiContratado ||
@@ -737,7 +734,7 @@ export function RelatorioOrcamentoPdfModal({
         pushFixedBlock({ type: 'kpis' }, anyKpiExpanded ? PDF_LAYOUT.kpis2Rows : PDF_LAYOUT.kpis1Row);
       }
 
-      // 2. Previsão de Desembolso Geral (30 / 60 / 90 Dias - todas as categorias)
+      // 2. Previsão de Desembolso Geral (30 / 60 / 90 Dias - na categoria selecionada)
       if (secoes.janela306090) {
         pushFixedBlock(
           { type: 'janela306090' },
@@ -745,7 +742,7 @@ export function RelatorioOrcamentoPdfModal({
         );
       }
 
-      // 3. Quadro Resumo por Obra Filtrado para Projetos
+      // 3. Quadro Resumo por Obra Filtrado para a Categoria Selecionada
       if (secoes.quadroObras && consolidadoObras.length > 0) {
         const cardH = expandedPdfBlocks.pdfQuadroObras ? PDF_LAYOUT.cardExpanded : PDF_LAYOUT.cardNormal;
         let remaining = [...consolidadoObras];
@@ -794,10 +791,10 @@ export function RelatorioOrcamentoPdfModal({
       const finalBlockPages = blockPages.length > 0 ? blockPages : [[]];
 
       return finalBlockPages.map((blocks, idx) => ({
-        headerTitle: `RESUMO EXECUTIVO DO PORTFÓLIO — VISÃO GERAL DE ${targetCatLabel.toUpperCase()}`,
+        headerTitle: `RESUMO EXECUTIVO DO PORTFÓLIO — VISÃO GERAL (${categoryLabel.toUpperCase()})`,
         headerObraBadge: 'RESUMO EXECUTIVO (TODAS AS OBRAS)',
-        headerSubBadge: idx === 0 ? `Macro Portfólio (${targetCatLabel})` : 'Continuação Resumo',
-        headerCategoryBadge: targetCatLabel,
+        headerSubBadge: idx === 0 ? `Macro Portfólio (${categoryLabel})` : 'Continuação Resumo',
+        headerCategoryBadge: categoryLabel,
         isSectionFirstPage: idx === 0,
         kpis: macroKpis,
         janela306090: macroJanela,
@@ -811,20 +808,20 @@ export function RelatorioOrcamentoPdfModal({
     if (isModoResumoEObras) {
       const allPages: PdfPageDescriptor[] = [];
 
-      // 1. Página Inicial: Cards Macro + 30/60/90 Geral + Quadro Resumo de Obras (Projetos)
+      // 1. Página Inicial: Cards Macro + 30/60/90 Geral + Quadro Resumo de Obras (na categoria selecionada)
       const summaryPages = createExecutiveSummaryPages();
       allPages.push(...summaryPages);
 
-      // 2. Depois já começa a mostrar as obras individualmente:
+      // 2. Detalhamento individual de cada obra (na categoria selecionada):
       // Em cada obra: Cards + 30/60/90 + Quadro para Viabilidade + Disciplinas + Contratos!
       consolidadoObras.forEach((obraItem, idx) => {
         const obraPages = buildScopePages(
           obraItem.codigo,
-          `DETALHAMENTO DE ${targetCatLabel.toUpperCase()} — ${obraItem.label}`,
+          `DETALHAMENTO DE ${categoryLabel.toUpperCase()} — ${obraItem.label}`,
           obraItem.label,
-          `Obra ${idx + 1} de ${consolidadoObras.length} (${targetCatLabel})`,
-          targetCatLabel,
-          targetCat,
+          `Obra ${idx + 1} de ${consolidadoObras.length} (${categoryLabel})`,
+          categoryLabel,
+          effectiveCategory,
           false
         );
         allPages.push(...obraPages);
@@ -842,11 +839,11 @@ export function RelatorioOrcamentoPdfModal({
     const obraLabel = getObraLabel(effectiveSingleObra, obras);
     return buildScopePages(
       effectiveSingleObra,
-      `DETALHAMENTO DE ${targetCatLabel.toUpperCase()} — ${obraLabel}`,
+      `DETALHAMENTO DE ${categoryLabel.toUpperCase()} — ${obraLabel}`,
       obraLabel,
-      targetCatLabel,
-      targetCatLabel,
-      targetCat,
+      categoryLabel,
+      categoryLabel,
+      effectiveCategory,
       false
     );
   }, [
@@ -858,7 +855,8 @@ export function RelatorioOrcamentoPdfModal({
     obras,
     filtroFornecedor,
     filtroCategoria,
-    catParam,
+    effectiveCategory,
+    categoryLabel,
     ordemListas,
     secoes,
     expandedPdfBlocks,
