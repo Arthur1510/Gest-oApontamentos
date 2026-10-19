@@ -11,6 +11,7 @@ import {
   CATEGORIA_CONTRATO_OPCOES,
   CATEGORIA_CONTRATO_CONFIG,
   getCategoriaBadgeClass,
+  normalizeCategoria,
 } from '@/types/orcamento';
 import {
   formatCurrency,
@@ -268,7 +269,9 @@ export function OrcamentoDashboard({
       Todos: contratosBase.length,
     };
     CATEGORIA_CONTRATO_OPCOES.forEach((cat) => {
-      counts[cat] = contratosBase.filter((c) => c.categoria === cat).length;
+      counts[cat] = contratosBase.filter(
+        (c) => normalizeCategoria(c.categoria, c.disciplina) === cat
+      ).length;
     });
     return counts;
   }, [contratosBase]);
@@ -362,7 +365,7 @@ export function OrcamentoDashboard({
                   : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
-              Todos ({countTodos})
+              Todas as Categorias ({countTodos})
             </button>
             {CATEGORIA_CONTRATO_OPCOES.map((cat) => {
               const cfg = CATEGORIA_CONTRATO_CONFIG[cat];

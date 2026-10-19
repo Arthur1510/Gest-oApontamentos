@@ -301,6 +301,10 @@ export function isContratoMatchOrcamento(
   const oObra = getCanonicalObra(o.obra || o.nome_obra, obras);
   if (cObra !== oObra) return false;
 
+  const cCat = normalizeCategoria(c.categoria, c.disciplina);
+  const oCat = normalizeCategoria(o.categoria, o.disciplina);
+  if (cCat !== oCat) return false;
+
   const cDisc = normalizeText(c.disciplina);
   const oDisc = normalizeText(o.disciplina);
   const cSub = cleanTerm(c.subdisciplina);
@@ -1186,7 +1190,7 @@ export function calculateConsolidadoDisciplinas(
 
   const filtered = orcamentos.filter((o) => {
     if (!matchObra(o.obra || o.nome_obra)) return false;
-    if (filtroCategoria && o.categoria !== filtroCategoria) return false;
+    if (filtroCategoria && normalizeCategoria(o.categoria, o.disciplina) !== filtroCategoria) return false;
     return true;
   });
 
@@ -1347,7 +1351,7 @@ export function calculateConsolidadoContratos(
     .filter((c) => {
       if (!matchObra(c.obra)) return false;
       if (filtroFornecedor && c.empresa !== filtroFornecedor) return false;
-      if (filtroCategoria && c.categoria !== filtroCategoria) return false;
+      if (filtroCategoria && normalizeCategoria(c.categoria, c.disciplina) !== filtroCategoria) return false;
       return true;
     })
     .map((c) => {
